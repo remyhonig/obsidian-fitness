@@ -290,10 +290,17 @@ export class FitView extends ItemView {
 				break;
 			case 'workout-picker':
 			case 'history':
-			case 'workout-editor':
 			case 'exercise-library':
 			case 'finish':
 				this.navigateTo('home');
+				break;
+			case 'workout-editor':
+				// Go back to session if there's an active session, otherwise home
+				if (this.sessionState.hasActiveSession()) {
+					this.navigateTo('session');
+				} else {
+					this.navigateTo('home');
+				}
 				break;
 			default:
 				this.navigateTo('home');

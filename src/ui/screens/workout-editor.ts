@@ -1,7 +1,7 @@
-import { Notice } from 'obsidian';
+import { Notice, setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, Workout, WorkoutExercise } from '../../types';
-import { createBackButton, createButton, createPrimaryAction } from '../components/button';
+import { createBackButton, createButton } from '../components/button';
 import { createExerciseAutocomplete } from '../components/autocomplete';
 
 /**
@@ -17,6 +17,17 @@ export class WorkoutEditorScreen implements Screen {
 	private name = '';
 	private description = '';
 	private exercises: WorkoutExercise[] = [];
+
+	// Original state for change detection
+	private originalName = '';
+	private originalDescription = '';
+	private originalExercises: WorkoutExercise[] = [];
+
+	// Save button reference
+	private saveBtn: HTMLButtonElement | null = null;
+
+	// Drag state
+	private draggedIndex: number | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -38,7 +49,13 @@ export class WorkoutEditorScreen implements Screen {
 					this.workout = workout;
 					this.name = workout.name;
 					this.description = workout.description ?? '';
-					this.exercises = [...workout.exercises];
+					this.exercises = workout.exercises.map(e => ({ ...e }));
+
+					// Store original state for change detection
+					this.originalName = workout.name;
+					this.originalDescription = workout.description ?? '';
+					this.originalExercises = workout.exercises.map(e => ({ ...e }));
+
 					// Re-render the form with loaded data
 					this.renderForm();
 				}
@@ -81,6 +98,7 @@ export class WorkoutEditorScreen implements Screen {
 		});
 		nameInput.addEventListener('input', (e) => {
 			this.name = (e.target as HTMLInputElement).value;
+			this.updateSaveButton();
 		});
 
 		// Description input
@@ -96,6 +114,7 @@ export class WorkoutEditorScreen implements Screen {
 		descInput.value = this.description;
 		descInput.addEventListener('input', (e) => {
 			this.description = (e.target as HTMLTextAreaElement).value;
+			this.updateSaveButton();
 		});
 
 		// Exercises section
@@ -128,12 +147,20 @@ export class WorkoutEditorScreen implements Screen {
 			});
 		}
 
-		createPrimaryAction(actions, 'Save workout', () => {
+		// Save button (disabled when no changes for existing workouts)
+		this.saveBtn = actions.createEl('button', {
+			cls: 'fit-button fit-button-primary fit-button-full fit-button-large',
+			text: 'Save workout'
+		});
+		this.saveBtn.addEventListener('click', () => {
 			this.saveWorkout().catch((err: unknown) => {
 				console.error('Unhandled error in saveWorkout:', err);
 				new Notice('An unexpected error occurred while saving');
 			});
 		});
+
+		// Update save button state
+		this.updateSaveButton();
 	}
 
 	private renderExerciseList(container: HTMLElement): void {
@@ -156,7 +183,56 @@ export class WorkoutEditorScreen implements Screen {
 		const exercise = this.exercises[index];
 		if (!exercise) return;
 
-		const row = container.createDiv({ cls: 'fit-workout-exercise-row' });
+		const row = container.createDiv({
+			cls: 'fit-workout-exercise-row',
+			attr: { draggable: 'true', 'data-index': String(index) }
+		});
+
+		// Drag handle
+		const dragHandle = row.createDiv({ cls: 'fit-drag-handle' });
+		setIcon(dragHandle, 'grip-vertical');
+
+		// Drag events
+		row.addEventListener('dragstart', (e) => {
+			this.draggedIndex = index;
+			row.addClass('fit-dragging');
+			if (e.dataTransfer) {
+				e.dataTransfer.effectAllowed = 'move';
+			}
+		});
+
+		row.addEventListener('dragend', () => {
+			this.draggedIndex = null;
+			row.removeClass('fit-dragging');
+			// Remove all drag-over classes
+			container.querySelectorAll('.fit-drag-over').forEach(el => el.removeClass('fit-drag-over'));
+		});
+
+		row.addEventListener('dragover', (e) => {
+			e.preventDefault();
+			if (this.draggedIndex === null || this.draggedIndex === index) return;
+			row.addClass('fit-drag-over');
+		});
+
+		row.addEventListener('dragleave', () => {
+			row.removeClass('fit-drag-over');
+		});
+
+		row.addEventListener('drop', (e) => {
+			e.preventDefault();
+			row.removeClass('fit-drag-over');
+			if (this.draggedIndex === null || this.draggedIndex === index) return;
+
+			// Reorder exercises
+			const draggedExercise = this.exercises[this.draggedIndex];
+			if (!draggedExercise) return;
+			this.exercises.splice(this.draggedIndex, 1);
+			this.exercises.splice(index, 0, draggedExercise);
+
+			// Re-render and update save button
+			this.renderExerciseList(container);
+			this.updateSaveButton();
+		});
 
 		// Exercise name with autocomplete
 		createExerciseAutocomplete(row, {
@@ -167,15 +243,13 @@ export class WorkoutEditorScreen implements Screen {
 				const ex = this.exercises[index];
 				if (ex) {
 					ex.exercise = text;
-					// If an exercise was selected from library, apply its defaults
-					if (selectedExercise?.defaultWeight) {
-						// Could populate default weight here if needed
-					}
 				}
+				this.updateSaveButton();
 			},
 			onChange: (text) => {
 				const ex = this.exercises[index];
 				if (ex) ex.exercise = text;
+				this.updateSaveButton();
 			}
 		});
 
@@ -189,6 +263,7 @@ export class WorkoutEditorScreen implements Screen {
 		setsInput.addEventListener('input', (e) => {
 			const ex = this.exercises[index];
 			if (ex) ex.targetSets = parseInt((e.target as HTMLInputElement).value) || 3;
+			this.updateSaveButton();
 		});
 
 		// Reps range inputs
@@ -206,15 +281,17 @@ export class WorkoutEditorScreen implements Screen {
 		minInput.addEventListener('input', (e) => {
 			const ex = this.exercises[index];
 			if (ex) ex.targetRepsMin = parseInt((e.target as HTMLInputElement).value) || 8;
+			this.updateSaveButton();
 		});
 		maxInput.addEventListener('input', (e) => {
 			const ex = this.exercises[index];
 			if (ex) ex.targetRepsMax = parseInt((e.target as HTMLInputElement).value) || 12;
+			this.updateSaveButton();
 		});
 
 		// Rest input
 		const restGroup = row.createDiv({ cls: 'fit-inline-group' });
-		restGroup.createEl('label', { text: 'Seconds' });
+		restGroup.createEl('label', { text: 'Rest' });
 		const restInput = restGroup.createEl('input', {
 			cls: 'fit-form-input fit-small-input',
 			attr: { type: 'number', min: '0', max: '600', value: String(exercise.restSeconds) }
@@ -222,18 +299,19 @@ export class WorkoutEditorScreen implements Screen {
 		restInput.addEventListener('input', (e) => {
 			const ex = this.exercises[index];
 			if (ex) ex.restSeconds = parseInt((e.target as HTMLInputElement).value) || 120;
+			this.updateSaveButton();
 		});
 
 		// Delete button
 		const deleteBtn = row.createEl('button', {
 			cls: 'fit-button fit-button-ghost fit-exercise-delete',
-			text: '×',
 			attr: { 'aria-label': 'Remove exercise' }
 		});
+		setIcon(deleteBtn, 'trash-2');
 		deleteBtn.addEventListener('click', () => {
 			this.exercises.splice(index, 1);
-			const parentList = container.parentElement?.querySelector('.fit-workout-exercise-list');
-			if (parentList) this.renderExerciseList(parentList as HTMLElement);
+			this.renderExerciseList(container);
+			this.updateSaveButton();
 		});
 	}
 
@@ -252,6 +330,52 @@ export class WorkoutEditorScreen implements Screen {
 		if (list) {
 			this.renderExerciseList(list as HTMLElement);
 		}
+		this.updateSaveButton();
+	}
+
+	/**
+	 * Checks if the current form state differs from the original
+	 */
+	private hasChanges(): boolean {
+		// For new workouts, always allow save if there's a name
+		if (this.isNew) {
+			return this.name.trim().length > 0;
+		}
+
+		// Check name
+		if (this.name !== this.originalName) return true;
+
+		// Check description
+		if (this.description !== this.originalDescription) return true;
+
+		// Check exercises count
+		if (this.exercises.length !== this.originalExercises.length) return true;
+
+		// Check each exercise
+		for (let i = 0; i < this.exercises.length; i++) {
+			const current = this.exercises[i];
+			const original = this.originalExercises[i];
+			if (!current || !original) return true;
+
+			if (current.exercise !== original.exercise) return true;
+			if (current.targetSets !== original.targetSets) return true;
+			if (current.targetRepsMin !== original.targetRepsMin) return true;
+			if (current.targetRepsMax !== original.targetRepsMax) return true;
+			if (current.restSeconds !== original.restSeconds) return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Updates the save button enabled/disabled state
+	 */
+	private updateSaveButton(): void {
+		if (!this.saveBtn) return;
+
+		const canSave = this.hasChanges();
+		this.saveBtn.disabled = !canSave;
+		this.saveBtn.classList.toggle('fit-button-disabled', !canSave);
 	}
 
 	private async saveWorkout(): Promise<void> {
@@ -286,7 +410,7 @@ export class WorkoutEditorScreen implements Screen {
 				return;
 			}
 
-			this.ctx.view.navigateTo('home');
+			this.ctx.view.goBack();
 		} catch (error) {
 			console.error('Failed to save workout:', error);
 			new Notice(`Failed to save workout: ${error instanceof Error ? error.message : 'Unknown error'}`);

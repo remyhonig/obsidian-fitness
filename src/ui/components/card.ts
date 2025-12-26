@@ -1,3 +1,4 @@
+import { setIcon } from 'obsidian';
 import type { SessionExercise } from '../../types';
 
 export interface ExerciseCardOptions {
@@ -6,23 +7,72 @@ export interface ExerciseCardOptions {
 	image0?: string;
 	image1?: string;
 	onClick: () => void;
+	onDelete?: () => void;
+	draggable?: boolean;
+	onDragStart?: (index: number) => void;
+	onDragEnd?: () => void;
+	onDrop?: (fromIndex: number, toIndex: number) => void;
 }
+
+// Store dragged index globally for cross-card communication
+let draggedCardIndex: number | null = null;
 
 /**
  * Creates an exercise card for the session overview
  */
 export function createExerciseCard(parent: HTMLElement, options: ExerciseCardOptions): HTMLElement {
-	const { exercise, index, image0, image1 } = options;
+	const { exercise, index, image1 } = options;
 	const completedSets = exercise.sets.filter(s => s.completed).length;
 	const targetSets = exercise.targetSets;
 	const isComplete = completedSets >= targetSets;
 
 	const card = parent.createDiv({
-		cls: `fit-exercise-card ${isComplete ? 'fit-exercise-card-complete' : ''}`
+		cls: `fit-exercise-card ${isComplete ? 'fit-exercise-card-complete' : ''}`,
+		attr: options.draggable ? { draggable: 'true', 'data-index': String(index) } : {}
 	});
 
-	// Card layout: images on left, content on right
+	// Card layout: drag handle, images, content, delete
 	const cardInner = card.createDiv({ cls: 'fit-exercise-card-inner' });
+
+	// Drag handle (if draggable)
+	if (options.draggable) {
+		const dragHandle = cardInner.createDiv({ cls: 'fit-drag-handle fit-card-drag-handle' });
+		setIcon(dragHandle, 'grip-vertical');
+
+		// Drag events
+		card.addEventListener('dragstart', (e) => {
+			draggedCardIndex = index;
+			card.addClass('fit-dragging');
+			if (e.dataTransfer) {
+				e.dataTransfer.effectAllowed = 'move';
+			}
+			options.onDragStart?.(index);
+		});
+
+		card.addEventListener('dragend', () => {
+			draggedCardIndex = null;
+			card.removeClass('fit-dragging');
+			parent.querySelectorAll('.fit-drag-over').forEach(el => el.removeClass('fit-drag-over'));
+			options.onDragEnd?.();
+		});
+
+		card.addEventListener('dragover', (e) => {
+			e.preventDefault();
+			if (draggedCardIndex === null || draggedCardIndex === index) return;
+			card.addClass('fit-drag-over');
+		});
+
+		card.addEventListener('dragleave', () => {
+			card.removeClass('fit-drag-over');
+		});
+
+		card.addEventListener('drop', (e) => {
+			e.preventDefault();
+			card.removeClass('fit-drag-over');
+			if (draggedCardIndex === null || draggedCardIndex === index) return;
+			options.onDrop?.(draggedCardIndex, index);
+		});
+	}
 
 	// Image (left side) - show only image1 (end position)
 	if (image1) {
@@ -69,8 +119,26 @@ export function createExerciseCard(parent: HTMLElement, options: ExerciseCardOpt
 	const progressFill = progressBar.createDiv({ cls: 'fit-exercise-card-progress-fill' });
 	progressFill.style.width = `${(completedSets / targetSets) * 100}%`;
 
-	// Click handler
-	card.addEventListener('click', options.onClick);
+	// Delete button (if handler provided)
+	if (options.onDelete) {
+		const deleteBtn = cardInner.createEl('button', {
+			cls: 'fit-button fit-button-ghost fit-card-delete',
+			attr: { 'aria-label': 'Remove exercise' }
+		});
+		setIcon(deleteBtn, 'trash-2');
+		deleteBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			options.onDelete?.();
+		});
+	}
+
+	// Click handler (for navigating to exercise)
+	card.addEventListener('click', (e) => {
+		// Don't trigger click when clicking drag handle or delete button
+		const target = e.target as HTMLElement;
+		if (target.closest('.fit-drag-handle') || target.closest('.fit-card-delete')) return;
+		options.onClick();
+	});
 
 	return card;
 }

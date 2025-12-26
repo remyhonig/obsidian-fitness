@@ -1,7 +1,9 @@
+import { setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
-import type { Session, Exercise } from '../../types';
+import type { Session, Exercise, WorkoutExercise } from '../../types';
 import { createBackButton, createButton, createPrimaryAction } from '../components/button';
 import { createExerciseCard } from '../components/card';
+import { createExerciseAutocomplete } from '../components/autocomplete';
 import { toFilename } from '../../data/file-utils';
 
 /**
@@ -39,6 +41,19 @@ export class SessionScreen implements Screen {
 			cls: 'fit-title'
 		});
 
+		// Edit workout button (if workout has a name/ID)
+		if (session.workout) {
+			const editBtn = header.createEl('button', {
+				cls: 'fit-button fit-button-ghost fit-button-icon-only',
+				attr: { 'aria-label': 'Edit workout' }
+			});
+			setIcon(editBtn, 'pencil');
+			editBtn.addEventListener('click', () => {
+				const workoutId = toFilename(session.workout ?? '');
+				this.ctx.view.navigateTo('workout-editor', { workoutId, isNew: false });
+			});
+		}
+
 		// Exercise list
 		const exerciseList = this.containerEl.createDiv({ cls: 'fit-exercise-list' });
 
@@ -56,9 +71,9 @@ export class SessionScreen implements Screen {
 		const actions = this.containerEl.createDiv({ cls: 'fit-bottom-actions' });
 
 		createButton(actions, {
-			text: 'Add exercise',
+			text: 'Add exercise this session',
 			variant: 'secondary',
-			onClick: () => { void this.showExercisePicker(); }
+			onClick: () => { this.showExercisePicker(); }
 		});
 
 		// Show Cancel if no sets logged, Finish workout if there are sets
@@ -102,28 +117,138 @@ export class SessionScreen implements Screen {
 				index: i,
 				image0: exerciseDetails?.image0,
 				image1: exerciseDetails?.image1,
-				onClick: () => this.ctx.view.navigateTo('exercise', { exerciseIndex: i })
+				onClick: () => this.ctx.view.navigateTo('exercise', { exerciseIndex: i }),
+				onDelete: () => {
+					this.ctx.sessionState.removeExercise(i);
+					this.render();
+				},
+				draggable: true,
+				onDrop: (fromIndex, toIndex) => {
+					this.ctx.sessionState.reorderExercises(fromIndex, toIndex);
+					this.render();
+				}
 			});
 		}
 	}
 
-	private async showExercisePicker(): Promise<void> {
-		// Get all exercises
-		const exercises = await this.ctx.exerciseRepo.list();
+	private showExercisePicker(): void {
+		// Find the exercise list container
+		const exerciseList = this.containerEl.querySelector('.fit-exercise-list');
+		if (!exerciseList) return;
 
-		if (exercises.length === 0) {
-			// No exercises, prompt to create one
-			this.ctx.view.navigateTo('exercise-library');
-			return;
-		}
+		// Check if form already exists
+		if (exerciseList.querySelector('.fit-add-exercise-form')) return;
 
-		// For now, show a simple prompt
-		// In a full implementation, this would be a SuggestModal
-		const firstExercise = exercises[0];
-		if (firstExercise) {
-			this.ctx.sessionState.addExercise(firstExercise.name);
+		// Form state
+		const formState = {
+			exercise: '',
+			targetSets: 3,
+			targetRepsMin: 8,
+			targetRepsMax: 12,
+			restSeconds: this.ctx.plugin.settings.defaultRestSeconds
+		};
+
+		// Create inline form card
+		const formCard = exerciseList.createDiv({ cls: 'fit-add-exercise-form fit-exercise-card' });
+
+		// Exercise name with autocomplete
+		const exerciseGroup = formCard.createDiv({ cls: 'fit-form-group' });
+		exerciseGroup.createEl('label', { text: 'Exercise', cls: 'fit-form-label' });
+		createExerciseAutocomplete(exerciseGroup, {
+			placeholder: 'Search exercises...',
+			value: formState.exercise,
+			getItems: () => this.ctx.exerciseRepo.list(),
+			onSelect: (exercise, text) => {
+				formState.exercise = text;
+			},
+			onChange: (text) => {
+				formState.exercise = text;
+			}
+		});
+
+		// Row with sets, reps, rest
+		const row = formCard.createDiv({ cls: 'fit-workout-exercise-row' });
+		row.style.padding = '0';
+		row.style.background = 'none';
+
+		// Sets input
+		const setsGroup = row.createDiv({ cls: 'fit-inline-group' });
+		setsGroup.createEl('label', { text: 'Sets' });
+		const setsInput = setsGroup.createEl('input', {
+			cls: 'fit-form-input fit-small-input',
+			attr: { type: 'number', min: '1', max: '10', value: String(formState.targetSets) }
+		});
+		setsInput.addEventListener('input', (e) => {
+			formState.targetSets = parseInt((e.target as HTMLInputElement).value) || 3;
+		});
+
+		// Reps range inputs
+		const repsGroup = row.createDiv({ cls: 'fit-inline-group' });
+		repsGroup.createEl('label', { text: 'Reps' });
+		const minInput = repsGroup.createEl('input', {
+			cls: 'fit-form-input fit-small-input',
+			attr: { type: 'number', min: '1', max: '50', value: String(formState.targetRepsMin) }
+		});
+		repsGroup.createSpan({ text: '-' });
+		const maxInput = repsGroup.createEl('input', {
+			cls: 'fit-form-input fit-small-input',
+			attr: { type: 'number', min: '1', max: '50', value: String(formState.targetRepsMax) }
+		});
+		minInput.addEventListener('input', (e) => {
+			formState.targetRepsMin = parseInt((e.target as HTMLInputElement).value) || 8;
+		});
+		maxInput.addEventListener('input', (e) => {
+			formState.targetRepsMax = parseInt((e.target as HTMLInputElement).value) || 12;
+		});
+
+		// Rest input
+		const restGroup = row.createDiv({ cls: 'fit-inline-group' });
+		restGroup.createEl('label', { text: 'Rest' });
+		const restInput = restGroup.createEl('input', {
+			cls: 'fit-form-input fit-small-input',
+			attr: { type: 'number', min: '0', max: '600', value: String(formState.restSeconds) }
+		});
+		restInput.addEventListener('input', (e) => {
+			formState.restSeconds = parseInt((e.target as HTMLInputElement).value) || 120;
+		});
+
+		// Actions row
+		const actions = formCard.createDiv({ cls: 'fit-add-exercise-actions' });
+
+		const cancelBtn = actions.createEl('button', {
+			cls: 'fit-button fit-button-ghost fit-button-small',
+			text: 'Cancel'
+		});
+		cancelBtn.addEventListener('click', () => {
+			formCard.remove();
+		});
+
+		const addBtn = actions.createEl('button', {
+			cls: 'fit-button fit-button-primary fit-button-small',
+			text: 'Add'
+		});
+		addBtn.addEventListener('click', () => {
+			if (!formState.exercise.trim()) {
+				const input = exerciseGroup.querySelector('input');
+				input?.focus();
+				return;
+			}
+
+			this.ctx.sessionState.addExercise(formState.exercise.trim(), {
+				exercise: formState.exercise.trim(),
+				targetSets: formState.targetSets,
+				targetRepsMin: formState.targetRepsMin,
+				targetRepsMax: formState.targetRepsMax,
+				restSeconds: formState.restSeconds
+			});
 			this.render();
-		}
+		});
+
+		// Focus the exercise input
+		setTimeout(() => {
+			const input = exerciseGroup.querySelector('input');
+			input?.focus();
+		}, 50);
 	}
 
 	private confirmExit(): void {

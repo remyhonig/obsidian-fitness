@@ -848,7 +848,15 @@
 
 .fit-exercise-delete {
 	color: var(--text-error);
-	font-size: 20px;
+	min-width: 32px;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+}
+
+.fit-exercise-delete .svg-icon {
+	width: 16px;
+	height: 16px;
 }
 
 /* ========== Exercise Library ========== */
@@ -1872,6 +1880,100 @@
 
 .fit-program-workout-current .fit-program-workout-meta {
 	opacity: 0.9;
+}
+
+/* ========== Drag Handle ========== */
+.fit-drag-handle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	color: var(--text-muted);
+	cursor: grab;
+	flex-shrink: 0;
+	opacity: 0.5;
+	transition: opacity 0.15s;
+}
+
+.fit-drag-handle:hover {
+	opacity: 1;
+}
+
+.fit-drag-handle:active {
+	cursor: grabbing;
+}
+
+.fit-drag-handle .svg-icon {
+	width: 16px;
+	height: 16px;
+}
+
+.fit-workout-exercise-row.fit-dragging {
+	opacity: 0.5;
+	background: var(--background-modifier-hover);
+}
+
+.fit-workout-exercise-row.fit-drag-over,
+.fit-exercise-card.fit-drag-over {
+	border-top: 2px solid var(--interactive-accent);
+}
+
+.fit-exercise-card.fit-dragging {
+	opacity: 0.5;
+}
+
+/* Card drag handle */
+.fit-card-drag-handle {
+	align-self: center;
+	margin-right: 8px;
+}
+
+/* Card delete button */
+.fit-card-delete {
+	align-self: center;
+	color: var(--text-muted);
+	min-width: 32px;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	margin-left: 8px;
+	flex-shrink: 0;
+}
+
+.fit-card-delete:hover {
+	color: var(--text-error);
+}
+
+.fit-card-delete .svg-icon {
+	width: 16px;
+	height: 16px;
+}
+
+/* ========== Disabled Button ========== */
+.fit-button-disabled,
+.fit-button:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+/* ========== Add Exercise Inline Form ========== */
+.fit-add-exercise-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.fit-add-exercise-form .fit-form-group {
+	margin-bottom: 0;
+}
+
+.fit-add-exercise-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	margin-top: 4px;
 }
 
 /* ========== Desktop Adaptations ========== */
