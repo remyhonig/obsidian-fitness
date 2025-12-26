@@ -37,7 +37,7 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 		// Data path setting
 		new Setting(containerEl)
 			.setName('Data folder')
-			.setDesc('Base folder for exercises, templates, and sessions.')
+			.setDesc('Base folder for exercises, workouts, and sessions.')
 			.addText(text => text
 				.setPlaceholder('Fitness')
 				.setValue(this.plugin.settings.basePath)

@@ -66,11 +66,18 @@ export class ExerciseRepository {
 	}
 
 	/**
-	 * Gets a single exercise by name
+	 * Gets a single exercise by name or ID (slug)
+	 * Handles cases where the name might be a title-cased slug
 	 */
 	async getByName(name: string): Promise<Exercise | null> {
 		const exercises = await this.list();
-		return exercises.find(e => e.name.toLowerCase() === name.toLowerCase()) ?? null;
+		const nameLower = name.toLowerCase();
+		const nameSlug = nameLower.replace(/\s+/g, '-');
+
+		// Try exact name match first, then ID match
+		return exercises.find(e => e.name.toLowerCase() === nameLower) ??
+			exercises.find(e => e.id.toLowerCase() === nameSlug) ??
+			null;
 	}
 
 	/**

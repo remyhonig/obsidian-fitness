@@ -34,7 +34,7 @@ export class SessionScreen implements Screen {
 
 		const titleContainer = header.createDiv({ cls: 'fit-header-title' });
 		titleContainer.createEl('h1', {
-			text: session.template ?? 'Workout',
+			text: session.workout ?? 'Workout',
 			cls: 'fit-title'
 		});
 
@@ -77,11 +77,13 @@ export class SessionScreen implements Screen {
 	}
 
 	private async renderExerciseCards(session: Session, exerciseList: HTMLElement): Promise<void> {
-		// Build a map of exercise names to Exercise objects for image lookup
-		const exerciseMap = new Map<string, Exercise>();
+		// Build maps for exercise lookup by both name and ID (slug)
+		const exerciseByName = new Map<string, Exercise>();
+		const exerciseById = new Map<string, Exercise>();
 		const exercises = await this.ctx.exerciseRepo.list();
 		for (const ex of exercises) {
-			exerciseMap.set(ex.name.toLowerCase(), ex);
+			exerciseByName.set(ex.name.toLowerCase(), ex);
+			exerciseById.set(ex.id.toLowerCase(), ex);
 		}
 
 		// Render each exercise card
@@ -89,8 +91,10 @@ export class SessionScreen implements Screen {
 			const sessionExercise = session.exercises[i];
 			if (!sessionExercise) continue;
 
-			// Look up the exercise to get images
-			const exerciseDetails = exerciseMap.get(sessionExercise.exercise.toLowerCase());
+			// Look up the exercise to get images - try name first, then ID (slug)
+			const exerciseLower = sessionExercise.exercise.toLowerCase();
+			const exerciseSlug = exerciseLower.replace(/\s+/g, '-');
+			const exerciseDetails = exerciseByName.get(exerciseLower) ?? exerciseById.get(exerciseSlug);
 
 			createExerciseCard(exerciseList, {
 				exercise: sessionExercise,

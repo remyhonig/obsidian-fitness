@@ -1,9 +1,9 @@
 import { setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import { createButton } from '../components/button';
-import { createTemplateCard, createSessionCard } from '../components/card';
+import { createWorkoutCard, createSessionCard } from '../components/card';
 import { formatDuration } from '../components/timer';
-import type { Template } from '../../types';
+import type { Workout } from '../../types';
 
 /**
  * Home screen - entry point for the workout tracker
@@ -41,8 +41,8 @@ export class HomeScreen implements Screen {
 			}
 		}
 
-		// Quick start templates
-		void this.renderRecentTemplates(content);
+		// Quick start workouts
+		void this.renderRecentWorkouts(content);
 
 		// Recent sessions
 		void this.renderRecentSessions(content);
@@ -74,8 +74,8 @@ export class HomeScreen implements Screen {
 		});
 
 		const info = card.createDiv({ cls: 'fit-active-session-info' });
-		if (session.template) {
-			info.createDiv({ cls: 'fit-active-session-template', text: session.template });
+		if (session.workout) {
+			info.createDiv({ cls: 'fit-active-session-workout', text: session.workout });
 		}
 
 		const completedSets = session.exercises.reduce(
@@ -99,33 +99,33 @@ export class HomeScreen implements Screen {
 		this.render();
 	}
 
-	private async renderRecentTemplates(parent: HTMLElement): Promise<void> {
-		const templates = await this.ctx.templateRepo.list();
-		if (templates.length === 0) return;
+	private async renderRecentWorkouts(parent: HTMLElement): Promise<void> {
+		const workouts = await this.ctx.workoutRepo.list();
+		if (workouts.length === 0) return;
 
 		const section = parent.createDiv({ cls: 'fit-section' });
 		section.createEl('h2', { text: 'Quick start', cls: 'fit-section-title' });
 
-		const grid = section.createDiv({ cls: 'fit-template-grid' });
+		const grid = section.createDiv({ cls: 'fit-workout-grid' });
 
-		// Show up to 3 recent templates
-		const recent = templates.slice(0, 3);
-		for (const template of recent) {
-			createTemplateCard(grid, {
-				name: template.name,
-				description: template.description,
-				exerciseCount: template.exercises.length,
-				onClick: () => { void this.startFromTemplate(template); }
+		// Show up to 3 recent workouts
+		const recent = workouts.slice(0, 3);
+		for (const workout of recent) {
+			createWorkoutCard(grid, {
+				name: workout.name,
+				description: workout.description,
+				exerciseCount: workout.exercises.length,
+				onClick: () => { void this.startFromWorkout(workout); }
 			});
 		}
 
-		// "View all" link if more templates exist
-		if (templates.length > 3) {
+		// "View all" link if more workouts exist
+		if (workouts.length > 3) {
 			const viewAll = section.createDiv({ cls: 'fit-view-all' });
 			createButton(viewAll, {
-				text: 'View all templates',
+				text: 'View all workouts',
 				variant: 'ghost',
-				onClick: () => this.ctx.view.navigateTo('template-picker')
+				onClick: () => this.ctx.view.navigateTo('workout-picker')
 			});
 		}
 	}
@@ -146,7 +146,7 @@ export class HomeScreen implements Screen {
 
 			createSessionCard(list, {
 				date: session.date,
-				templateName: session.template,
+				workoutName: session.workout,
 				duration,
 				exercises: session.exercises,
 				unit: this.ctx.plugin.settings.weightUnit,
@@ -163,7 +163,7 @@ export class HomeScreen implements Screen {
 		});
 	}
 
-	private async startFromTemplate(template: Template): Promise<void> {
+	private async startFromWorkout(workout: Workout): Promise<void> {
 		// Check if there's already an active session with completed sets
 		if (this.ctx.sessionState.hasActiveSession()) {
 			const session = this.ctx.sessionState.getSession();
@@ -181,8 +181,8 @@ export class HomeScreen implements Screen {
 			await this.ctx.sessionState.discardSession();
 		}
 
-		// Start new session from template
-		this.ctx.sessionState.startFromTemplate(template);
+		// Start new session from workout
+		this.ctx.sessionState.startFromWorkout(workout);
 		this.ctx.view.navigateTo('session');
 	}
 

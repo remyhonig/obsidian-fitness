@@ -5,8 +5,8 @@ import type {
 	LoggedSet,
 	RestTimerState,
 	StateChangeListener,
-	Template,
-	TemplateExercise
+	Workout,
+	WorkoutExercise
 } from '../types';
 import type { PluginSettings } from '../settings';
 import { SessionRepository } from '../data/session-repository';
@@ -40,16 +40,16 @@ export class SessionStateManager {
 	// ========== Session Lifecycle ==========
 
 	/**
-	 * Starts a new session from a template
+	 * Starts a new session from a workout
 	 */
-	startFromTemplate(template: Template): void {
+	startFromWorkout(workout: Workout): void {
 		const now = new Date();
-		const exercises: SessionExercise[] = template.exercises.map(te => ({
-			exercise: te.exercise,
-			targetSets: te.targetSets,
-			targetRepsMin: te.targetRepsMin,
-			targetRepsMax: te.targetRepsMax,
-			restSeconds: te.restSeconds,
+		const exercises: SessionExercise[] = workout.exercises.map(we => ({
+			exercise: we.exercise,
+			targetSets: we.targetSets,
+			targetRepsMin: we.targetRepsMin,
+			targetRepsMax: we.targetRepsMax,
+			restSeconds: we.restSeconds,
 			sets: []
 		}));
 
@@ -58,7 +58,7 @@ export class SessionStateManager {
 			id: 'active',
 			date: dateStr,
 			startTime: now.toISOString(),
-			template: template.name,
+			workout: workout.name,
 			status: 'active',
 			exercises
 		};
@@ -70,7 +70,7 @@ export class SessionStateManager {
 	}
 
 	/**
-	 * Starts an empty session (no template)
+	 * Starts an empty session (no workout)
 	 */
 	startEmpty(): void {
 		const now = new Date();
@@ -222,15 +222,15 @@ export class SessionStateManager {
 	/**
 	 * Adds an exercise to the session
 	 */
-	addExercise(exerciseName: string, template?: TemplateExercise): void {
+	addExercise(exerciseName: string, workoutExercise?: WorkoutExercise): void {
 		if (!this.session) return;
 
 		const newExercise: SessionExercise = {
 			exercise: exerciseName,
-			targetSets: template?.targetSets ?? 3,
-			targetRepsMin: template?.targetRepsMin ?? 8,
-			targetRepsMax: template?.targetRepsMax ?? 12,
-			restSeconds: template?.restSeconds ?? this.settings.defaultRestSeconds,
+			targetSets: workoutExercise?.targetSets ?? 3,
+			targetRepsMin: workoutExercise?.targetRepsMin ?? 8,
+			targetRepsMax: workoutExercise?.targetRepsMax ?? 12,
+			restSeconds: workoutExercise?.restSeconds ?? this.settings.defaultRestSeconds,
 			sets: []
 		};
 

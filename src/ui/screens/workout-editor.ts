@@ -1,44 +1,44 @@
 import { Notice } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
-import type { ScreenParams, Template, TemplateExercise } from '../../types';
+import type { ScreenParams, Workout, WorkoutExercise } from '../../types';
 import { createBackButton, createButton, createPrimaryAction } from '../components/button';
 import { createExerciseAutocomplete } from '../components/autocomplete';
 
 /**
- * Template editor screen - create/edit workout templates
+ * Workout editor screen - create/edit workouts
  */
-export class TemplateEditorScreen implements Screen {
+export class WorkoutEditorScreen implements Screen {
 	private containerEl: HTMLElement;
 	private isNew: boolean;
-	private templateId: string | null;
-	private template: Template | null = null;
+	private workoutId: string | null;
+	private workout: Workout | null = null;
 
 	// Form state
 	private name = '';
 	private description = '';
-	private exercises: TemplateExercise[] = [];
+	private exercises: WorkoutExercise[] = [];
 
 	constructor(
 		parentEl: HTMLElement,
 		private ctx: ScreenContext,
 		params: ScreenParams
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-template-editor-screen' });
+		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-workout-editor-screen' });
 		this.isNew = params.isNew ?? true;
-		this.templateId = params.templateId ?? null;
+		this.workoutId = params.workoutId ?? null;
 	}
 
 	render(): void {
 		this.containerEl.empty();
 
-		// Load existing template if editing
-		if (!this.isNew && this.templateId) {
-			void this.ctx.templateRepo.get(this.templateId).then(template => {
-				if (template) {
-					this.template = template;
-					this.name = template.name;
-					this.description = template.description ?? '';
-					this.exercises = [...template.exercises];
+		// Load existing workout if editing
+		if (!this.isNew && this.workoutId) {
+			void this.ctx.workoutRepo.get(this.workoutId).then(workout => {
+				if (workout) {
+					this.workout = workout;
+					this.name = workout.name;
+					this.description = workout.description ?? '';
+					this.exercises = [...workout.exercises];
 					// Re-render the form with loaded data
 					this.renderForm();
 				}
@@ -60,7 +60,7 @@ export class TemplateEditorScreen implements Screen {
 			const header = this.containerEl.createDiv({ cls: 'fit-header' });
 			createBackButton(header, () => this.ctx.view.goBack());
 			header.createEl('h1', {
-				text: this.isNew ? 'New template' : 'Edit template',
+				text: this.isNew ? 'New workout' : 'Edit workout',
 				cls: 'fit-title'
 			});
 		}
@@ -70,7 +70,7 @@ export class TemplateEditorScreen implements Screen {
 
 		// Name input
 		const nameGroup = form.createDiv({ cls: 'fit-form-group' });
-		nameGroup.createEl('label', { text: 'Template name', cls: 'fit-form-label' });
+		nameGroup.createEl('label', { text: 'Workout name', cls: 'fit-form-label' });
 		const nameInput = nameGroup.createEl('input', {
 			cls: 'fit-form-input',
 			attr: {
@@ -89,7 +89,7 @@ export class TemplateEditorScreen implements Screen {
 		const descInput = descGroup.createEl('textarea', {
 			cls: 'fit-form-textarea',
 			attr: {
-				placeholder: 'Describe this workout template...',
+				placeholder: 'Describe this workout...',
 				rows: '2'
 			}
 		});
@@ -102,7 +102,7 @@ export class TemplateEditorScreen implements Screen {
 		const exercisesSection = form.createDiv({ cls: 'fit-form-section' });
 		exercisesSection.createEl('h2', { text: 'Exercises', cls: 'fit-section-title' });
 
-		const exerciseList = exercisesSection.createDiv({ cls: 'fit-template-exercise-list' });
+		const exerciseList = exercisesSection.createDiv({ cls: 'fit-workout-exercise-list' });
 		this.renderExerciseList(exerciseList);
 
 		// Add exercise button
@@ -121,16 +121,16 @@ export class TemplateEditorScreen implements Screen {
 				text: 'Delete',
 				variant: 'danger',
 				onClick: () => {
-					this.deleteTemplate().catch((err: unknown) => {
-						console.error('Unhandled error in deleteTemplate:', err);
+					this.deleteWorkout().catch((err: unknown) => {
+						console.error('Unhandled error in deleteWorkout:', err);
 					});
 				}
 			});
 		}
 
-		createPrimaryAction(actions, 'Save template', () => {
-			this.saveTemplate().catch((err: unknown) => {
-				console.error('Unhandled error in saveTemplate:', err);
+		createPrimaryAction(actions, 'Save workout', () => {
+			this.saveWorkout().catch((err: unknown) => {
+				console.error('Unhandled error in saveWorkout:', err);
 				new Notice('An unexpected error occurred while saving');
 			});
 		});
@@ -156,7 +156,7 @@ export class TemplateEditorScreen implements Screen {
 		const exercise = this.exercises[index];
 		if (!exercise) return;
 
-		const row = container.createDiv({ cls: 'fit-template-exercise-row' });
+		const row = container.createDiv({ cls: 'fit-workout-exercise-row' });
 
 		// Exercise name with autocomplete
 		createExerciseAutocomplete(row, {
@@ -232,7 +232,7 @@ export class TemplateEditorScreen implements Screen {
 		});
 		deleteBtn.addEventListener('click', () => {
 			this.exercises.splice(index, 1);
-			const parentList = container.parentElement?.querySelector('.fit-template-exercise-list');
+			const parentList = container.parentElement?.querySelector('.fit-workout-exercise-list');
 			if (parentList) this.renderExerciseList(parentList as HTMLElement);
 		});
 	}
@@ -248,16 +248,16 @@ export class TemplateEditorScreen implements Screen {
 		});
 
 		// Re-render
-		const list = this.containerEl.querySelector('.fit-template-exercise-list');
+		const list = this.containerEl.querySelector('.fit-workout-exercise-list');
 		if (list) {
 			this.renderExerciseList(list as HTMLElement);
 		}
 	}
 
-	private async saveTemplate(): Promise<void> {
+	private async saveWorkout(): Promise<void> {
 		// Validate
 		if (!this.name.trim()) {
-			new Notice('Please enter a template name');
+			new Notice('Please enter a workout name');
 			return;
 		}
 
@@ -266,43 +266,43 @@ export class TemplateEditorScreen implements Screen {
 
 		try {
 			if (this.isNew) {
-				await this.ctx.templateRepo.create({
+				await this.ctx.workoutRepo.create({
 					name: this.name.trim(),
 					description: this.description.trim() || undefined,
 					exercises: validExercises
 				});
-				new Notice(`Template "${this.name}" created`);
-			} else if (this.templateId) {
-				await this.ctx.templateRepo.update(this.templateId, {
+				new Notice(`Workout "${this.name}" created`);
+			} else if (this.workoutId) {
+				await this.ctx.workoutRepo.update(this.workoutId, {
 					name: this.name.trim(),
 					description: this.description.trim() || undefined,
 					exercises: validExercises
 				});
-				new Notice(`Template "${this.name}" updated`);
+				new Notice(`Workout "${this.name}" updated`);
 			} else {
-				// Invalid state: not new and no template ID
-				new Notice('Unable to save: invalid template state');
-				console.error('saveTemplate called with isNew=false and no templateId');
+				// Invalid state: not new and no workout ID
+				new Notice('Unable to save: invalid workout state');
+				console.error('saveWorkout called with isNew=false and no workoutId');
 				return;
 			}
 
 			this.ctx.view.navigateTo('home');
 		} catch (error) {
-			console.error('Failed to save template:', error);
-			new Notice(`Failed to save template: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			console.error('Failed to save workout:', error);
+			new Notice(`Failed to save workout: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
 	}
 
-	private async deleteTemplate(): Promise<void> {
-		if (!this.templateId) return;
+	private async deleteWorkout(): Promise<void> {
+		if (!this.workoutId) return;
 
 		try {
-			await this.ctx.templateRepo.delete(this.templateId);
-			new Notice('Template deleted');
+			await this.ctx.workoutRepo.delete(this.workoutId);
+			new Notice('Workout deleted');
 			this.ctx.view.navigateTo('home');
 		} catch (error) {
-			console.error('Failed to delete template:', error);
-			new Notice(`Failed to delete template: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			console.error('Failed to delete workout:', error);
+			new Notice(`Failed to delete workout: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
 	}
 

@@ -3,17 +3,17 @@ import type MainPlugin from '../main';
 import type { ScreenType, ScreenParams } from '../types';
 import { SessionStateManager } from '../state/session-state';
 import { ExerciseRepository } from '../data/exercise-repository';
-import { TemplateRepository } from '../data/template-repository';
+import { WorkoutRepository } from '../data/workout-repository';
 import { SessionRepository } from '../data/session-repository';
 
 // Screen imports
 import { HomeScreen } from '../ui/screens/home-screen';
-import { TemplatePickerScreen } from '../ui/screens/template-picker';
+import { WorkoutPickerScreen } from '../ui/screens/workout-picker';
 import { SessionScreen } from '../ui/screens/session-screen';
 import { ExerciseScreen } from '../ui/screens/exercise-screen';
 import { FinishScreen } from '../ui/screens/finish-screen';
 import { HistoryScreen } from '../ui/screens/history-screen';
-import { TemplateEditorScreen } from '../ui/screens/template-editor';
+import { WorkoutEditorScreen } from '../ui/screens/workout-editor';
 import { ExerciseLibraryScreen } from '../ui/screens/exercise-library';
 
 export const VIEW_TYPE_FIT = 'obsidian-fit-view';
@@ -34,7 +34,7 @@ export interface ScreenContext {
 	plugin: MainPlugin;
 	sessionState: SessionStateManager;
 	exerciseRepo: ExerciseRepository;
-	templateRepo: TemplateRepository;
+	workoutRepo: WorkoutRepository;
 	sessionRepo: SessionRepository;
 }
 
@@ -49,7 +49,7 @@ export class FitView extends ItemView {
 	// Shared state and repositories
 	sessionState: SessionStateManager;
 	exerciseRepo: ExerciseRepository;
-	templateRepo: TemplateRepository;
+	workoutRepo: WorkoutRepository;
 	sessionRepo: SessionRepository;
 
 	constructor(
@@ -60,7 +60,7 @@ export class FitView extends ItemView {
 
 		// Initialize repositories
 		this.exerciseRepo = new ExerciseRepository(this.app, plugin.settings.basePath);
-		this.templateRepo = new TemplateRepository(this.app, plugin.settings.basePath);
+		this.workoutRepo = new WorkoutRepository(this.app, plugin.settings.basePath);
 		this.sessionRepo = new SessionRepository(this.app, plugin.settings.basePath);
 
 		// Initialize session state
@@ -117,7 +117,7 @@ export class FitView extends ItemView {
 			plugin: this.plugin,
 			sessionState: this.sessionState,
 			exerciseRepo: this.exerciseRepo,
-			templateRepo: this.templateRepo,
+			workoutRepo: this.workoutRepo,
 			sessionRepo: this.sessionRepo
 		};
 	}
@@ -144,8 +144,8 @@ export class FitView extends ItemView {
 			case 'home':
 				this.currentScreen = new HomeScreen(container, ctx);
 				break;
-			case 'template-picker':
-				this.currentScreen = new TemplatePickerScreen(container, ctx);
+			case 'workout-picker':
+				this.currentScreen = new WorkoutPickerScreen(container, ctx);
 				break;
 			case 'session':
 				this.currentScreen = new SessionScreen(container, ctx);
@@ -159,8 +159,8 @@ export class FitView extends ItemView {
 			case 'history':
 				this.currentScreen = new HistoryScreen(container, ctx);
 				break;
-			case 'template-editor':
-				this.currentScreen = new TemplateEditorScreen(container, ctx, params);
+			case 'workout-editor':
+				this.currentScreen = new WorkoutEditorScreen(container, ctx, params);
 				break;
 			case 'exercise-library':
 				this.currentScreen = new ExerciseLibraryScreen(container, ctx);
@@ -192,9 +192,9 @@ export class FitView extends ItemView {
 					this.navigateTo('home');
 				}
 				break;
-			case 'template-picker':
+			case 'workout-picker':
 			case 'history':
-			case 'template-editor':
+			case 'workout-editor':
 			case 'exercise-library':
 			case 'finish':
 				this.navigateTo('home');

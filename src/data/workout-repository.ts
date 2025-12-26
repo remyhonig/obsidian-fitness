@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian';
-import type { Template, TemplateExercise } from '../types';
+import type { Workout, WorkoutExercise } from '../types';
 import {
 	ensureFolder,
 	getFilesInFolder,
@@ -7,105 +7,105 @@ import {
 	toFilename,
 	parseFrontmatter,
 	createFileContent,
-	parseTemplateBody,
-	createTemplateBody
+	parseWorkoutBody,
+	createWorkoutBody
 } from './file-utils';
 
 // Frontmatter only contains metadata, not exercises
-interface TemplateMetadata {
+interface WorkoutMetadata {
 	name: string;
 	description?: string;
 	estimatedDuration?: number;
 }
 
-export class TemplateRepository {
+export class WorkoutRepository {
 	private basePath: string;
 
 	constructor(
 		private app: App,
 		basePath: string
 	) {
-		this.basePath = `${basePath}/Templates`;
+		this.basePath = `${basePath}/Workouts`;
 	}
 
 	/**
 	 * Updates the base path (when settings change)
 	 */
 	setBasePath(basePath: string): void {
-		this.basePath = `${basePath}/Templates`;
+		this.basePath = `${basePath}/Workouts`;
 	}
 
 	/**
-	 * Ensures the templates folder exists
+	 * Ensures the workouts folder exists
 	 */
 	async ensureFolder(): Promise<void> {
 		await ensureFolder(this.app, this.basePath);
 	}
 
 	/**
-	 * Gets all templates
+	 * Gets all workouts
 	 */
-	async list(): Promise<Template[]> {
+	async list(): Promise<Workout[]> {
 		await this.ensureFolder();
 		const files = getFilesInFolder(this.app, this.basePath);
-		const templates: Template[] = [];
+		const workouts: Workout[] = [];
 
 		for (const file of files) {
-			const template = await this.parseTemplateFile(file);
-			if (template) {
-				templates.push(template);
+			const workout = await this.parseWorkoutFile(file);
+			if (workout) {
+				workouts.push(workout);
 			}
 		}
 
 		// Sort by name
-		templates.sort((a, b) => a.name.localeCompare(b.name));
-		return templates;
+		workouts.sort((a, b) => a.name.localeCompare(b.name));
+		return workouts;
 	}
 
 	/**
-	 * Gets a single template by ID
+	 * Gets a single workout by ID
 	 */
-	async get(id: string): Promise<Template | null> {
+	async get(id: string): Promise<Workout | null> {
 		const path = `${this.basePath}/${id}.md`;
 		const file = this.app.vault.getFileByPath(path);
 		if (!file) {
 			return null;
 		}
-		return this.parseTemplateFile(file);
+		return this.parseWorkoutFile(file);
 	}
 
 	/**
-	 * Gets a single template by name
+	 * Gets a single workout by name
 	 */
-	async getByName(name: string): Promise<Template | null> {
-		const templates = await this.list();
-		return templates.find(t => t.name.toLowerCase() === name.toLowerCase()) ?? null;
+	async getByName(name: string): Promise<Workout | null> {
+		const workouts = await this.list();
+		return workouts.find(w => w.name.toLowerCase() === name.toLowerCase()) ?? null;
 	}
 
 	/**
-	 * Creates a new template
+	 * Creates a new workout
 	 */
-	async create(template: Omit<Template, 'id'>): Promise<Template> {
+	async create(workout: Omit<Workout, 'id'>): Promise<Workout> {
 		await this.ensureFolder();
 
-		const id = toFilename(template.name);
+		const id = toFilename(workout.name);
 		const path = `${this.basePath}/${id}.md`;
 
 		// Check if already exists
 		if (this.app.vault.getFileByPath(path)) {
-			throw new Error(`Template already exists: ${template.name}`);
+			throw new Error(`Workout already exists: ${workout.name}`);
 		}
 
 		// Frontmatter: metadata only
 		const frontmatter: Record<string, unknown> = {
-			name: template.name,
-			description: template.description,
-			estimatedDuration: template.estimatedDuration
+			name: workout.name,
+			description: workout.description,
+			estimatedDuration: workout.estimatedDuration
 		};
 
 		// Body: exercises table
-		const body = createTemplateBody(
-			template.exercises.map(e => ({
+		const body = createWorkoutBody(
+			workout.exercises.map(e => ({
 				exercise: e.exercise,
 				sets: e.targetSets,
 				repsMin: e.targetRepsMin,
@@ -117,22 +117,22 @@ export class TemplateRepository {
 		const content = createFileContent(frontmatter, body);
 		await this.app.vault.create(path, content);
 
-		return { id, ...template };
+		return { id, ...workout };
 	}
 
 	/**
-	 * Updates an existing template
+	 * Updates an existing workout
 	 */
-	async update(id: string, updates: Partial<Omit<Template, 'id'>>): Promise<void> {
+	async update(id: string, updates: Partial<Omit<Workout, 'id'>>): Promise<void> {
 		const path = `${this.basePath}/${id}.md`;
 		const file = this.app.vault.getFileByPath(path);
 		if (!file) {
-			throw new Error(`Template not found: ${id}`);
+			throw new Error(`Workout not found: ${id}`);
 		}
 
 		const existing = await this.get(id);
 		if (!existing) {
-			throw new Error(`Template not found: ${id}`);
+			throw new Error(`Workout not found: ${id}`);
 		}
 
 		const updated = { ...existing, ...updates };
@@ -145,7 +145,7 @@ export class TemplateRepository {
 		};
 
 		// Body: exercises table
-		const body = createTemplateBody(
+		const body = createWorkoutBody(
 			updated.exercises.map(e => ({
 				exercise: e.exercise,
 				sets: e.targetSets,
@@ -160,7 +160,7 @@ export class TemplateRepository {
 	}
 
 	/**
-	 * Deletes a template
+	 * Deletes a workout
 	 */
 	async delete(id: string): Promise<void> {
 		const path = `${this.basePath}/${id}.md`;
@@ -171,12 +171,12 @@ export class TemplateRepository {
 	}
 
 	/**
-	 * Duplicates a template with a new name
+	 * Duplicates a workout with a new name
 	 */
-	async duplicate(id: string, newName: string): Promise<Template> {
+	async duplicate(id: string, newName: string): Promise<Workout> {
 		const existing = await this.get(id);
 		if (!existing) {
-			throw new Error(`Template not found: ${id}`);
+			throw new Error(`Workout not found: ${id}`);
 		}
 
 		return this.create({
@@ -188,33 +188,33 @@ export class TemplateRepository {
 	}
 
 	/**
-	 * Searches templates by name
+	 * Searches workouts by name
 	 */
-	async search(query: string): Promise<Template[]> {
-		const templates = await this.list();
+	async search(query: string): Promise<Workout[]> {
+		const workouts = await this.list();
 		const lowerQuery = query.toLowerCase();
 
-		return templates.filter(t =>
-			t.name.toLowerCase().includes(lowerQuery) ||
-			t.description?.toLowerCase().includes(lowerQuery)
+		return workouts.filter(w =>
+			w.name.toLowerCase().includes(lowerQuery) ||
+			w.description?.toLowerCase().includes(lowerQuery)
 		);
 	}
 
 	/**
-	 * Parses a template file into a Template object
+	 * Parses a workout file into a Workout object
 	 */
-	private async parseTemplateFile(file: TFile): Promise<Template | null> {
+	private async parseWorkoutFile(file: TFile): Promise<Workout | null> {
 		try {
 			const content = await this.app.vault.cachedRead(file);
-			const { frontmatter, body } = parseFrontmatter<TemplateMetadata>(content);
+			const { frontmatter, body } = parseFrontmatter<WorkoutMetadata>(content);
 
 			if (!frontmatter?.name) {
 				return null;
 			}
 
 			// Parse exercises from body table
-			const exerciseRows = parseTemplateBody(body);
-			const exercises: TemplateExercise[] = exerciseRows.map(row => ({
+			const exerciseRows = parseWorkoutBody(body);
+			const exercises: WorkoutExercise[] = exerciseRows.map(row => ({
 				exercise: row.exercise,
 				targetSets: row.sets,
 				targetRepsMin: row.repsMin,

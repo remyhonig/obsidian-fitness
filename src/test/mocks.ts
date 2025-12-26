@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import type { ScreenContext } from '../views/fit-view';
-import type { Exercise, Template, Session, SessionExercise } from '../types';
+import type { Exercise, Workout, Session, SessionExercise } from '../types';
 import type { PluginSettings } from '../settings';
 
 // Mock plugin settings
@@ -47,24 +47,24 @@ export function createMockExerciseRepo(exercises: Exercise[] = []) {
 	};
 }
 
-// Mock template repository
-export function createMockTemplateRepo(templates: Template[] = []) {
+// Mock workout repository
+export function createMockWorkoutRepo(workouts: Workout[] = []) {
 	return {
-		list: vi.fn().mockResolvedValue(templates),
+		list: vi.fn().mockResolvedValue(workouts),
 		get: vi.fn().mockImplementation((id: string) =>
-			Promise.resolve(templates.find(t => t.id === id) ?? null)
+			Promise.resolve(workouts.find(w => w.id === id) ?? null)
 		),
 		getByName: vi.fn().mockImplementation((name: string) =>
-			Promise.resolve(templates.find(t => t.name.toLowerCase() === name.toLowerCase()) ?? null)
+			Promise.resolve(workouts.find(w => w.name.toLowerCase() === name.toLowerCase()) ?? null)
 		),
-		create: vi.fn().mockImplementation((template: Omit<Template, 'id'>) =>
-			Promise.resolve({ id: template.name.toLowerCase().replace(/\s+/g, '-'), ...template })
+		create: vi.fn().mockImplementation((workout: Omit<Workout, 'id'>) =>
+			Promise.resolve({ id: workout.name.toLowerCase().replace(/\s+/g, '-'), ...workout })
 		),
 		update: vi.fn().mockResolvedValue(undefined),
 		delete: vi.fn().mockResolvedValue(undefined),
 		duplicate: vi.fn().mockResolvedValue(undefined),
 		search: vi.fn().mockImplementation((query: string) =>
-			Promise.resolve(templates.filter(t => t.name.toLowerCase().includes(query.toLowerCase())))
+			Promise.resolve(workouts.filter(w => w.name.toLowerCase().includes(query.toLowerCase())))
 		),
 		ensureFolder: vi.fn().mockResolvedValue(undefined),
 		setBasePath: vi.fn()
@@ -89,7 +89,7 @@ export function createMockSessionRepo(sessions: Session[] = []) {
 			Promise.resolve(sessions.slice(0, limit))
 		),
 		getByDateRange: vi.fn().mockResolvedValue(sessions),
-		getByTemplate: vi.fn().mockResolvedValue(sessions),
+		getByWorkout: vi.fn().mockResolvedValue(sessions),
 		calculateVolume: vi.fn().mockImplementation((session: Session) => {
 			let total = 0;
 			for (const ex of session.exercises) {
@@ -137,19 +137,19 @@ export function createMockSessionState(activeSession: Session | null = null) {
 		),
 		getCurrentExerciseIndex: vi.fn().mockReturnValue(0),
 		setCurrentExerciseIndex: vi.fn(),
-		startFromTemplate: vi.fn().mockImplementation((template: Template) => {
+		startFromWorkout: vi.fn().mockImplementation((workout: Workout) => {
 			session = {
 				id: 'active',
 				date: new Date().toISOString().split('T')[0] ?? '',
 				startTime: new Date().toISOString(),
-				template: template.name,
+				workout: workout.name,
 				status: 'active',
-				exercises: template.exercises.map(te => ({
-					exercise: te.exercise,
-					targetSets: te.targetSets,
-					targetRepsMin: te.targetRepsMin,
-					targetRepsMax: te.targetRepsMax,
-					restSeconds: te.restSeconds,
+				exercises: workout.exercises.map(we => ({
+					exercise: we.exercise,
+					targetSets: we.targetSets,
+					targetRepsMin: we.targetRepsMin,
+					targetRepsMax: we.targetRepsMax,
+					restSeconds: we.restSeconds,
 					sets: []
 				}))
 			};
@@ -254,7 +254,7 @@ export function createMockView() {
 // Create full screen context
 export function createMockScreenContext(options: {
 	exercises?: Exercise[];
-	templates?: Template[];
+	workouts?: Workout[];
 	sessions?: Session[];
 	activeSession?: Session | null;
 } = {}): ScreenContext {
@@ -262,7 +262,7 @@ export function createMockScreenContext(options: {
 		view: createMockView() as unknown as ScreenContext['view'],
 		plugin: createMockPlugin() as unknown as ScreenContext['plugin'],
 		exerciseRepo: createMockExerciseRepo(options.exercises ?? []) as unknown as ScreenContext['exerciseRepo'],
-		templateRepo: createMockTemplateRepo(options.templates ?? []) as unknown as ScreenContext['templateRepo'],
+		workoutRepo: createMockWorkoutRepo(options.workouts ?? []) as unknown as ScreenContext['workoutRepo'],
 		sessionRepo: createMockSessionRepo(options.sessions ?? []) as unknown as ScreenContext['sessionRepo'],
 		sessionState: createMockSessionState(options.activeSession ?? null) as unknown as ScreenContext['sessionState']
 	};
@@ -282,7 +282,7 @@ export function createSampleExercise(overrides: Partial<Exercise> = {}): Exercis
 	};
 }
 
-export function createSampleTemplate(overrides: Partial<Template> = {}): Template {
+export function createSampleWorkout(overrides: Partial<Workout> = {}): Workout {
 	return {
 		id: 'push-day',
 		name: 'Push Day',
@@ -313,7 +313,7 @@ export function createSampleSession(overrides: Partial<Session> = {}): Session {
 		date: '2025-01-01',
 		startTime: '2025-01-01T10:00:00Z',
 		endTime: '2025-01-01T11:00:00Z',
-		template: 'Push Day',
+		workout: 'Push Day',
 		status: 'completed',
 		exercises: [
 			{

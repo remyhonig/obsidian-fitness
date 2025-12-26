@@ -397,9 +397,9 @@ export function createMarkdownTable(
 	return lines.join('\n');
 }
 
-// ========== Template Body Utilities ==========
+// ========== Workout Body Utilities ==========
 
-export interface TemplateExerciseRow {
+export interface WorkoutExerciseRow {
 	exercise: string;
 	sets: number;
 	repsMin: number;
@@ -449,9 +449,9 @@ function extractExerciseName(value: string): string {
 }
 
 /**
- * Parses template exercise table from body
+ * Parses workout exercise table from body
  */
-export function parseTemplateBody(body: string): TemplateExerciseRow[] {
+export function parseWorkoutBody(body: string): WorkoutExerciseRow[] {
 	// Find the exercises table
 	const tableMatch = body.match(/\|[^\n]+\|\n\|[-|\s]+\|\n((?:\|[^\n]+\|\n?)+)/);
 	if (!tableMatch) return [];
@@ -478,12 +478,12 @@ export function parseTemplateBody(body: string): TemplateExerciseRow[] {
 }
 
 /**
- * Creates template body with exercise table
+ * Creates workout body with exercise table
  * Exercise names are wrapped in wiki-links for Obsidian navigation
  * Format: [[filename]] - Obsidian displays the frontmatter 'name' property
  * Note: We avoid using [[file|alias]] format because the pipe conflicts with table syntax
  */
-export function createTemplateBody(exercises: TemplateExerciseRow[]): string {
+export function createWorkoutBody(exercises: WorkoutExerciseRow[]): string {
 	if (exercises.length === 0) return '';
 
 	const columns = [

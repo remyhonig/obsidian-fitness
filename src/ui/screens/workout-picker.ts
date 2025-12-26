@@ -1,14 +1,14 @@
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import { createBackButton, createButton } from '../components/button';
-import { createTemplateCard } from '../components/card';
-import type { Template } from '../../types';
+import { createWorkoutCard } from '../components/card';
+import type { Workout } from '../../types';
 
 /**
- * Template picker screen for starting a workout
+ * Workout picker screen for starting a workout
  */
-export class TemplatePickerScreen implements Screen {
+export class WorkoutPickerScreen implements Screen {
 	private containerEl: HTMLElement;
-	private templates: Template[] = [];
+	private workouts: Workout[] = [];
 	private searchQuery = '';
 	private resultsEl: HTMLElement | null = null;
 
@@ -16,7 +16,7 @@ export class TemplatePickerScreen implements Screen {
 		parentEl: HTMLElement,
 		private ctx: ScreenContext
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-template-picker-screen' });
+		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-workout-picker-screen' });
 	}
 
 	render(): void {
@@ -33,7 +33,7 @@ export class TemplatePickerScreen implements Screen {
 			cls: 'fit-search-input',
 			attr: {
 				type: 'text',
-				placeholder: 'Search templates...'
+				placeholder: 'Search workouts...'
 			}
 		});
 
@@ -42,14 +42,14 @@ export class TemplatePickerScreen implements Screen {
 			this.renderResults();
 		});
 
-		// Load templates
-		void this.ctx.templateRepo.list().then(templates => {
-			this.templates = templates;
+		// Load workouts
+		void this.ctx.workoutRepo.list().then(workouts => {
+			this.workouts = workouts;
 			this.renderResults();
 		});
 
 		// Results container
-		this.resultsEl = this.containerEl.createDiv({ cls: 'fit-template-list' });
+		this.resultsEl = this.containerEl.createDiv({ cls: 'fit-workout-list' });
 
 		// Empty workout option
 		const emptyOption = this.containerEl.createDiv({ cls: 'fit-empty-workout-option' });
@@ -60,12 +60,12 @@ export class TemplatePickerScreen implements Screen {
 			onClick: () => { void this.startEmptyWorkout(); }
 		});
 
-		// Create template link
-		const createLink = this.containerEl.createDiv({ cls: 'fit-create-template-link' });
+		// Create workout link
+		const createLink = this.containerEl.createDiv({ cls: 'fit-create-workout-link' });
 		createButton(createLink, {
-			text: 'Create new template',
+			text: 'Create new workout',
 			variant: 'ghost',
-			onClick: () => this.ctx.view.navigateTo('template-editor', { isNew: true })
+			onClick: () => this.ctx.view.navigateTo('workout-editor', { isNew: true })
 		});
 	}
 
@@ -73,13 +73,13 @@ export class TemplatePickerScreen implements Screen {
 		if (!this.resultsEl) return;
 		this.resultsEl.empty();
 
-		// Filter templates by search query
-		let filtered = this.templates;
+		// Filter workouts by search query
+		let filtered = this.workouts;
 		if (this.searchQuery) {
 			const query = this.searchQuery.toLowerCase();
-			filtered = this.templates.filter(t =>
-				t.name.toLowerCase().includes(query) ||
-				t.description?.toLowerCase().includes(query)
+			filtered = this.workouts.filter(w =>
+				w.name.toLowerCase().includes(query) ||
+				w.description?.toLowerCase().includes(query)
 			);
 		}
 
@@ -87,28 +87,28 @@ export class TemplatePickerScreen implements Screen {
 			if (this.searchQuery) {
 				this.resultsEl.createDiv({
 					cls: 'fit-empty-state',
-					text: 'No templates found'
+					text: 'No workouts found'
 				});
 			} else {
 				this.resultsEl.createDiv({
 					cls: 'fit-empty-state',
-					text: 'No templates yet. Create your first template!'
+					text: 'No workouts yet. Create your first workout!'
 				});
 			}
 			return;
 		}
 
-		for (const template of filtered) {
-			createTemplateCard(this.resultsEl, {
-				name: template.name,
-				description: template.description,
-				exerciseCount: template.exercises.length,
-				onClick: () => { void this.selectTemplate(template); }
+		for (const workout of filtered) {
+			createWorkoutCard(this.resultsEl, {
+				name: workout.name,
+				description: workout.description,
+				exerciseCount: workout.exercises.length,
+				onClick: () => { void this.selectWorkout(workout); }
 			});
 		}
 	}
 
-	private async selectTemplate(template: Template): Promise<void> {
+	private async selectWorkout(workout: Workout): Promise<void> {
 		// Check for active session with completed sets
 		if (this.ctx.sessionState.hasActiveSession()) {
 			const session = this.ctx.sessionState.getSession();
@@ -126,8 +126,8 @@ export class TemplatePickerScreen implements Screen {
 			await this.ctx.sessionState.discardSession();
 		}
 
-		// Start session from template
-		this.ctx.sessionState.startFromTemplate(template);
+		// Start session from workout
+		this.ctx.sessionState.startFromWorkout(workout);
 		this.ctx.view.navigateTo('session');
 	}
 

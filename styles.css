@@ -441,8 +441,8 @@
 	font-size: 16px;
 }
 
-/* Template cards */
-.fit-template-card {
+/* Workout cards */
+.fit-workout-card {
 	background: var(--background-secondary);
 	border-radius: 12px;
 	padding: 16px;
@@ -450,23 +450,23 @@
 	transition: transform 0.15s;
 }
 
-.fit-template-card:active {
+.fit-workout-card:active {
 	transform: scale(0.98);
 }
 
-.fit-template-card-name {
+.fit-workout-card-name {
 	font-size: 16px;
 	font-weight: 600;
 	margin-bottom: 4px;
 }
 
-.fit-template-card-desc {
+.fit-workout-card-desc {
 	font-size: 14px;
 	color: var(--text-muted);
 	margin-bottom: 8px;
 }
 
-.fit-template-card-count {
+.fit-workout-card-count {
 	font-size: 13px;
 	color: var(--text-faint);
 }
@@ -487,7 +487,7 @@
 	margin-bottom: 8px;
 }
 
-.fit-session-card-template {
+.fit-session-card-workout {
 	font-size: 16px;
 	font-weight: 600;
 }
@@ -635,14 +635,14 @@
 
 /* ========== Lists ========== */
 .fit-exercise-list,
-.fit-template-list,
+.fit-workout-list,
 .fit-session-list {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 }
 
-.fit-template-grid {
+.fit-workout-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
 	gap: 12px;
@@ -725,7 +725,7 @@
 	height: 16px;
 }
 
-.fit-active-session-template {
+.fit-active-session-workout {
 	font-size: 18px;
 	font-weight: 600;
 	margin-bottom: 4px;
@@ -823,15 +823,15 @@
 	white-space: nowrap;
 }
 
-/* ========== Template Editor ========== */
-.fit-template-exercise-list {
+/* ========== Workout Editor ========== */
+.fit-workout-exercise-list {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 	margin-bottom: 16px;
 }
 
-.fit-template-exercise-row {
+.fit-workout-exercise-row {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;

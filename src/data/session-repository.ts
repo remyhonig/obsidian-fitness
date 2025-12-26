@@ -19,7 +19,7 @@ interface SessionMetadata {
 	startTimeFormatted?: string;
 	endTime?: string;
 	endTimeFormatted?: string;
-	template?: string;
+	workout?: string;
 	status: SessionStatus;
 	notes?: string;
 }
@@ -132,7 +132,7 @@ export class SessionRepository {
 			startTimeFormatted: formatTimeHHMMSS(session.startTime),
 			endTime: session.endTime,
 			endTimeFormatted: session.endTime ? formatTimeHHMMSS(session.endTime) : undefined,
-			template: session.template,
+			workout: session.workout,
 			status: session.status,
 			notes: session.notes
 		};
@@ -213,13 +213,13 @@ export class SessionRepository {
 			endTime: new Date().toISOString()
 		};
 
-		// Generate a unique filename based on date, time, and template
+		// Generate a unique filename based on date, time, and workout
 		const dateStr = finalSession.date;
 		const timeStr = formatTimeHHMMSS(finalSession.startTime).replace(/:/g, '-'); // HH-MM-SS
-		const templateSlug = finalSession.template
-			? `-${finalSession.template.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+		const workoutSlug = finalSession.workout
+			? `-${finalSession.workout.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 			: '';
-		const baseId = `${dateStr}-${timeStr}${templateSlug}`;
+		const baseId = `${dateStr}-${timeStr}${workoutSlug}`;
 
 		// Frontmatter: metadata only
 		const frontmatter: Record<string, unknown> = {
@@ -228,7 +228,7 @@ export class SessionRepository {
 			startTimeFormatted: formatTimeHHMMSS(finalSession.startTime),
 			endTime: finalSession.endTime,
 			endTimeFormatted: finalSession.endTime ? formatTimeHHMMSS(finalSession.endTime) : undefined,
-			template: finalSession.template,
+			workout: finalSession.workout,
 			status: finalSession.status,
 			notes: finalSession.notes
 		};
@@ -332,12 +332,12 @@ export class SessionRepository {
 	}
 
 	/**
-	 * Gets sessions that used a specific template
+	 * Gets sessions that used a specific workout
 	 */
-	async getByTemplate(templateName: string): Promise<Session[]> {
+	async getByWorkout(workoutName: string): Promise<Session[]> {
 		const sessions = await this.list();
 		return sessions.filter(s =>
-			s.template?.toLowerCase() === templateName.toLowerCase()
+			s.workout?.toLowerCase() === workoutName.toLowerCase()
 		);
 	}
 
@@ -405,7 +405,7 @@ export class SessionRepository {
 				date: frontmatter.date ?? frontmatter.startTime.split('T')[0],
 				startTime: frontmatter.startTime,
 				endTime: frontmatter.endTime,
-				template: frontmatter.template,
+				workout: frontmatter.workout,
 				status: frontmatter.status ?? 'completed',
 				exercises,
 				notes: frontmatter.notes

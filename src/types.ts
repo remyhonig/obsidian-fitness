@@ -15,8 +15,8 @@ export interface Exercise {
 	notes?: string;
 }
 
-// Template exercise entry (reference to an exercise with targets)
-export interface TemplateExercise {
+// Workout exercise entry (reference to an exercise with targets)
+export interface WorkoutExercise {
 	exercise: string; // Exercise name/id
 	targetSets: number;
 	targetRepsMin: number;
@@ -25,13 +25,13 @@ export interface TemplateExercise {
 	notes?: string;
 }
 
-// Workout template (stored in Templates/ folder)
-export interface Template {
+// Workout definition (stored in Workouts/ folder)
+export interface Workout {
 	id: string; // Derived from filename
 	name: string;
 	description?: string;
 	estimatedDuration?: number;
-	exercises: TemplateExercise[];
+	exercises: WorkoutExercise[];
 }
 
 // Logged set during a workout session
@@ -62,7 +62,7 @@ export interface Session {
 	date: string; // ISO 8601 date
 	startTime: string; // ISO 8601 datetime
 	endTime?: string; // ISO 8601 datetime
-	template?: string; // Template name/id used
+	workout?: string; // Workout name used
 	status: SessionStatus;
 	exercises: SessionExercise[];
 	notes?: string;
@@ -86,13 +86,13 @@ export interface ActiveSessionState {
 // Screen types for navigation
 export type ScreenType =
 	| 'home'
-	| 'template-picker'
+	| 'workout-picker'
 	| 'session'
 	| 'exercise'
 	| 'finish'
 	| 'history'
 	| 'session-detail'
-	| 'template-editor'
+	| 'workout-editor'
 	| 'exercise-library'
 	| 'exercise-detail';
 
@@ -100,7 +100,7 @@ export type ScreenType =
 export interface ScreenParams {
 	exerciseIndex?: number;
 	sessionId?: string;
-	templateId?: string;
+	workoutId?: string;
 	exerciseId?: string;
 	isNew?: boolean;
 }
@@ -121,7 +121,7 @@ export interface ExerciseFrontmatter {
 	image1?: string;
 }
 
-export interface TemplateFrontmatter {
+export interface WorkoutFrontmatter {
 	name: string;
 	description?: string;
 	estimatedDuration?: number;
@@ -134,7 +134,7 @@ export interface SessionFrontmatter {
 	startTimeFormatted?: string;
 	endTime?: string;
 	endTimeFormatted?: string;
-	template?: string;
+	workout?: string;
 	status: SessionStatus;
 	notes?: string;
 	// exercises stored in body as markdown blocks with tables

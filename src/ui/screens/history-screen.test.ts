@@ -93,9 +93,9 @@ describe('HistoryScreen', () => {
 			expect(titles).toContain('This week');
 		});
 
-		it('should display session template name', async () => {
+		it('should display session workout name', async () => {
 			const sessions = [
-				createSampleSession({ id: 'session-1', template: 'Push Day' })
+				createSampleSession({ id: 'session-1', workout: 'Push Day' })
 			];
 			const ctx = createMockScreenContext({ sessions });
 			const screen = new HistoryScreen(container, ctx);

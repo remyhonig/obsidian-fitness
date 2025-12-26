@@ -51,7 +51,7 @@ export class HistoryScreen implements Screen {
 
 					createSessionCard(list, {
 						date: session.date,
-						templateName: session.template,
+						workoutName: session.workout,
 						duration,
 						exercises: session.exercises,
 						unit: this.ctx.plugin.settings.weightUnit,

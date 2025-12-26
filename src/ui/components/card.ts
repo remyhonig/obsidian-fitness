@@ -128,26 +128,26 @@ export function createSetRow(parent: HTMLElement, options: SetRowOptions): HTMLE
 }
 
 /**
- * Creates a template card for the template picker
+ * Creates a workout card for the workout picker
  */
-export interface TemplateCardOptions {
+export interface WorkoutCardOptions {
 	name: string;
 	description?: string;
 	exerciseCount: number;
 	onClick: () => void;
 }
 
-export function createTemplateCard(parent: HTMLElement, options: TemplateCardOptions): HTMLElement {
-	const card = parent.createDiv({ cls: 'fit-template-card' });
+export function createWorkoutCard(parent: HTMLElement, options: WorkoutCardOptions): HTMLElement {
+	const card = parent.createDiv({ cls: 'fit-workout-card' });
 
-	card.createDiv({ cls: 'fit-template-card-name', text: options.name });
+	card.createDiv({ cls: 'fit-workout-card-name', text: options.name });
 
 	if (options.description) {
-		card.createDiv({ cls: 'fit-template-card-desc', text: options.description });
+		card.createDiv({ cls: 'fit-workout-card-desc', text: options.description });
 	}
 
 	card.createDiv({
-		cls: 'fit-template-card-count',
+		cls: 'fit-workout-card-count',
 		text: `${options.exerciseCount} exercises`
 	});
 
@@ -161,7 +161,7 @@ export function createTemplateCard(parent: HTMLElement, options: TemplateCardOpt
  */
 export interface SessionCardOptions {
 	date: string;
-	templateName?: string;
+	workoutName?: string;
 	duration?: string;
 	exercises: SessionExercise[];
 	unit: string;
@@ -171,9 +171,9 @@ export interface SessionCardOptions {
 export function createSessionCard(parent: HTMLElement, options: SessionCardOptions): HTMLElement {
 	const card = parent.createDiv({ cls: 'fit-session-card' });
 
-	// Header: Template name on left, date + duration on right
+	// Header: Workout name on left, date + duration on right
 	const header = card.createDiv({ cls: 'fit-session-card-header' });
-	header.createSpan({ cls: 'fit-session-card-template', text: options.templateName ?? 'Workout' });
+	header.createSpan({ cls: 'fit-session-card-workout', text: options.workoutName ?? 'Workout' });
 
 	const headerRight = header.createDiv({ cls: 'fit-session-card-header-right' });
 	headerRight.createSpan({ cls: 'fit-session-card-date', text: formatDate(options.date) });

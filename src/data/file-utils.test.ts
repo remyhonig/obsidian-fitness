@@ -22,7 +22,7 @@ describe('file-utils', () => {
 
 	describe('getIdFromPath', () => {
 		it('should extract filename without extension', () => {
-			expect(getIdFromPath('Fitness/Templates/push-day.md')).toBe('push-day');
+			expect(getIdFromPath('Fitness/Workouts/push-day.md')).toBe('push-day');
 		});
 
 		it('should handle nested paths', () => {
@@ -181,8 +181,8 @@ name: Test
 		});
 	});
 
-	describe('roundtrip: template exercises', () => {
-		it('should serialize and deserialize template exercises correctly', () => {
+	describe('roundtrip: workout exercises', () => {
+		it('should serialize and deserialize workout exercises correctly', () => {
 			const original = {
 				name: 'Push Day',
 				description: 'Chest, shoulders, triceps',
@@ -228,19 +228,19 @@ name: Test
 
 		it('should handle empty exercises array', () => {
 			const original = {
-				name: 'Empty Template',
+				name: 'Empty Workout',
 				exercises: []
 			};
 
 			const yaml = toFrontmatter(original);
 			const { frontmatter } = parseFrontmatter<typeof original>(`${yaml}\n`);
 
-			expect(frontmatter?.name).toBe('Empty Template');
+			expect(frontmatter?.name).toBe('Empty Workout');
 			// Empty arrays are skipped in toFrontmatter, so exercises will be undefined
 			expect(frontmatter?.exercises).toBeUndefined();
 		});
 
-		it('should handle template with single exercise', () => {
+		it('should handle workout with single exercise', () => {
 			const original = {
 				name: 'Single Exercise',
 				exercises: [
@@ -268,7 +268,7 @@ name: Test
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
 				endTime: '2025-12-26T11:00:00Z',
-				template: 'Push Day',
+				workout: 'Push Day',
 				status: 'completed',
 				exercises: [
 					{
@@ -299,7 +299,7 @@ name: Test
 			const { frontmatter } = parseFrontmatter<typeof original>(`${yaml}\n`);
 
 			expect(frontmatter?.date).toBe(original.date);
-			expect(frontmatter?.template).toBe(original.template);
+			expect(frontmatter?.workout).toBe(original.workout);
 			expect(frontmatter?.status).toBe(original.status);
 			expect(frontmatter?.exercises).toHaveLength(1);
 		});

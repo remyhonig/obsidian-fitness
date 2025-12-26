@@ -29,8 +29,8 @@ describe('SessionScreen', () => {
 			expect(emptyState?.textContent).toBe('No active workout');
 		});
 
-		it('should render session header with template name', () => {
-			const activeSession = createSampleSession({ status: 'active', template: 'Push Day' });
+		it('should render session header with workout name', () => {
+			const activeSession = createSampleSession({ status: 'active', workout: 'Push Day' });
 			const ctx = createMockScreenContext({ activeSession });
 			const screen = new SessionScreen(container, ctx);
 			screen.render();
@@ -39,8 +39,8 @@ describe('SessionScreen', () => {
 			expect(title?.textContent).toBe('Push Day');
 		});
 
-		it('should render session header with "Workout" when no template', () => {
-			const activeSession = createSampleSession({ status: 'active', template: undefined });
+		it('should render session header with "Workout" when no workout name', () => {
+			const activeSession = createSampleSession({ status: 'active', workout: undefined });
 			const ctx = createMockScreenContext({ activeSession });
 			const screen = new SessionScreen(container, ctx);
 			screen.render();

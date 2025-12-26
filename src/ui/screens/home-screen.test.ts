@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { HomeScreen } from './home-screen';
 import {
 	createMockScreenContext,
-	createSampleTemplate,
+	createSampleWorkout,
 	createSampleSession,
 	flushPromises,
 	click,
@@ -51,7 +51,7 @@ describe('HomeScreen', () => {
 			const activeSession = createSampleSession({
 				status: 'active',
 				id: 'active',
-				template: 'Push Day'
+				workout: 'Push Day'
 			});
 			const ctx = createMockScreenContext({ activeSession });
 			const screen = new HomeScreen(container, ctx);
@@ -61,13 +61,13 @@ describe('HomeScreen', () => {
 			expect(badge).not.toBeNull();
 			expect(badge?.textContent).toBe('In progress');
 
-			const templateName = container.querySelector('.fit-active-session-template');
-			expect(templateName?.textContent).toBe('Push Day');
+			const workoutName = container.querySelector('.fit-active-session-workout');
+			expect(workoutName?.textContent).toBe('Push Day');
 		});
 	});
 
 	describe('navigation', () => {
-		it('should navigate to template-picker when "Start workout" is clicked', () => {
+		it('should navigate to workout-picker when "Start workout" is clicked', () => {
 			const ctx = createMockScreenContext();
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
@@ -76,7 +76,7 @@ describe('HomeScreen', () => {
 			expect(button).not.toBeNull();
 			click(button!);
 
-			expect(ctx.view.navigateTo).toHaveBeenCalledWith('template-picker');
+			expect(ctx.view.navigateTo).toHaveBeenCalledWith('workout-picker');
 		});
 
 		it('should navigate to session when "Continue workout" is clicked', () => {
@@ -146,50 +146,50 @@ describe('HomeScreen', () => {
 		});
 	});
 
-	describe('template quick start', () => {
-		it('should render recent templates', async () => {
-			const templates = [
-				createSampleTemplate({ id: 'push', name: 'Push Day' }),
-				createSampleTemplate({ id: 'pull', name: 'Pull Day' }),
-				createSampleTemplate({ id: 'legs', name: 'Leg Day' })
+	describe('workout quick start', () => {
+		it('should render recent workouts', async () => {
+			const workouts = [
+				createSampleWorkout({ id: 'push', name: 'Push Day' }),
+				createSampleWorkout({ id: 'pull', name: 'Pull Day' }),
+				createSampleWorkout({ id: 'legs', name: 'Leg Day' })
 			];
-			const ctx = createMockScreenContext({ templates });
+			const ctx = createMockScreenContext({ workouts });
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
 			await flushPromises();
 
-			const templateCards = container.querySelectorAll('.fit-template-card');
-			expect(templateCards.length).toBe(3);
+			const workoutCards = container.querySelectorAll('.fit-workout-card');
+			expect(workoutCards.length).toBe(3);
 		});
 
-		it('should start session from template when template card is clicked', async () => {
-			const template = createSampleTemplate({ id: 'push', name: 'Push Day' });
-			const ctx = createMockScreenContext({ templates: [template] });
+		it('should start session from workout when workout card is clicked', async () => {
+			const workout = createSampleWorkout({ id: 'push', name: 'Push Day' });
+			const ctx = createMockScreenContext({ workouts: [workout] });
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
 			await flushPromises();
 
-			const templateCard = container.querySelector('.fit-template-card') as HTMLElement;
-			expect(templateCard).not.toBeNull();
-			click(templateCard);
+			const workoutCard = container.querySelector('.fit-workout-card') as HTMLElement;
+			expect(workoutCard).not.toBeNull();
+			click(workoutCard);
 
-			expect(ctx.sessionState.startFromTemplate).toHaveBeenCalledWith(template);
+			expect(ctx.sessionState.startFromWorkout).toHaveBeenCalledWith(workout);
 			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session');
 		});
 
-		it('should show "View all templates" link when more than 3 templates exist', async () => {
-			const templates = [
-				createSampleTemplate({ id: 'push', name: 'Push Day' }),
-				createSampleTemplate({ id: 'pull', name: 'Pull Day' }),
-				createSampleTemplate({ id: 'legs', name: 'Leg Day' }),
-				createSampleTemplate({ id: 'upper', name: 'Upper Body' })
+		it('should show "View all workouts" link when more than 3 workouts exist', async () => {
+			const workouts = [
+				createSampleWorkout({ id: 'push', name: 'Push Day' }),
+				createSampleWorkout({ id: 'pull', name: 'Pull Day' }),
+				createSampleWorkout({ id: 'legs', name: 'Leg Day' }),
+				createSampleWorkout({ id: 'upper', name: 'Upper Body' })
 			];
-			const ctx = createMockScreenContext({ templates });
+			const ctx = createMockScreenContext({ workouts });
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
 			await flushPromises();
 
-			const viewAllButton = findButton(container, 'View all templates');
+			const viewAllButton = findButton(container, 'View all workouts');
 			expect(viewAllButton).not.toBeNull();
 		});
 	});

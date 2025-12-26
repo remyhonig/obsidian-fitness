@@ -130,7 +130,7 @@ describe('SessionRepository', () => {
 				id: 'active',
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
-				template: 'Push Day',
+				workout: 'Push Day',
 				status: 'active',
 				exercises: [
 					{
@@ -151,7 +151,7 @@ describe('SessionRepository', () => {
 
 			const content = mockVault._getContent('Fitness/Sessions/.active-session.md');
 			// Metadata in frontmatter
-			expect(content).toContain('template: Push Day');
+			expect(content).toContain('workout: Push Day');
 			// Exercises in body as markdown blocks
 			expect(content).toContain('## Bench Press');
 			expect(content).toContain('Target: 4 × 6-8 | Rest: 180s');
@@ -193,7 +193,7 @@ describe('SessionRepository', () => {
 date: 2025-12-26
 startTime: 2025-12-26T10:00:00Z
 status: active
-template: Push Day
+workout: Push Day
 ---
 
 ## Bench Press
@@ -208,7 +208,7 @@ Target: 3 × 8-12 | Rest: 120s
 
 			expect(result).not.toBeNull();
 			expect(result?.status).toBe('active');
-			expect(result?.template).toBe('Push Day');
+			expect(result?.workout).toBe('Push Day');
 			expect(result?.exercises).toHaveLength(1);
 			expect(result?.exercises[0].sets).toHaveLength(1);
 		});
@@ -230,7 +230,7 @@ status: completed
 				id: 'active',
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
-				template: 'Push Day',
+				workout: 'Push Day',
 				status: 'active',
 				exercises: []
 			};
@@ -251,7 +251,7 @@ status: completed
 				id: 'active',
 				date: '2025-12-26',
 				startTime,
-				template: 'Push Day',
+				workout: 'Push Day',
 				status: 'active',
 				exercises: []
 			};
@@ -279,7 +279,7 @@ status: completed
 				id: 'active',
 				date: '2025-12-26',
 				startTime,
-				template: 'Push Day',
+				workout: 'Push Day',
 				status: 'active',
 				exercises: []
 			};
@@ -317,7 +317,7 @@ status: completed
 date: 2025-12-25
 startTime: 2025-12-25T10:00:00Z
 endTime: 2025-12-25T11:00:00Z
-template: Push Day
+workout: Push Day
 status: completed
 ---
 
@@ -334,7 +334,7 @@ Target: 4 × 6-8 | Rest: 180s
 
 			expect(result).not.toBeNull();
 			expect(result?.date).toBe('2025-12-25');
-			expect(result?.template).toBe('Push Day');
+			expect(result?.workout).toBe('Push Day');
 			expect(result?.status).toBe('completed');
 			expect(result?.exercises).toHaveLength(1);
 			expect(result?.exercises[0].sets).toHaveLength(2);
@@ -473,7 +473,7 @@ Target: 4 × 6-8 | Rest: 180s
 				id: 'active',
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
-				template: 'Full Body',
+				workout: 'Full Body',
 				status: 'active',
 				exercises: [
 					{
@@ -503,7 +503,7 @@ Target: 4 × 6-8 | Rest: 180s
 			const retrieved = await repo.getActive();
 
 			expect(retrieved).not.toBeNull();
-			expect(retrieved?.template).toBe('Full Body');
+			expect(retrieved?.workout).toBe('Full Body');
 			expect(retrieved?.exercises).toHaveLength(2);
 			expect(retrieved?.exercises[0].sets).toHaveLength(3);
 			expect(retrieved?.exercises[0].sets[0].weight).toBe(100);
