@@ -2,6 +2,7 @@ import { App, PluginSettingTab as ObsidianPluginSettingTab, Setting } from 'obsi
 import type MainPlugin from './main';
 import type { WeightUnit } from './types';
 import { ProgramRepository } from './data/program-repository';
+import { bootstrapDataFolder, importExerciseDatabase } from './data/bootstrap';
 
 export interface PluginSettings {
 	basePath: string;
@@ -48,6 +49,8 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.basePath = value || 'Fitness';
 					await this.plugin.saveSettings();
+					// Bootstrap folder structure for new path
+					await bootstrapDataFolder(this.app, this.plugin.settings.basePath);
 				}));
 
 		// Weight unit setting
@@ -148,6 +151,18 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 						this.plugin.settings.weightIncrementsLbs = increments;
 						await this.plugin.saveSettings();
 					}
+				}));
+
+		// Exercise database import
+		containerEl.createEl('h3', { text: 'Exercise database' });
+
+		new Setting(containerEl)
+			.setName('Import exercises')
+			.setDesc('Import 800+ exercises from the free-exercise-db. Existing exercises will be skipped.')
+			.addButton(button => button
+				.setButtonText('Import')
+				.onClick(async () => {
+					await importExerciseDatabase(this.app, this.plugin.settings.basePath);
 				}));
 	}
 }

@@ -44,25 +44,37 @@ export class WorkoutEditorScreen implements Screen {
 
 		// Load existing workout if editing
 		if (!this.isNew && this.workoutId) {
-			void this.ctx.workoutRepo.get(this.workoutId).then(workout => {
-				if (workout) {
-					this.workout = workout;
-					this.name = workout.name;
-					this.description = workout.description ?? '';
-					this.exercises = workout.exercises.map(e => ({ ...e }));
-
-					// Store original state for change detection
-					this.originalName = workout.name;
-					this.originalDescription = workout.description ?? '';
-					this.originalExercises = workout.exercises.map(e => ({ ...e }));
-
-					// Re-render the form with loaded data
-					this.renderForm();
-				}
+			void this.loadWorkout().then(() => {
+				this.renderForm();
 			});
+		} else {
+			// New workout - render empty form immediately
+			this.renderForm();
+		}
+	}
+
+	private async loadWorkout(): Promise<void> {
+		if (!this.workoutId) return;
+
+		// Try by ID first, then fall back to name lookup
+		let workout = await this.ctx.workoutRepo.get(this.workoutId);
+		if (!workout) {
+			// workoutId might be a slugified name, try looking up by name
+			workout = await this.ctx.workoutRepo.getByName(this.workoutId);
 		}
 
-		this.renderForm();
+		if (workout) {
+			this.workout = workout;
+			this.workoutId = workout.id; // Update to actual ID for saving
+			this.name = workout.name;
+			this.description = workout.description ?? '';
+			this.exercises = workout.exercises.map(e => ({ ...e }));
+
+			// Store original state for change detection
+			this.originalName = workout.name;
+			this.originalDescription = workout.description ?? '';
+			this.originalExercises = workout.exercises.map(e => ({ ...e }));
+		}
 	}
 
 	private renderForm(): void {

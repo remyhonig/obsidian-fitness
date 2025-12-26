@@ -49,8 +49,8 @@ export class SessionScreen implements Screen {
 			});
 			setIcon(editBtn, 'pencil');
 			editBtn.addEventListener('click', () => {
-				const workoutId = toFilename(session.workout ?? '');
-				this.ctx.view.navigateTo('workout-editor', { workoutId, isNew: false });
+				// Pass workout name - editor will look it up
+				this.ctx.view.navigateTo('workout-editor', { workoutId: session.workout, isNew: false });
 			});
 		}
 

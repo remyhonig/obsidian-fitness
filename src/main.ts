@@ -1,12 +1,16 @@
 import { Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, PluginSettings, PluginSettingTab } from './settings';
 import { FitView, VIEW_TYPE_FIT } from './views/fit-view';
+import { bootstrapDataFolder, importExerciseDatabase } from './data/bootstrap';
 
 export default class MainPlugin extends Plugin {
 	settings: PluginSettings;
 
 	async onload() {
 		await this.loadSettings();
+
+		// Bootstrap data folder structure and starter content
+		await bootstrapDataFolder(this.app, this.settings.basePath);
 
 		// Register the workout view
 		this.registerView(
@@ -25,6 +29,15 @@ export default class MainPlugin extends Plugin {
 			name: 'Open workout tracker',
 			callback: () => {
 				void this.activateView();
+			}
+		});
+
+		// Add command to import exercise database
+		this.addCommand({
+			id: 'import-exercise-database',
+			name: 'Import exercise database (800+ exercises)',
+			callback: () => {
+				void importExerciseDatabase(this.app, this.settings.basePath);
 			}
 		});
 

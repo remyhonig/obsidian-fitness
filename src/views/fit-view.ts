@@ -1,4 +1,4 @@
-import { ItemView, Platform, WorkspaceLeaf, TFile, EventRef } from 'obsidian';
+import { ItemView, Platform, WorkspaceLeaf, TAbstractFile, EventRef } from 'obsidian';
 import type MainPlugin from '../main';
 import type { ScreenType, ScreenParams } from '../types';
 import { SessionStateManager } from '../state/session-state';
@@ -134,9 +134,10 @@ export class FitView extends ItemView {
 	private registerVaultEvents(): void {
 		const basePath = this.plugin.settings.basePath;
 
-		const handleFileChange = (file: TFile) => {
+		const handleFileChange = (file: TAbstractFile) => {
 			// Only refresh if the file is in our data folder
 			if (file.path.startsWith(basePath + '/')) {
+				console.debug('[Fit] File changed:', file.path);
 				this.debouncedRefresh();
 			}
 		};
@@ -147,11 +148,10 @@ export class FitView extends ItemView {
 			this.app.vault.on('create', handleFileChange),
 			this.app.vault.on('delete', handleFileChange),
 			this.app.vault.on('rename', (file, oldPath) => {
-				if (file instanceof TFile) {
-					// Refresh if either old or new path is in our folder
-					if (file.path.startsWith(basePath + '/') || oldPath.startsWith(basePath + '/')) {
-						this.debouncedRefresh();
-					}
+				// Refresh if either old or new path is in our folder
+				if (file.path.startsWith(basePath + '/') || oldPath.startsWith(basePath + '/')) {
+					console.debug('[Fit] File renamed:', oldPath, '->', file.path);
+					this.debouncedRefresh();
 				}
 			})
 		);
@@ -312,6 +312,7 @@ export class FitView extends ItemView {
 	 */
 	refresh(): void {
 		if (this.currentScreenType) {
+			console.debug('[Fit] Refreshing screen:', this.currentScreenType);
 			this.navigateTo(this.currentScreenType, this.screenParams);
 		}
 	}

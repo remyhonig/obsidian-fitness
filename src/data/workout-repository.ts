@@ -122,10 +122,11 @@ export class WorkoutRepository {
 
 	/**
 	 * Updates an existing workout
+	 * Returns the new ID if the file was renamed, otherwise returns the original ID
 	 */
-	async update(id: string, updates: Partial<Omit<Workout, 'id'>>): Promise<void> {
+	async update(id: string, updates: Partial<Omit<Workout, 'id'>>): Promise<string> {
 		const path = `${this.basePath}/${id}.md`;
-		const file = this.app.vault.getFileByPath(path);
+		let file = this.app.vault.getFileByPath(path);
 		if (!file) {
 			throw new Error(`Workout not found: ${id}`);
 		}
@@ -157,6 +158,25 @@ export class WorkoutRepository {
 
 		const content = createFileContent(frontmatter, body);
 		await this.app.vault.modify(file, content);
+
+		// If name changed, rename the file to match
+		// This uses fileManager.renameFile which updates wikilinks in other files
+		let newId = id;
+		if (updates.name && toFilename(updates.name) !== id) {
+			newId = toFilename(updates.name);
+			const newPath = `${this.basePath}/${newId}.md`;
+
+			// Check if target file already exists
+			if (!this.app.vault.getFileByPath(newPath)) {
+				// Re-fetch file reference after modify
+				file = this.app.vault.getFileByPath(path);
+				if (file) {
+					await this.app.fileManager.renameFile(file, newPath);
+				}
+			}
+		}
+
+		return newId;
 	}
 
 	/**
