@@ -537,8 +537,6 @@ export class ExerciseScreen implements Screen {
 			}
 
 			const section = parent.createDiv({ cls: 'fit-exercise-details' });
-			section.createDiv({ cls: 'fit-card-title', text: 'Exercise Info' });
-
 			const content = section.createDiv({ cls: 'fit-exercise-details-content' });
 
 			// Exercise images at the top (side by side)

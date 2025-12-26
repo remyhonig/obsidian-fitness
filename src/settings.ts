@@ -13,6 +13,7 @@ export interface PluginSettings {
 	weightIncrementsLbs: number[];
 	activeProgram?: string; // Program ID (e.g., "ppl-split")
 	programWorkoutIndex: number; // Current position in program (0-based)
+	bottomPadding: number; // Extra bottom padding in pixels (for mobile nav bars)
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -22,7 +23,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	autoStartRestTimer: true,
 	weightIncrementsKg: [10, 2.5, 0.5, 0.25],
 	weightIncrementsLbs: [45, 10, 5, 2.5],
-	programWorkoutIndex: 0
+	programWorkoutIndex: 0,
+	bottomPadding: 100
 };
 
 export class PluginSettingTab extends ObsidianPluginSettingTab {
@@ -117,6 +119,23 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 				});
 			});
 		});
+
+		// Display section
+		containerEl.createEl('h3', { text: 'Display' });
+
+		new Setting(containerEl)
+			.setName('Bottom padding')
+			.setDesc('Extra padding at the bottom of screens (in pixels). Increase if content is hidden by mobile navigation bars.')
+			.addText(text => text
+				.setPlaceholder('100')
+				.setValue(String(this.plugin.settings.bottomPadding))
+				.onChange(async (value) => {
+					const parsed = parseInt(value, 10);
+					if (!isNaN(parsed) && parsed >= 0) {
+						this.plugin.settings.bottomPadding = parsed;
+						await this.plugin.saveSettings();
+					}
+				}));
 
 		// Weight increments for kg
 		containerEl.createEl('h3', { text: 'Weight increments' });

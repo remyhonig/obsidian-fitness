@@ -21,8 +21,8 @@
 	flex-direction: column;
 	height: 100%;
 	overflow-y: auto;
-	padding: 16px;
-	padding-bottom: 100px; /* Space for bottom actions */
+	padding: 12px;
+	padding-bottom: var(--fit-bottom-padding, 100px); /* Configurable via settings */
 }
 
 /* ========== Header ========== */
@@ -38,7 +38,7 @@
 
 .fit-title {
 	margin: 0;
-	font-size: 24px;
+	font-size: 18px;
 	font-weight: 600;
 	flex: 1;
 }
@@ -920,9 +920,9 @@
 	display: flex;
 	width: 100%;
 	background: var(--background-secondary);
-	border-radius: 12px;
-	padding: 12px 8px;
-	margin-bottom: 12px;
+	border-radius: 10px;
+	padding: 8px 6px;
+	margin-bottom: 8px;
 	gap: 4px;
 }
 
@@ -932,6 +932,11 @@
 	gap: 6px;
 	flex: 1;
 	min-width: 0;
+}
+
+.fit-stat-wide:last-child {
+	flex: 0;
+	margin-left: auto;
 }
 
 .fit-stat-label-vertical {
@@ -948,7 +953,7 @@
 }
 
 .fit-stat-value-large {
-	font-size: 40px;
+	font-size: 28px;
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 	line-height: 1;
@@ -1275,11 +1280,11 @@
 .fit-set-chip {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	padding: 6px 10px;
+	gap: 4px;
+	padding: 4px 8px;
 	background: var(--background-secondary);
-	border-radius: 16px;
-	font-size: 14px;
+	border-radius: 12px;
+	font-size: 12px;
 	font-weight: 600;
 }
 

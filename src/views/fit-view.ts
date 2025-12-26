@@ -97,6 +97,9 @@ export class FitView extends ItemView {
 			container.addClass('fit-view-mobile');
 		}
 
+		// Apply bottom padding from settings
+		this.applyBottomPadding();
+
 		// Register vault event listeners for file changes
 		this.registerVaultEvents();
 
@@ -199,8 +202,19 @@ export class FitView extends ItemView {
 		this.unregisterVaultEvents();
 		this.registerVaultEvents();
 
+		// Update bottom padding
+		this.applyBottomPadding();
+
 		// Refresh the view
 		this.refresh();
+	}
+
+	/**
+	 * Applies bottom padding CSS variable from settings
+	 */
+	private applyBottomPadding(): void {
+		const container = this.containerEl.children[1] as HTMLElement;
+		container.style.setProperty('--fit-bottom-padding', `${this.plugin.settings.bottomPadding}px`);
 	}
 
 	/**
