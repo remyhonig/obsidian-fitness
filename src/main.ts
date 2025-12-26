@@ -1,5 +1,6 @@
 import { Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, PluginSettings, PluginSettingTab } from './settings';
+import { FitView, VIEW_TYPE_FIT } from './views/fit-view';
 
 export default class MainPlugin extends Plugin {
 	settings: PluginSettings;
@@ -7,11 +8,32 @@ export default class MainPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
+		// Register the workout view
+		this.registerView(
+			VIEW_TYPE_FIT,
+			(leaf) => new FitView(leaf, this)
+		);
+
+		// Add ribbon icon
+		this.addRibbonIcon('dumbbell', 'Open workout tracker', () => {
+			void this.activateView();
+		});
+
+		// Add command to open workout tracker
+		this.addCommand({
+			id: 'open-workout-tracker',
+			name: 'Open workout tracker',
+			callback: () => {
+				void this.activateView();
+			}
+		});
+
+		// Add settings tab
 		this.addSettingTab(new PluginSettingTab(this.app, this));
 	}
 
 	onunload() {
-		// Cleanup code here
+		// Views are automatically cleaned up by Obsidian
 	}
 
 	async loadSettings() {
@@ -21,5 +43,30 @@ export default class MainPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	/**
+	 * Activates the workout view
+	 */
+	async activateView(): Promise<void> {
+		const { workspace } = this.app;
+
+		// Check if view is already open
+		const leaves = workspace.getLeavesOfType(VIEW_TYPE_FIT);
+		const existingLeaf = leaves[0];
+		if (existingLeaf) {
+			// Reveal existing view
+			await workspace.revealLeaf(existingLeaf);
+			return;
+		}
+
+		// Open in a new leaf
+		const leaf = workspace.getLeaf(false);
+		await leaf.setViewState({
+			type: VIEW_TYPE_FIT,
+			active: true
+		});
+
+		await workspace.revealLeaf(leaf);
 	}
 }

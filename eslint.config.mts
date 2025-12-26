@@ -61,5 +61,8 @@ export default tseslint.config(
 		"version-bump.mjs",
 		"versions.json",
 		"main.js",
+		"src/**/*.test.ts",
+		"src/test/**",
+		"vitest.config.ts",
 	]),
 );

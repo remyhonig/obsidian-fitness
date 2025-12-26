@@ -1,10 +1,10 @@
 {
-	"id": "my-plugin",
-	"name": "My Plugin",
+	"id": "obsidian-fit",
+	"name": "Obsidian Fit",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "An Obsidian plugin.",
-	"author": "Your Name",
-	"authorUrl": "https://github.com/yourusername",
+	"description": "Mobile-first workout tracking with zero-typing set logging, templates, and rest timers.",
+	"author": "Remy Honig",
+	"authorUrl": "https://github.com/remyhonig",
 	"isDesktopOnly": false
 }
