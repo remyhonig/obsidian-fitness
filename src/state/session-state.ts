@@ -287,8 +287,9 @@ export class SessionStateManager {
 
 	/**
 	 * Logs a completed set
+	 * Returns a promise that resolves when the set is persisted to disk
 	 */
-	logSet(exerciseIndex: number, weight: number, reps: number, rpe?: number): void {
+	async logSet(exerciseIndex: number, weight: number, reps: number, rpe?: number): Promise<void> {
 		if (!this.session) return;
 		const exercise: SessionExercise | undefined = this.session.exercises[exerciseIndex];
 		if (!exercise) return;
@@ -311,18 +312,19 @@ export class SessionStateManager {
 			this.startRestTimer(exercise.restSeconds, exerciseIndex);
 		}
 
-		this.saveImmediately();
+		// Persist immediately and wait for completion
+		await this.saveAndWait();
 		this.notifyListeners();
 	}
 
 	/**
 	 * Edits an existing set
 	 */
-	editSet(
+	async editSet(
 		exerciseIndex: number,
 		setIndex: number,
 		updates: Partial<Pick<LoggedSet, 'weight' | 'reps' | 'rpe'>>
-	): void {
+	): Promise<void> {
 		if (!this.session) return;
 		const exercise = this.session.exercises[exerciseIndex];
 		if (!exercise) return;
@@ -333,21 +335,21 @@ export class SessionStateManager {
 		if (updates.reps !== undefined) set.reps = updates.reps;
 		if (updates.rpe !== undefined) set.rpe = updates.rpe;
 
-		this.saveImmediately();
+		await this.saveAndWait();
 		this.notifyListeners();
 	}
 
 	/**
 	 * Deletes a set
 	 */
-	deleteSet(exerciseIndex: number, setIndex: number): void {
+	async deleteSet(exerciseIndex: number, setIndex: number): Promise<void> {
 		if (!this.session) return;
 		const exercise = this.session.exercises[exerciseIndex];
 		if (!exercise) return;
 
 		exercise.sets.splice(setIndex, 1);
 
-		this.saveImmediately();
+		await this.saveAndWait();
 		this.notifyListeners();
 	}
 
@@ -466,7 +468,24 @@ export class SessionStateManager {
 	private pendingSave = false;
 
 	/**
-	 * Saves immediately (replaces debounced autosave)
+	 * Saves immediately and waits for completion
+	 * This ensures data is persisted before returning
+	 */
+	private async saveAndWait(): Promise<void> {
+		if (!this.session) return;
+
+		// If a save is in progress, wait for it and then save again
+		if (this.savePromise) {
+			await this.savePromise;
+		}
+
+		// Now do our save
+		this.savePromise = this.doSave();
+		await this.savePromise;
+	}
+
+	/**
+	 * Saves immediately (fire-and-forget)
 	 * Uses a queue to prevent concurrent saves
 	 */
 	private saveImmediately(): void {

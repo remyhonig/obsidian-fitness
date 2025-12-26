@@ -604,7 +604,7 @@ export class ExerciseScreen implements Screen {
 		return this.ctx.sessionState.getExercise(this.exerciseIndex);
 	}
 
-	private completeSet(): void {
+	private async completeSet(): Promise<void> {
 		if (this.currentWeight <= 0 || this.currentReps <= 0) {
 			// Could show a notice here
 			return;
@@ -615,8 +615,8 @@ export class ExerciseScreen implements Screen {
 		if (!exerciseBefore) return;
 		const wasComplete = exerciseBefore.sets.filter(s => s.completed).length >= exerciseBefore.targetSets;
 
-		// Log the set
-		this.ctx.sessionState.logSet(
+		// Log the set and wait for persistence
+		await this.ctx.sessionState.logSet(
 			this.exerciseIndex,
 			this.currentWeight,
 			this.currentReps
@@ -634,7 +634,7 @@ export class ExerciseScreen implements Screen {
 		}
 	}
 
-	private editSet(setIndex: number): void {
+	private async editSet(setIndex: number): Promise<void> {
 		const exercise = this.getExercise();
 		if (!exercise) return;
 
@@ -648,14 +648,14 @@ export class ExerciseScreen implements Screen {
 		this.currentReps = setReps;
 
 		// Delete the set so it can be re-logged
-		this.ctx.sessionState.deleteSet(this.exerciseIndex, setIndex);
+		await this.ctx.sessionState.deleteSet(this.exerciseIndex, setIndex);
 
 		// Re-render
 		this.render();
 	}
 
-	private deleteSet(setIndex: number): void {
-		this.ctx.sessionState.deleteSet(this.exerciseIndex, setIndex);
+	private async deleteSet(setIndex: number): Promise<void> {
+		await this.ctx.sessionState.deleteSet(this.exerciseIndex, setIndex);
 		this.render();
 	}
 
