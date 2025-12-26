@@ -7,7 +7,9 @@ import {
 	parseFrontmatter,
 	createFileContent,
 	parseSessionBody,
-	createSessionBody
+	createSessionBody,
+	toFilename,
+	extractWikiLinkName
 } from './file-utils';
 
 const ACTIVE_SESSION_FILENAME = '.active-session.md';
@@ -125,6 +127,11 @@ export class SessionRepository {
 		await this.ensureFolder();
 		const path = `${this.basePath}/${ACTIVE_SESSION_FILENAME}`;
 
+		// Store workout as internal link to the workout file
+		const workoutLink = session.workout
+			? `[[Workouts/${toFilename(session.workout)}]]`
+			: undefined;
+
 		// Frontmatter: metadata only
 		const frontmatter: Record<string, unknown> = {
 			date: session.date,
@@ -132,7 +139,7 @@ export class SessionRepository {
 			startTimeFormatted: formatTimeHHMMSS(session.startTime),
 			endTime: session.endTime,
 			endTimeFormatted: session.endTime ? formatTimeHHMMSS(session.endTime) : undefined,
-			workout: session.workout,
+			workout: workoutLink,
 			status: session.status,
 			notes: session.notes
 		};
@@ -217,9 +224,14 @@ export class SessionRepository {
 		const dateStr = finalSession.date;
 		const timeStr = formatTimeHHMMSS(finalSession.startTime).replace(/:/g, '-'); // HH-MM-SS
 		const workoutSlug = finalSession.workout
-			? `-${finalSession.workout.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+			? `-${toFilename(finalSession.workout)}`
 			: '';
 		const baseId = `${dateStr}-${timeStr}${workoutSlug}`;
+
+		// Store workout as internal link to the workout file
+		const workoutLink = finalSession.workout
+			? `[[Workouts/${toFilename(finalSession.workout)}]]`
+			: undefined;
 
 		// Frontmatter: metadata only
 		const frontmatter: Record<string, unknown> = {
@@ -228,7 +240,7 @@ export class SessionRepository {
 			startTimeFormatted: formatTimeHHMMSS(finalSession.startTime),
 			endTime: finalSession.endTime,
 			endTimeFormatted: finalSession.endTime ? formatTimeHHMMSS(finalSession.endTime) : undefined,
-			workout: finalSession.workout,
+			workout: workoutLink,
 			status: finalSession.status,
 			notes: finalSession.notes
 		};
@@ -400,12 +412,17 @@ export class SessionRepository {
 				}))
 			}));
 
+			// Extract workout name from wikilink if present
+			const workoutName = frontmatter.workout
+				? extractWikiLinkName(frontmatter.workout)
+				: undefined;
+
 			return {
 				id: getIdFromPath(file.path),
 				date: frontmatter.date ?? frontmatter.startTime.split('T')[0],
 				startTime: frontmatter.startTime,
 				endTime: frontmatter.endTime,
-				workout: frontmatter.workout,
+				workout: workoutName,
 				status: frontmatter.status ?? 'completed',
 				exercises,
 				notes: frontmatter.notes

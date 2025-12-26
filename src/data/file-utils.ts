@@ -299,7 +299,12 @@ function serializeArrayItem(item: Record<string, unknown>, lines: string[], inde
  */
 function formatValue(value: unknown): string {
 	if (typeof value === 'string') {
-		// Quote strings that might be ambiguous
+		// Quote wikilinks - YAML interprets [[]] as nested arrays without quotes
+		// Obsidian still recognizes quoted wikilinks as links in frontmatter
+		if (value.startsWith('[[') && value.endsWith(']]')) {
+			return `"${value}"`;
+		}
+		// Quote strings that might be ambiguous in YAML
 		if (value.includes(':') || value.includes('#') || value.includes('\n')) {
 			return `"${value.replace(/"/g, '\\"')}"`;
 		}
@@ -425,16 +430,21 @@ function slugToTitleCase(slug: string): string {
  * [[Display Name]] -> Display Name
  * Display Name -> Display Name
  */
-function extractExerciseName(value: string): string {
+export function extractWikiLinkName(value: string): string {
 	// Match wiki-link: [[target]] or [[target|display]]
 	const wikiMatch = value.match(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/);
 	if (wikiMatch) {
-		const target = wikiMatch[1]?.trim() ?? '';
+		let target = wikiMatch[1]?.trim() ?? '';
 		const display = wikiMatch[2]?.trim();
 
 		// If there's a display name (alias), use that
 		if (display) {
 			return display;
+		}
+
+		// Strip any folder path prefix (e.g., "Workouts/deadlift-day" -> "deadlift-day")
+		if (target.includes('/')) {
+			target = target.split('/').pop() ?? target;
 		}
 
 		// If target looks like a slug (lowercase with hyphens), convert to title case
@@ -465,7 +475,7 @@ export function parseWorkoutBody(body: string): WorkoutExerciseRow[] {
 
 		// Extract exercise name from wiki-link if present
 		const rawExercise = row['Exercise'] ?? row['exercise'] ?? '';
-		const exercise = extractExerciseName(rawExercise);
+		const exercise = extractWikiLinkName(rawExercise);
 
 		return {
 			exercise,
@@ -536,12 +546,15 @@ export function parseSessionBody(body: string): SessionExerciseBlock[] {
 	const exerciseBlocks = body.split(/(?=^## )/m).filter(block => block.trim());
 
 	for (const block of exerciseBlocks) {
-		// Parse exercise header
+		// Parse exercise header (may be wikilink like ## [[exercise-slug]])
 		const headerMatch = block.match(/^## (.+)$/m);
 		if (!headerMatch) continue;
 
-		const exerciseName = headerMatch[1]?.trim() ?? '';
-		if (!exerciseName) continue;
+		const rawExerciseName = headerMatch[1]?.trim() ?? '';
+		if (!rawExerciseName) continue;
+
+		// Extract exercise name from wikilink if present
+		const exerciseName = extractWikiLinkName(rawExerciseName);
 
 		// Parse target line: "Target: 4 × 6-8 | Rest: 180s"
 		const targetMatch = block.match(/Target:\s*(\d+)\s*[×x]\s*(\d+)(?:-(\d+))?\s*\|\s*Rest:\s*(\d+)s?/i);
@@ -595,8 +608,9 @@ export function createSessionBody(exercises: SessionExerciseBlock[]): string {
 	for (const exercise of exercises) {
 		const lines: string[] = [];
 
-		// Exercise header
-		lines.push(`## ${exercise.exercise}`);
+		// Exercise header with wikilink
+		const exerciseSlug = toFilename(exercise.exercise);
+		lines.push(`## [[${exerciseSlug}]]`);
 
 		// Target line
 		const repsDisplay = exercise.targetRepsMin === exercise.targetRepsMax
