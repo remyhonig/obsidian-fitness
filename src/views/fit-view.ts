@@ -17,7 +17,7 @@ import { HistoryScreen } from '../ui/screens/history-screen';
 import { WorkoutEditorScreen } from '../ui/screens/workout-editor';
 import { ExerciseLibraryScreen } from '../ui/screens/exercise-library';
 
-export const VIEW_TYPE_FIT = 'obsidian-fit-view';
+export const VIEW_TYPE_FIT = 'obsidian-fitness-view';
 
 /**
  * Base interface for all screens
