@@ -43,6 +43,22 @@ export default class MainPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+
+		// Notify all open FitViews of the settings change
+		this.notifyViewsOfSettingsChange();
+	}
+
+	/**
+	 * Notifies all open FitViews that settings have changed
+	 */
+	private notifyViewsOfSettingsChange(): void {
+		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_FIT);
+		for (const leaf of leaves) {
+			const view = leaf.view;
+			if (view instanceof FitView) {
+				view.onSettingsChanged();
+			}
+		}
 	}
 
 	/**

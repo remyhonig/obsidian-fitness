@@ -664,3 +664,49 @@ function formatTimeFromISO(isoString: string): string {
 		return '-';
 	}
 }
+
+// ========== Program Body Utilities ==========
+
+/**
+ * Parses program body to extract ordered list of workout IDs
+ * Expects format:
+ * ## Workouts
+ * - [[push-day]]
+ * - [[pull-day]]
+ * - [[leg-day]]
+ */
+export function parseProgramBody(body: string): string[] {
+	const workouts: string[] = [];
+
+	// Match list items with wikilinks: - [[workout-id]] or - [[folder/workout-id]]
+	const listItemRegex = /^-\s*\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/gm;
+	let match;
+
+	while ((match = listItemRegex.exec(body)) !== null) {
+		let target = match[1]?.trim() ?? '';
+		// Strip folder path if present (e.g., "Workouts/push-day" -> "push-day")
+		if (target.includes('/')) {
+			target = target.split('/').pop() ?? target;
+		}
+		if (target) {
+			workouts.push(target);
+		}
+	}
+
+	return workouts;
+}
+
+/**
+ * Creates program body with ordered list of workout wikilinks
+ */
+export function createProgramBody(workoutIds: string[]): string {
+	if (workoutIds.length === 0) return '';
+
+	const lines: string[] = ['', '## Workouts', ''];
+	for (const id of workoutIds) {
+		lines.push(`- [[${id}]]`);
+	}
+	lines.push('');
+
+	return lines.join('\n');
+}

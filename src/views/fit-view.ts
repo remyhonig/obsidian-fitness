@@ -1,10 +1,11 @@
-import { ItemView, Platform, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Platform, WorkspaceLeaf, TFile, EventRef } from 'obsidian';
 import type MainPlugin from '../main';
 import type { ScreenType, ScreenParams } from '../types';
 import { SessionStateManager } from '../state/session-state';
 import { ExerciseRepository } from '../data/exercise-repository';
 import { WorkoutRepository } from '../data/workout-repository';
 import { SessionRepository } from '../data/session-repository';
+import { ProgramRepository } from '../data/program-repository';
 
 // Screen imports
 import { HomeScreen } from '../ui/screens/home-screen';
@@ -36,6 +37,7 @@ export interface ScreenContext {
 	exerciseRepo: ExerciseRepository;
 	workoutRepo: WorkoutRepository;
 	sessionRepo: SessionRepository;
+	programRepo: ProgramRepository;
 }
 
 /**
@@ -51,6 +53,11 @@ export class FitView extends ItemView {
 	exerciseRepo: ExerciseRepository;
 	workoutRepo: WorkoutRepository;
 	sessionRepo: SessionRepository;
+	programRepo: ProgramRepository;
+
+	// Event listeners for file changes
+	private vaultEventRefs: EventRef[] = [];
+	private refreshDebounceTimer: number | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -62,6 +69,7 @@ export class FitView extends ItemView {
 		this.exerciseRepo = new ExerciseRepository(this.app, plugin.settings.basePath);
 		this.workoutRepo = new WorkoutRepository(this.app, plugin.settings.basePath);
 		this.sessionRepo = new SessionRepository(this.app, plugin.settings.basePath);
+		this.programRepo = new ProgramRepository(this.app, plugin.settings.basePath);
 
 		// Initialize session state
 		this.sessionState = new SessionStateManager(this.app, plugin.settings);
@@ -89,6 +97,9 @@ export class FitView extends ItemView {
 			container.addClass('fit-view-mobile');
 		}
 
+		// Register vault event listeners for file changes
+		this.registerVaultEvents();
+
 		// Try to restore active session
 		const hasActiveSession = await this.sessionState.loadFromDisk();
 
@@ -100,12 +111,96 @@ export class FitView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		// Unregister vault events
+		this.unregisterVaultEvents();
+
+		// Clear any pending refresh
+		if (this.refreshDebounceTimer !== null) {
+			window.clearTimeout(this.refreshDebounceTimer);
+			this.refreshDebounceTimer = null;
+		}
+
 		// Cleanup session state
 		await this.sessionState.cleanup();
 
 		// Destroy current screen
 		this.currentScreen?.destroy();
 		this.currentScreen = null;
+	}
+
+	/**
+	 * Registers vault event listeners to watch for file changes
+	 */
+	private registerVaultEvents(): void {
+		const basePath = this.plugin.settings.basePath;
+
+		const handleFileChange = (file: TFile) => {
+			// Only refresh if the file is in our data folder
+			if (file.path.startsWith(basePath + '/')) {
+				this.debouncedRefresh();
+			}
+		};
+
+		// Listen for file modifications, creations, deletions, and renames
+		this.vaultEventRefs.push(
+			this.app.vault.on('modify', handleFileChange),
+			this.app.vault.on('create', handleFileChange),
+			this.app.vault.on('delete', handleFileChange),
+			this.app.vault.on('rename', (file, oldPath) => {
+				if (file instanceof TFile) {
+					// Refresh if either old or new path is in our folder
+					if (file.path.startsWith(basePath + '/') || oldPath.startsWith(basePath + '/')) {
+						this.debouncedRefresh();
+					}
+				}
+			})
+		);
+	}
+
+	/**
+	 * Unregisters vault event listeners
+	 */
+	private unregisterVaultEvents(): void {
+		for (const ref of this.vaultEventRefs) {
+			this.app.vault.offref(ref);
+		}
+		this.vaultEventRefs = [];
+	}
+
+	/**
+	 * Debounced refresh to avoid too many updates
+	 */
+	private debouncedRefresh(): void {
+		if (this.refreshDebounceTimer !== null) {
+			window.clearTimeout(this.refreshDebounceTimer);
+		}
+		this.refreshDebounceTimer = window.setTimeout(() => {
+			this.refreshDebounceTimer = null;
+			this.refresh();
+		}, 300);
+	}
+
+	/**
+	 * Called when settings change - updates repositories and refreshes
+	 */
+	onSettingsChanged(): void {
+		const basePath = this.plugin.settings.basePath;
+
+		// Update repository paths
+		this.exerciseRepo.setBasePath(basePath);
+		this.workoutRepo.setBasePath(basePath);
+		this.sessionRepo.setBasePath(basePath);
+		this.programRepo.setBasePath(basePath);
+
+		// Update session state
+		this.sessionState.updateSettings(this.plugin.settings);
+
+		// Re-register vault events with new basePath
+		this.unregisterVaultEvents();
+		this.registerVaultEvents();
+
+		// Refresh the view
+		this.refresh();
 	}
 
 	/**
@@ -118,7 +213,8 @@ export class FitView extends ItemView {
 			sessionState: this.sessionState,
 			exerciseRepo: this.exerciseRepo,
 			workoutRepo: this.workoutRepo,
-			sessionRepo: this.sessionRepo
+			sessionRepo: this.sessionRepo,
+			programRepo: this.programRepo
 		};
 	}
 

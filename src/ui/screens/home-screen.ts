@@ -3,7 +3,8 @@ import type { Screen, ScreenContext } from '../../views/fit-view';
 import { createButton } from '../components/button';
 import { createWorkoutCard, createSessionCard } from '../components/card';
 import { formatDuration } from '../components/timer';
-import type { Workout } from '../../types';
+import { toFilename } from '../../data/file-utils';
+import type { Workout, Program } from '../../types';
 
 /**
  * Home screen - entry point for the workout tracker
@@ -22,10 +23,6 @@ export class HomeScreen implements Screen {
 	render(): void {
 		this.containerEl.empty();
 
-		// Header
-		const header = this.containerEl.createDiv({ cls: 'fit-header' });
-		header.createEl('h1', { text: 'Workout', cls: 'fit-title' });
-
 		// Main content
 		const content = this.containerEl.createDiv({ cls: 'fit-content' });
 
@@ -41,16 +38,34 @@ export class HomeScreen implements Screen {
 			}
 		}
 
-		// Quick start workouts
-		void this.renderRecentWorkouts(content);
-
-		// Recent sessions
-		void this.renderRecentSessions(content);
+		// Render sections in order (must await to maintain order)
+		void this.renderSectionsInOrder(content);
 
 		// Subscribe to state changes for rest timer updates
 		this.unsubscribe = this.ctx.sessionState.subscribe(() => {
 			// Could update mini timer here if needed
 		});
+	}
+
+	private async renderSectionsInOrder(content: HTMLElement): Promise<void> {
+		// Show program OR quick start (not both)
+		await this.renderMainSection(content);
+
+		// Recent sessions always at the bottom
+		await this.renderRecentSessions(content);
+	}
+
+	private async renderMainSection(parent: HTMLElement): Promise<void> {
+		const settings = this.ctx.plugin.settings;
+		const hasActiveProgram = settings.activeProgram != null;
+
+		if (hasActiveProgram) {
+			// Show program section with view all workouts link
+			await this.renderActiveProgram(parent);
+		} else {
+			// Show quick start when no program is active
+			await this.renderQuickStart(parent);
+		}
 	}
 
 	private renderActiveSessionCard(parent: HTMLElement): void {
@@ -99,7 +114,84 @@ export class HomeScreen implements Screen {
 		this.render();
 	}
 
-	private async renderRecentWorkouts(parent: HTMLElement): Promise<void> {
+	private async renderActiveProgram(parent: HTMLElement): Promise<void> {
+		const settings = this.ctx.plugin.settings;
+		if (!settings.activeProgram) return;
+
+		// Get the active program
+		const program = await this.ctx.programRepo.get(settings.activeProgram);
+		if (!program || program.workouts.length === 0) {
+			// Program not found or empty, fall back to quick start
+			await this.renderQuickStart(parent);
+			return;
+		}
+
+		// Get workouts data for display
+		const allWorkouts = await this.ctx.workoutRepo.list();
+		const workoutMap = new Map(allWorkouts.map(w => [w.id, w]));
+
+		const section = parent.createDiv({ cls: 'fit-section fit-program-section' });
+
+		// Section header with program name
+		const header = section.createDiv({ cls: 'fit-program-header' });
+		header.createEl('h2', { text: program.name, cls: 'fit-section-title' });
+		if (program.description) {
+			header.createDiv({ cls: 'fit-program-description', text: program.description });
+		}
+
+		// Show next 4 workouts
+		const grid = section.createDiv({ cls: 'fit-program-grid' });
+		const currentIndex = settings.programWorkoutIndex % program.workouts.length;
+
+		for (let i = 0; i < 4 && i < program.workouts.length; i++) {
+			const workoutIndex = (currentIndex + i) % program.workouts.length;
+			const workoutId = program.workouts[workoutIndex];
+			if (!workoutId) continue;
+
+			const workout = workoutMap.get(workoutId);
+			const isCurrent = i === 0;
+
+			const card = grid.createDiv({
+				cls: `fit-program-workout-card ${isCurrent ? 'fit-program-workout-current' : ''}`
+			});
+
+			// Position indicator
+			card.createDiv({
+				cls: 'fit-program-workout-position',
+				text: isCurrent ? 'Next' : `+${i}`
+			});
+
+			// Workout info
+			const info = card.createDiv({ cls: 'fit-program-workout-info' });
+			info.createDiv({
+				cls: 'fit-program-workout-name',
+				text: workout?.name ?? workoutId
+			});
+			if (workout) {
+				info.createDiv({
+					cls: 'fit-program-workout-meta',
+					text: `${workout.exercises.length} exercises`
+				});
+			}
+
+			// Click to start
+			if (workout) {
+				card.addEventListener('click', () => {
+					void this.startFromWorkout(workout);
+				});
+			}
+		}
+
+		// "View all workouts" link for doing a different workout
+		const viewAll = section.createDiv({ cls: 'fit-view-all' });
+		createButton(viewAll, {
+			text: 'View all workouts',
+			variant: 'ghost',
+			onClick: () => this.ctx.view.navigateTo('workout-picker')
+		});
+	}
+
+	private async renderQuickStart(parent: HTMLElement): Promise<void> {
 		const workouts = await this.ctx.workoutRepo.list();
 		if (workouts.length === 0) return;
 
@@ -134,6 +226,10 @@ export class HomeScreen implements Screen {
 		const sessions = await this.ctx.sessionRepo.getRecent(3);
 		if (sessions.length === 0) return;
 
+		// Build workout lookup map to get actual names
+		const workouts = await this.ctx.workoutRepo.list();
+		const workoutById = new Map(workouts.map(w => [w.id, w]));
+
 		const section = parent.createDiv({ cls: 'fit-section' });
 		section.createEl('h2', { text: 'Recent workouts', cls: 'fit-section-title' });
 
@@ -144,9 +240,19 @@ export class HomeScreen implements Screen {
 				? formatDuration(session.startTime, session.endTime)
 				: undefined;
 
+			// Look up actual workout name by converting session.workout to slug
+			let workoutName = session.workout;
+			if (session.workout) {
+				const workoutSlug = toFilename(session.workout);
+				const workout = workoutById.get(workoutSlug);
+				if (workout) {
+					workoutName = workout.name;
+				}
+			}
+
 			createSessionCard(list, {
 				date: session.date,
-				workoutName: session.workout,
+				workoutName,
 				duration,
 				exercises: session.exercises,
 				unit: this.ctx.plugin.settings.weightUnit,

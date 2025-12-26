@@ -2,6 +2,7 @@ import type { Screen, ScreenContext } from '../../views/fit-view';
 import type { Session, Exercise } from '../../types';
 import { createBackButton, createButton, createPrimaryAction } from '../components/button';
 import { createExerciseCard } from '../components/card';
+import { toFilename } from '../../data/file-utils';
 
 /**
  * Session screen - shows the active workout overview
@@ -148,6 +149,8 @@ export class SessionScreen implements Screen {
 		try {
 			const session = await this.ctx.sessionState.finishSession();
 			if (session) {
+				// Advance program if this workout matches the current program workout
+				await this.advanceProgramIfMatching(session);
 				this.ctx.view.navigateTo('finish', { sessionId: session.id });
 			} else {
 				this.ctx.view.navigateTo('home');
@@ -156,6 +159,31 @@ export class SessionScreen implements Screen {
 			console.error('Failed to finish workout:', error);
 			// Still navigate home on error
 			this.ctx.view.navigateTo('home');
+		}
+	}
+
+	private async advanceProgramIfMatching(session: Session): Promise<void> {
+		const settings = this.ctx.plugin.settings;
+		if (!settings.activeProgram || !session.workout) return;
+
+		try {
+			const program = await this.ctx.programRepo.get(settings.activeProgram);
+			if (!program || program.workouts.length === 0) return;
+
+			// Get the current workout in the program
+			const currentIndex = settings.programWorkoutIndex % program.workouts.length;
+			const currentWorkoutId = program.workouts[currentIndex];
+
+			// Check if the completed session's workout matches the current program workout
+			// Compare by ID (slug) since that's what's stored in the program
+			const sessionWorkoutId = toFilename(session.workout);
+			if (currentWorkoutId === sessionWorkoutId) {
+				// Advance to next workout in the program
+				settings.programWorkoutIndex = (currentIndex + 1) % program.workouts.length;
+				await this.ctx.plugin.saveSettings();
+			}
+		} catch (error) {
+			console.error('Failed to advance program:', error);
 		}
 	}
 

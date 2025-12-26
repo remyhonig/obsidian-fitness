@@ -1,6 +1,7 @@
 import { App, PluginSettingTab as ObsidianPluginSettingTab, Setting } from 'obsidian';
 import type MainPlugin from './main';
 import type { WeightUnit } from './types';
+import { ProgramRepository } from './data/program-repository';
 
 export interface PluginSettings {
 	basePath: string;
@@ -9,6 +10,8 @@ export interface PluginSettings {
 	autoStartRestTimer: boolean;
 	weightIncrementsKg: number[];
 	weightIncrementsLbs: number[];
+	activeProgram?: string; // Program ID (e.g., "ppl-split")
+	programWorkoutIndex: number; // Current position in program (0-based)
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -17,7 +20,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	defaultRestSeconds: 120,
 	autoStartRestTimer: true,
 	weightIncrementsKg: [10, 2.5, 0.5, 0.25],
-	weightIncrementsLbs: [45, 10, 5, 2.5]
+	weightIncrementsLbs: [45, 10, 5, 2.5],
+	programWorkoutIndex: 0
 };
 
 export class PluginSettingTab extends ObsidianPluginSettingTab {
@@ -84,6 +88,32 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 					this.plugin.settings.autoStartRestTimer = value;
 					await this.plugin.saveSettings();
 				}));
+
+		// Program section
+		containerEl.createEl('h3', { text: 'Training program' });
+
+		// Active program setting - populated dynamically
+		const programSetting = new Setting(containerEl)
+			.setName('Active program')
+			.setDesc('Select a training program to follow. The next workout will be shown on the home screen.');
+
+		// Load programs and populate dropdown
+		const programRepo = new ProgramRepository(this.app, this.plugin.settings.basePath);
+		void programRepo.list().then(programs => {
+			programSetting.addDropdown(dropdown => {
+				dropdown.addOption('', 'None');
+				for (const program of programs) {
+					dropdown.addOption(program.id, program.name);
+				}
+				dropdown.setValue(this.plugin.settings.activeProgram ?? '');
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.activeProgram = value || undefined;
+					// Reset index when changing programs
+					this.plugin.settings.programWorkoutIndex = 0;
+					await this.plugin.saveSettings();
+				});
+			});
+		});
 
 		// Weight increments for kg
 		containerEl.createEl('h3', { text: 'Weight increments' });

@@ -1801,6 +1801,79 @@
 	text-align: center;
 }
 
+/* ========== Program Section ========== */
+.fit-program-section {
+	margin-bottom: 24px;
+}
+
+.fit-program-header {
+	margin-bottom: 12px;
+}
+
+.fit-program-description {
+	font-size: 14px;
+	color: var(--text-muted);
+	margin-top: 4px;
+}
+
+.fit-program-grid {
+	display: flex;
+	gap: 8px;
+	padding: 4px 0;
+}
+
+.fit-program-workout-card {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	background: var(--background-secondary);
+	border-radius: 12px;
+	padding: 10px;
+	cursor: pointer;
+	transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.fit-program-workout-card:active {
+	transform: scale(0.98);
+}
+
+.fit-program-workout-current {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.fit-program-workout-position {
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	opacity: 0.7;
+	margin-bottom: 4px;
+}
+
+.fit-program-workout-info {
+	flex: 1;
+}
+
+.fit-program-workout-name {
+	font-size: 13px;
+	font-weight: 600;
+	margin-bottom: 2px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.fit-program-workout-meta {
+	font-size: 11px;
+	opacity: 0.8;
+}
+
+.fit-program-workout-current .fit-program-workout-meta {
+	opacity: 0.9;
+}
+
 /* ========== Desktop Adaptations ========== */
 @media (min-width: 768px) {
 	.fit-view {

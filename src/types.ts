@@ -34,6 +34,14 @@ export interface Workout {
 	exercises: WorkoutExercise[];
 }
 
+// Program definition (stored in Programs/ folder)
+export interface Program {
+	id: string; // Derived from filename
+	name: string;
+	description?: string;
+	workouts: string[]; // Workout IDs in order
+}
+
 // Logged set during a workout session
 export interface LoggedSet {
 	weight: number;
