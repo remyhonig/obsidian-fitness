@@ -235,8 +235,12 @@ export async function bootstrapDataFolder(app: App, basePath: string): Promise<v
 	for (const exercise of STARTER_EXERCISES) {
 		const path = `${exercisesPath}/${exercise.id}.md`;
 		if (!app.vault.getFileByPath(path)) {
-			await app.vault.create(path, createExerciseContent(exercise));
-			exercisesCreated++;
+			try {
+				await app.vault.create(path, createExerciseContent(exercise));
+				exercisesCreated++;
+			} catch {
+				// File might already exist (cache miss), skip
+			}
 		}
 	}
 
@@ -245,8 +249,12 @@ export async function bootstrapDataFolder(app: App, basePath: string): Promise<v
 	for (const workout of STARTER_WORKOUTS) {
 		const path = `${workoutsPath}/${workout.id}.md`;
 		if (!app.vault.getFileByPath(path)) {
-			await app.vault.create(path, createWorkoutContent(workout));
-			workoutsCreated++;
+			try {
+				await app.vault.create(path, createWorkoutContent(workout));
+				workoutsCreated++;
+			} catch {
+				// File might already exist (cache miss), skip
+			}
 		}
 	}
 
@@ -255,8 +263,12 @@ export async function bootstrapDataFolder(app: App, basePath: string): Promise<v
 	for (const program of STARTER_PROGRAMS) {
 		const path = `${programsPath}/${program.id}.md`;
 		if (!app.vault.getFileByPath(path)) {
-			await app.vault.create(path, createProgramContent(program));
-			programsCreated++;
+			try {
+				await app.vault.create(path, createProgramContent(program));
+				programsCreated++;
+			} catch {
+				// File might already exist (cache miss), skip
+			}
 		}
 	}
 

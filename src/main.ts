@@ -10,7 +10,12 @@ export default class MainPlugin extends Plugin {
 		await this.loadSettings();
 
 		// Bootstrap data folder structure and starter content
-		await bootstrapDataFolder(this.app, this.settings.basePath);
+		// Wrapped in try-catch to ensure plugin loads even if bootstrap fails
+		try {
+			await bootstrapDataFolder(this.app, this.settings.basePath);
+		} catch (error) {
+			console.error('[Fit] Bootstrap failed:', error);
+		}
 
 		// Register the workout view
 		this.registerView(
