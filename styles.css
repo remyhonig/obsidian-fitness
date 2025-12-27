@@ -645,13 +645,35 @@
 	margin-bottom: 24px;
 }
 
+.fit-section-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 12px;
+}
+
+.fit-section-title-area {
+	flex: 1;
+}
+
 .fit-section-title {
 	font-size: 16px;
 	font-weight: 600;
 	color: var(--text-muted);
-	margin: 0 0 12px 0;
+	margin: 0;
 	text-transform: uppercase;
-	letter-spacing: 0.5px;
+}
+
+.fit-section-link {
+	font-size: 13px;
+	color: var(--text-accent);
+	cursor: pointer;
+	white-space: nowrap;
+	padding-top: 2px;
+}
+
+.fit-section-link:hover {
+	text-decoration: underline;
 }
 
 /* ========== Lists ========== */

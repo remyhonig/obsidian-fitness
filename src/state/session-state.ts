@@ -21,6 +21,7 @@ export class SessionStateManager {
 	private restTimerInterval: number | null = null;
 	private listeners: Set<StateChangeListener> = new Set();
 	private sessionRepo: SessionRepository;
+	private persisted = false; // Track if session has been written to disk
 
 	constructor(
 		private app: App,
@@ -82,7 +83,7 @@ export class SessionStateManager {
 
 		this.currentExerciseIndex = 0;
 		this.restTimer = null;
-		this.saveImmediately();
+		this.persisted = false; // Don't save until first set is completed
 		this.notifyListeners();
 	}
 
@@ -103,7 +104,7 @@ export class SessionStateManager {
 
 		this.currentExerciseIndex = 0;
 		this.restTimer = null;
-		this.saveImmediately();
+		this.persisted = false; // Don't save until first set is completed
 		this.notifyListeners();
 	}
 
@@ -117,6 +118,7 @@ export class SessionStateManager {
 				this.session = session;
 				this.currentExerciseIndex = 0;
 				this.restTimer = null;
+				this.persisted = true; // Loaded from disk, so already persisted
 				this.notifyListeners();
 				return true;
 			}
@@ -255,7 +257,9 @@ export class SessionStateManager {
 		};
 
 		this.session.exercises.push(newExercise);
-		this.saveImmediately();
+		if (this.persisted) {
+			this.saveImmediately();
+		}
 		this.notifyListeners();
 	}
 
@@ -273,7 +277,9 @@ export class SessionStateManager {
 			this.currentExerciseIndex = Math.max(0, this.session.exercises.length - 1);
 		}
 
-		this.saveImmediately();
+		if (this.persisted) {
+			this.saveImmediately();
+		}
 		this.notifyListeners();
 	}
 
@@ -299,7 +305,9 @@ export class SessionStateManager {
 			this.currentExerciseIndex++;
 		}
 
-		this.saveImmediately();
+		if (this.persisted) {
+			this.saveImmediately();
+		}
 		this.notifyListeners();
 	}
 
@@ -330,6 +338,11 @@ export class SessionStateManager {
 
 		if (this.settings.autoStartRestTimer && !isExerciseComplete) {
 			this.startRestTimer(exercise.restSeconds, exerciseIndex);
+		}
+
+		// First completed set triggers persistence
+		if (!this.persisted) {
+			this.persisted = true;
 		}
 
 		// Persist immediately and wait for completion

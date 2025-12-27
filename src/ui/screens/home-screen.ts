@@ -1,6 +1,5 @@
 import { setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
-import { createButton } from '../components/button';
 import { createWorkoutCard, createSessionCard } from '../components/card';
 import { toFilename } from '../../data/file-utils';
 import type { Workout, Session } from '../../types';
@@ -117,12 +116,15 @@ export class HomeScreen implements Screen {
 
 		const section = parent.createDiv({ cls: 'fit-section fit-program-section' });
 
-		// Section header with program name
-		const header = section.createDiv({ cls: 'fit-program-header' });
-		header.createEl('h2', { text: program.name, cls: 'fit-section-title' });
+		// Section header with program name and view all link
+		const header = section.createDiv({ cls: 'fit-section-header' });
+		const titleArea = header.createDiv({ cls: 'fit-section-title-area' });
+		titleArea.createEl('h2', { text: program.name, cls: 'fit-section-title' });
 		if (program.description) {
-			header.createDiv({ cls: 'fit-program-description', text: program.description });
+			titleArea.createDiv({ cls: 'fit-program-description', text: program.description });
 		}
+		const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'view all' });
+		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
 
 		const grid = section.createDiv({ cls: 'fit-program-grid' });
 
@@ -163,13 +165,6 @@ export class HomeScreen implements Screen {
 			}
 		}
 
-		// "View all workouts" link for doing a different workout
-		const viewAll = section.createDiv({ cls: 'fit-view-all' });
-		createButton(viewAll, {
-			text: 'View all workouts',
-			variant: 'ghost',
-			onClick: () => this.ctx.view.navigateTo('workout-picker')
-		});
 	}
 
 	private async renderQuickStart(parent: HTMLElement): Promise<void> {
@@ -177,7 +172,14 @@ export class HomeScreen implements Screen {
 		if (workouts.length === 0) return;
 
 		const section = parent.createDiv({ cls: 'fit-section' });
-		section.createEl('h2', { text: 'Quick start', cls: 'fit-section-title' });
+
+		// Section header with view all link
+		const header = section.createDiv({ cls: 'fit-section-header' });
+		header.createEl('h2', { text: 'Quick start', cls: 'fit-section-title' });
+		if (workouts.length > 3) {
+			const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'view all' });
+			viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
+		}
 
 		const grid = section.createDiv({ cls: 'fit-workout-grid' });
 
@@ -191,20 +193,10 @@ export class HomeScreen implements Screen {
 				onClick: () => { void this.startFromWorkout(workout); }
 			});
 		}
-
-		// "View all" link if more workouts exist
-		if (workouts.length > 3) {
-			const viewAll = section.createDiv({ cls: 'fit-view-all' });
-			createButton(viewAll, {
-				text: 'View all workouts',
-				variant: 'ghost',
-				onClick: () => this.ctx.view.navigateTo('workout-picker')
-			});
-		}
 	}
 
 	private async renderRecentSessions(parent: HTMLElement): Promise<void> {
-		const sessions = await this.ctx.sessionRepo.getRecent(3);
+		const sessions = await this.ctx.sessionRepo.getRecent(5);
 		if (sessions.length === 0) return;
 
 		// Build workout lookup map to get actual names
@@ -212,7 +204,12 @@ export class HomeScreen implements Screen {
 		const workoutById = new Map(workouts.map(w => [w.id, w]));
 
 		const section = parent.createDiv({ cls: 'fit-section' });
-		section.createEl('h2', { text: 'Recent workouts', cls: 'fit-section-title' });
+
+		// Section header with view all link
+		const header = section.createDiv({ cls: 'fit-section-header' });
+		header.createEl('h2', { text: 'Recent workouts', cls: 'fit-section-title' });
+		const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'view all' });
+		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('history'));
 
 		const list = section.createDiv({ cls: 'fit-session-list' });
 
@@ -233,14 +230,6 @@ export class HomeScreen implements Screen {
 				onClick: () => this.ctx.view.navigateTo('session-detail', { sessionId: session.id })
 			});
 		}
-
-		// "View all" link
-		const viewAll = section.createDiv({ cls: 'fit-view-all' });
-		createButton(viewAll, {
-			text: 'View history',
-			variant: 'ghost',
-			onClick: () => this.ctx.view.navigateTo('history')
-		});
 	}
 
 	private async startFromWorkout(workout: Workout): Promise<void> {
