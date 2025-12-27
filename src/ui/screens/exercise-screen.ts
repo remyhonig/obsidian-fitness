@@ -187,22 +187,22 @@ export class ExerciseScreen implements Screen {
 		const allExercisesComplete = allStatuses.every(s => s.isComplete);
 
 		if (isExerciseComplete) {
-			// Show complete exercise / session button
+			// Show navigation button (next exercise or complete session)
 			if (allExercisesComplete) {
 				createPrimaryAction(actionArea, 'Complete session', () => {
 					void this.finishWorkout();
 				});
 			} else {
-				createPrimaryAction(actionArea, 'Complete exercise', () => {
+				createPrimaryAction(actionArea, 'Next exercise', () => {
 					this.ctx.view.navigateTo('session');
 				});
 			}
 
-			// Option to add extra set
+			// Skip RPE option
 			createButton(actionArea, {
-				text: 'Add extra set',
+				text: 'Skip RPE',
 				variant: 'ghost',
-				onClick: () => this.completeSet()
+				onClick: () => this.ctx.view.navigateTo('session')
 			});
 		} else {
 			// Normal complete set button

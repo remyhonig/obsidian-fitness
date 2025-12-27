@@ -14,7 +14,10 @@ const RPE_OPTIONS: RpeOption[] = [
 	{ value: 8.5, description: 'Could have done 1 more rep, maybe even 2' },
 	{ value: 8, description: 'Definitely could have done 2 more reps' },
 	{ value: 7.5, description: 'Could have done 2 more reps, maybe even 3' },
-	{ value: 7, description: 'Definitely could have done 3 more reps' }
+	{ value: 7, description: 'Definitely could have done 3 more reps' },
+	{ value: 6, description: 'Could have done 4 more reps' },
+	{ value: 5, description: 'Could have done 5+ more reps' },
+	{ value: 4, description: 'Light effort, warmup weight' }
 ];
 
 export interface RpeSelectorOptions {
