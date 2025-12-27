@@ -137,11 +137,13 @@ export class SessionDetailScreen implements Screen {
 	}
 
 	private async copySession(session: Session): Promise<void> {
-		const basePath = this.ctx.plugin.settings.basePath;
-		const path = `${basePath}/Sessions/${session.id}.md`;
+		const settings = this.ctx.plugin.settings;
+		const path = `${settings.basePath}/Sessions/${session.id}.md`;
 		const file = this.ctx.view.app.vault.getFileByPath(path);
 		if (file) {
-			const content = await this.ctx.view.app.vault.read(file);
+			const sessionContent = await this.ctx.view.app.vault.read(file);
+			const prompt = settings.aiCoachPrompt.trim();
+			const content = prompt ? `${prompt}\n\n---\n\n${sessionContent}` : sessionContent;
 			await navigator.clipboard.writeText(content);
 			new Notice('Copied to clipboard');
 		}

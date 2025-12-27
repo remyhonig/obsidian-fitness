@@ -14,6 +14,7 @@ export interface PluginSettings {
 	activeProgram?: string; // Program ID (e.g., "ppl-split")
 	programWorkoutIndex: number; // Current position in program (0-based)
 	bottomPadding: number; // Extra bottom padding in pixels (for mobile nav bars)
+	aiCoachPrompt: string; // Prompt prepended when copying session for AI
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -24,7 +25,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	weightIncrementsKg: [10, 2.5, 0.5, 0.25],
 	weightIncrementsLbs: [45, 10, 5, 2.5],
 	programWorkoutIndex: 0,
-	bottomPadding: 100
+	bottomPadding: 100,
+	aiCoachPrompt: 'You are a fitness coach. Analyze this workout session and provide feedback on performance, form suggestions, and recommendations for the next session.'
 };
 
 export class PluginSettingTab extends ObsidianPluginSettingTab {
@@ -170,6 +172,20 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 						this.plugin.settings.weightIncrementsLbs = increments;
 						await this.plugin.saveSettings();
 					}
+				}));
+
+		// AI Coach section
+		containerEl.createEl('h3', { text: 'AI Coach Prompt' });
+
+		new Setting(containerEl)
+			.setName('Prompt')
+			.setDesc('This prompt is prepended when copying a session for AI analysis.')
+			.addTextArea(text => text
+				.setPlaceholder('Enter your AI coach prompt...')
+				.setValue(this.plugin.settings.aiCoachPrompt)
+				.onChange(async (value) => {
+					this.plugin.settings.aiCoachPrompt = value;
+					await this.plugin.saveSettings();
 				}));
 
 		// Exercise database import
