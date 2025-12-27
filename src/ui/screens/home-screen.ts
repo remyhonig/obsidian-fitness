@@ -118,11 +118,7 @@ export class HomeScreen implements Screen {
 
 		// Section header with program name and view all link
 		const header = section.createDiv({ cls: 'fit-section-header' });
-		const titleArea = header.createDiv({ cls: 'fit-section-title-area' });
-		titleArea.createEl('h2', { text: program.name, cls: 'fit-section-title' });
-		if (program.description) {
-			titleArea.createDiv({ cls: 'fit-program-description', text: program.description });
-		}
+		header.createEl('h2', { text: program.name, cls: 'fit-section-title' });
 		const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'view all' });
 		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
 

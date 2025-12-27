@@ -838,6 +838,19 @@ export function parseSessionReviewBody(body: string): SessionReview | undefined 
 // ========== Program Body Utilities ==========
 
 /**
+ * Parses the ## Description section from program body
+ * Returns the content between ## Description and the next ## heading (or end of section)
+ */
+export function parseDescriptionSection(body: string): string | undefined {
+	// Match ## Description section, stopping at the next ## heading or ## Review
+	const descMatch = body.match(/## Description\s*([\s\S]*?)(?=## |$)/i);
+	if (!descMatch) return undefined;
+
+	const content = descMatch[1]?.trim();
+	return content || undefined;
+}
+
+/**
  * Parses program body to extract ordered list of workout IDs
  * Expects format:
  * ## Workouts

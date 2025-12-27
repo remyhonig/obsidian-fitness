@@ -8,7 +8,8 @@ import {
 	parseFrontmatter,
 	createFileContent,
 	parseProgramBody,
-	createProgramBody
+	createProgramBody,
+	parseDescriptionSection
 } from './file-utils';
 
 // Frontmatter only contains metadata, not workouts
@@ -175,10 +176,14 @@ export class ProgramRepository {
 			// Parse review questions from body
 			const questions = this.parseReviewSection(body);
 
+			// Body description takes precedence over frontmatter description
+			const bodyDescription = parseDescriptionSection(body);
+			const description = bodyDescription ?? frontmatter.description;
+
 			return {
 				id: getIdFromPath(file.path),
 				name: frontmatter.name,
-				description: frontmatter.description,
+				description,
 				workouts,
 				questions: questions.length > 0 ? questions : undefined
 			};

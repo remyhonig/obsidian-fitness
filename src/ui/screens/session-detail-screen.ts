@@ -145,22 +145,16 @@ export class SessionDetailScreen implements Screen {
 
 		const sessionContent = await this.ctx.view.app.vault.read(file);
 
-		// Build the full content with prompt and program description
+		// Build the full content with program description
 		const parts: string[] = [];
 
-		// 1. AI Coach prompt from settings
-		const prompt = settings.aiCoachPrompt.trim();
-		if (prompt) {
-			parts.push(prompt);
-		}
-
-		// 2. Program description if session belongs to a program
+		// 1. Program description if session belongs to a program
 		const program = await this.findProgramForSession(session);
 		if (program?.description) {
 			parts.push(`## Program: ${program.name}\n\n${program.description}`);
 		}
 
-		// 3. Session data
+		// 2. Session data
 		parts.push(sessionContent);
 
 		const content = parts.join('\n\n---\n\n');
