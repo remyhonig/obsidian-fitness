@@ -59,6 +59,7 @@ export interface SessionExercise {
 	targetRepsMax: number;
 	restSeconds: number;
 	sets: LoggedSet[];
+	rpe?: number; // Rate of Perceived Exertion (7-10)
 }
 
 // Session status

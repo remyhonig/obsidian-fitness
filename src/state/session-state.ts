@@ -363,6 +363,29 @@ export class SessionStateManager {
 		return exercise.sets[exercise.sets.length - 1] ?? null;
 	}
 
+	/**
+	 * Sets the RPE for an exercise
+	 */
+	async setExerciseRpe(exerciseIndex: number, rpe: number): Promise<void> {
+		if (!this.session) return;
+		const exercise = this.session.exercises[exerciseIndex];
+		if (!exercise) return;
+
+		exercise.rpe = rpe;
+
+		await this.saveAndWait();
+		this.notifyListeners();
+	}
+
+	/**
+	 * Gets the RPE for an exercise
+	 */
+	getExerciseRpe(exerciseIndex: number): number | undefined {
+		if (!this.session) return undefined;
+		const exercise = this.session.exercises[exerciseIndex];
+		return exercise?.rpe;
+	}
+
 	// ========== Rest Timer ==========
 
 	/**

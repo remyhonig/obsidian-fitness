@@ -5,6 +5,7 @@ import { createBackButton, createPrimaryAction, createButton } from '../componen
 import { formatWeight } from '../components/stepper';
 import { createHorizontalRepsSelector } from '../components/reps-grid';
 import { createMiniTimer } from '../components/timer';
+import { createRpeSelector } from '../components/rpe-selector';
 import { toFilename } from '../../data/file-utils';
 
 interface ExerciseStatus {
@@ -147,29 +148,41 @@ export class ExerciseScreen implements Screen {
 		const setsRow = topSection.createDiv({ cls: 'fit-sets-integrated' });
 		this.renderIntegratedSets(exercise, setsRow);
 
-		// Middle content area (scrollable) - just exercise details now
+		// Check if exercise is complete (for conditional rendering)
+		const isExerciseComplete = completedSets >= exercise.targetSets;
+
+		// Middle content area (scrollable)
 		const middleContent = this.containerEl.createDiv({ cls: 'fit-middle-content' });
 
-		// Exercise details (notes, muscle groups, equipment)
-		this.renderExerciseDetails(exercise, middleContent);
+		if (isExerciseComplete) {
+			// Show RPE selector when exercise is complete
+			const currentRpe = this.ctx.sessionState.getExerciseRpe(this.exerciseIndex);
+			createRpeSelector(middleContent, {
+				selectedValue: currentRpe,
+				onSelect: (value) => {
+					void this.ctx.sessionState.setExerciseRpe(this.exerciseIndex, value);
+				}
+			});
+		} else {
+			// Show exercise details when still logging sets
+			this.renderExerciseDetails(exercise, middleContent);
 
-		// Bottom input area (fixed above action button)
-		const bottomInputs = this.containerEl.createDiv({ cls: 'fit-bottom-inputs' });
+			// Bottom input area (fixed above action button)
+			const bottomInputs = this.containerEl.createDiv({ cls: 'fit-bottom-inputs' });
 
-		// Weight card - full width (no title, just controls)
-		const weightCard = bottomInputs.createDiv({ cls: 'fit-input-card-wide' });
-		this.renderWeightInput(weightCard);
+			// Weight card - full width (no title, just controls)
+			const weightCard = bottomInputs.createDiv({ cls: 'fit-input-card-wide' });
+			this.renderWeightInput(weightCard);
 
-		// Reps card - full width (no title, just controls)
-		const repsCard = bottomInputs.createDiv({ cls: 'fit-input-card-wide' });
-		createHorizontalRepsSelector(repsCard, this.currentReps, (value) => {
-			this.currentReps = value;
-		});
+			// Reps card - full width (no title, just controls)
+			const repsCard = bottomInputs.createDiv({ cls: 'fit-input-card-wide' });
+			createHorizontalRepsSelector(repsCard, this.currentReps, (value) => {
+				this.currentReps = value;
+			});
+		}
 
 		// Action area
 		const actionArea = this.containerEl.createDiv({ cls: 'fit-bottom-actions' });
-
-		const isExerciseComplete = completedSets >= exercise.targetSets;
 		const allStatuses = this.getAllExerciseStatuses();
 		const allExercisesComplete = allStatuses.every(s => s.isComplete);
 
