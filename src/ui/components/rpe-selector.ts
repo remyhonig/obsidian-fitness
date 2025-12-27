@@ -8,16 +8,16 @@ export interface RpeOption {
 }
 
 const RPE_OPTIONS: RpeOption[] = [
-	{ value: 10, description: 'Max effort. Could not have done any more reps' },
-	{ value: 9.5, description: 'Maybe could have done 1 more rep' },
-	{ value: 9, description: 'Definitely could have done 1 more rep' },
-	{ value: 8.5, description: 'Could have done 1 more rep, maybe even 2' },
-	{ value: 8, description: 'Definitely could have done 2 more reps' },
-	{ value: 7.5, description: 'Could have done 2 more reps, maybe even 3' },
-	{ value: 7, description: 'Definitely could have done 3 more reps' },
-	{ value: 6, description: 'Could have done 4 more reps' },
-	{ value: 5, description: 'Could have done 5+ more reps' },
-	{ value: 4, description: 'Light effort, warmup weight' }
+	{ value: 10, description: 'Failure. Couldn\'t complete another rep with good form' },
+	{ value: 9.5, description: 'Near failure. Maybe 1 more rep possible' },
+	{ value: 9, description: '1 rep in reserve. Ideal for hypertrophy' },
+	{ value: 8.5, description: '1-2 reps in reserve. Great muscle stimulus' },
+	{ value: 8, description: '2 reps in reserve. Good training intensity' },
+	{ value: 7.5, description: '2-3 reps in reserve. Moderate effort' },
+	{ value: 7, description: '3 reps in reserve. Sustainable volume work' },
+	{ value: 6, description: '4 reps in reserve. Light working set' },
+	{ value: 5, description: '5+ reps in reserve. Technique practice' },
+	{ value: 4, description: 'Warmup weight. Preparing muscles and joints' }
 ];
 
 export interface RpeSelectorOptions {

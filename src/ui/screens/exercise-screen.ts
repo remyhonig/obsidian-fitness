@@ -29,6 +29,7 @@ export class ExerciseScreen implements Screen {
 	private timerEl: HTMLElement | null = null;
 	private durationIntervalId: number | null = null;
 	private historyLoaded = false;
+	private isCompletingSet = false;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -156,11 +157,14 @@ export class ExerciseScreen implements Screen {
 
 		if (isExerciseComplete) {
 			// Show RPE selector when exercise is complete
-			const currentRpe = this.ctx.sessionState.getExerciseRpe(this.exerciseIndex);
+			// Get RPE from the last set
+			const lastSetIndex = exercise.sets.length - 1;
+			const lastSet = exercise.sets[lastSetIndex];
 			createRpeSelector(middleContent, {
-				selectedValue: currentRpe,
+				selectedValue: lastSet?.rpe,
 				onSelect: (value) => {
-					void this.ctx.sessionState.setExerciseRpe(this.exerciseIndex, value);
+					// Save RPE to the last set
+					void this.ctx.sessionState.editSet(this.exerciseIndex, lastSetIndex, { rpe: value });
 				}
 			});
 		} else {
@@ -594,19 +598,28 @@ export class ExerciseScreen implements Screen {
 	}
 
 	private async completeSet(): Promise<void> {
+		// Prevent multiple rapid clicks
+		if (this.isCompletingSet) return;
+
 		if (this.currentWeight <= 0 || this.currentReps <= 0) {
-			// Could show a notice here
 			return;
 		}
 
-		// Log the set and wait for persistence
-		await this.ctx.sessionState.logSet(
-			this.exerciseIndex,
-			this.currentWeight,
-			this.currentReps
-		);
+		this.isCompletingSet = true;
 
-		// Re-render will happen via subscription, showing RPE selector if exercise is now complete
+		try {
+			// Log the set and wait for persistence
+			await this.ctx.sessionState.logSet(
+				this.exerciseIndex,
+				this.currentWeight,
+				this.currentReps
+			);
+
+			// Explicitly re-render (subscription handler may be blocked by rest timer)
+			this.render();
+		} finally {
+			this.isCompletingSet = false;
+		}
 	}
 
 	private async editSet(setIndex: number): Promise<void> {

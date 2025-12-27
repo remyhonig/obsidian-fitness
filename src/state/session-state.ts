@@ -40,6 +40,23 @@ export class SessionStateManager {
 	// ========== Session Lifecycle ==========
 
 	/**
+	 * Generates a session ID from date, time, and optional workout name
+	 */
+	private generateSessionId(now: Date, workoutName?: string): string {
+		const dateStr = now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10);
+		const hours = now.getHours().toString().padStart(2, '0');
+		const minutes = now.getMinutes().toString().padStart(2, '0');
+		const seconds = now.getSeconds().toString().padStart(2, '0');
+		const timeStr = `${hours}-${minutes}-${seconds}`;
+
+		if (workoutName) {
+			const workoutSlug = workoutName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+			return `${dateStr}-${timeStr}-${workoutSlug}`;
+		}
+		return `${dateStr}-${timeStr}`;
+	}
+
+	/**
 	 * Starts a new session from a workout
 	 */
 	startFromWorkout(workout: Workout): void {
@@ -55,7 +72,7 @@ export class SessionStateManager {
 
 		const dateStr = now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10);
 		this.session = {
-			id: 'active',
+			id: this.generateSessionId(now, workout.name),
 			date: dateStr,
 			startTime: now.toISOString(),
 			workout: workout.name,
@@ -77,7 +94,7 @@ export class SessionStateManager {
 		const dateStr = now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10);
 
 		this.session = {
-			id: 'active',
+			id: this.generateSessionId(now),
 			date: dateStr,
 			startTime: now.toISOString(),
 			status: 'active',
@@ -151,11 +168,14 @@ export class SessionStateManager {
 	async discardSession(): Promise<void> {
 		if (!this.session) return;
 
+		// Store session ID before clearing
+		const sessionId = this.session.id;
+
 		// Clear pending save flag
 		this.pendingSave = false;
 
 		// Delete active session file
-		await this.sessionRepo.deleteActive();
+		await this.sessionRepo.deleteActive(sessionId);
 
 		// Clear state
 		this.session = null;

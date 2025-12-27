@@ -62,7 +62,7 @@ export class SessionRepository {
 	}
 
 	/**
-	 * Gets all completed sessions (excludes active session)
+	 * Gets all completed sessions (excludes active/paused sessions)
 	 */
 	async list(): Promise<Session[]> {
 		await this.ensureFolder();
@@ -70,11 +70,12 @@ export class SessionRepository {
 		const sessions: Session[] = [];
 
 		for (const file of files) {
-			// Skip active session file
+			// Skip legacy active session file
 			if (file.name === ACTIVE_SESSION_FILENAME) continue;
 
 			const session = await this.parseSessionFile(file);
-			if (session) {
+			// Only include completed sessions (exclude active/paused)
+			if (session && session.status === 'completed') {
 				sessions.push(session);
 			}
 		}
@@ -98,34 +99,41 @@ export class SessionRepository {
 
 	/**
 	 * Gets the active session (if any)
+	 * Scans all session files for one with status 'active' or 'paused'
 	 */
 	async getActive(): Promise<Session | null> {
 		await this.ensureFolder();
-		const path = `${this.basePath}/${ACTIVE_SESSION_FILENAME}`;
-		const file = this.app.vault.getFileByPath(path);
-		if (!file) {
-			return null;
+
+		// First check legacy .active-session.md for backward compatibility
+		const legacyPath = `${this.basePath}/${ACTIVE_SESSION_FILENAME}`;
+		const legacyFile = this.app.vault.getFileByPath(legacyPath);
+		if (legacyFile) {
+			const session = await this.parseSessionFile(legacyFile);
+			if (session && (session.status === 'active' || session.status === 'paused')) {
+				return session;
+			}
 		}
 
-		const session = await this.parseSessionFile(file);
-		if (!session) {
-			return null;
-		}
-
-		// Only return if status is active or paused
-		if (session.status === 'active' || session.status === 'paused') {
-			return session;
+		// Scan all session files for active status
+		const files = getFilesInFolder(this.app, this.basePath);
+		for (const file of files) {
+			if (file.name === ACTIVE_SESSION_FILENAME) continue;
+			const session = await this.parseSessionFile(file);
+			if (session && (session.status === 'active' || session.status === 'paused')) {
+				return session;
+			}
 		}
 
 		return null;
 	}
 
 	/**
-	 * Saves the active session
+	 * Saves the active session to a properly named file
 	 */
 	async saveActive(session: Session): Promise<void> {
 		await this.ensureFolder();
-		const path = `${this.basePath}/${ACTIVE_SESSION_FILENAME}`;
+		// Use session ID for filename (e.g., "2025-12-27-10-30-00-push-day.md")
+		const path = `${this.basePath}/${session.id}.md`;
 
 		// Store workout as internal link to the workout file
 		const workoutLink = session.workout
@@ -208,7 +216,8 @@ export class SessionRepository {
 	}
 
 	/**
-	 * Finalizes the active session (marks as completed and renames)
+	 * Finalizes the active session (marks as completed)
+	 * Since session is already saved to a proper file, just update the status
 	 */
 	async finalizeActive(session: Session): Promise<Session> {
 		await this.ensureFolder();
@@ -220,97 +229,37 @@ export class SessionRepository {
 			endTime: new Date().toISOString()
 		};
 
-		// Generate a unique filename based on date, time, and workout
-		const dateStr = finalSession.date;
-		const timeStr = formatTimeHHMMSS(finalSession.startTime).replace(/:/g, '-'); // HH-MM-SS
-		const workoutSlug = finalSession.workout
-			? `-${toFilename(finalSession.workout)}`
-			: '';
-		const baseId = `${dateStr}-${timeStr}${workoutSlug}`;
+		// Save to the same file (using saveActive which uses session.id)
+		await this.saveActive(finalSession);
 
-		// Store workout as internal link to the workout file
-		const workoutLink = finalSession.workout
-			? `[[Workouts/${toFilename(finalSession.workout)}]]`
-			: undefined;
-
-		// Frontmatter: metadata only
-		const frontmatter: Record<string, unknown> = {
-			date: finalSession.date,
-			startTime: finalSession.startTime,
-			startTimeFormatted: formatTimeHHMMSS(finalSession.startTime),
-			endTime: finalSession.endTime,
-			endTimeFormatted: finalSession.endTime ? formatTimeHHMMSS(finalSession.endTime) : undefined,
-			workout: workoutLink,
-			status: finalSession.status,
-			notes: finalSession.notes
-		};
-
-		// Body: exercise blocks with set tables
-		const body = createSessionBody(
-			finalSession.exercises.map(e => ({
-				exercise: e.exercise,
-				targetSets: e.targetSets,
-				targetRepsMin: e.targetRepsMin,
-				targetRepsMax: e.targetRepsMax,
-				restSeconds: e.restSeconds,
-				sets: e.sets.map((s, idx) => ({
-					setNumber: idx + 1,
-					weight: s.weight,
-					reps: s.reps,
-					rpe: s.rpe,
-					timestamp: s.timestamp,
-					completed: s.completed
-				}))
-			}))
-		);
-
-		const content = createFileContent(frontmatter, body);
-
-		// Try to create file with unique name, handling race conditions
-		let id = baseId;
-		let counter = 1;
-		const maxAttempts = 10;
-
-		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const filePath = `${this.basePath}/${id}.md`;
-
-			// Use adapter.exists() for reliable check
-			const exists = await this.app.vault.adapter.exists(filePath);
-			if (exists) {
-				id = `${baseId}-${counter}`;
-				counter++;
-				continue;
-			}
-
-			try {
-				await this.app.vault.create(filePath, content);
-				finalSession.id = id;
-				break;
-			} catch (error) {
-				// If file already exists (race condition), try next ID
-				if (error instanceof Error && error.message.includes('already exists')) {
-					id = `${baseId}-${counter}`;
-					counter++;
-					continue;
-				}
-				throw error;
-			}
+		// Clean up legacy active session file if it exists
+		const legacyPath = `${this.basePath}/${ACTIVE_SESSION_FILENAME}`;
+		const legacyFile = this.app.vault.getFileByPath(legacyPath);
+		if (legacyFile) {
+			await this.app.fileManager.trashFile(legacyFile);
 		}
-
-		// Delete active session file
-		await this.deleteActive();
 
 		return finalSession;
 	}
 
 	/**
-	 * Discards the active session
+	 * Discards the active session by ID
 	 */
-	async deleteActive(): Promise<void> {
-		const path = `${this.basePath}/${ACTIVE_SESSION_FILENAME}`;
-		const file = this.app.vault.getFileByPath(path);
-		if (file) {
-			await this.app.fileManager.trashFile(file);
+	async deleteActive(sessionId?: string): Promise<void> {
+		// Delete the session file if ID provided
+		if (sessionId) {
+			const path = `${this.basePath}/${sessionId}.md`;
+			const file = this.app.vault.getFileByPath(path);
+			if (file) {
+				await this.app.fileManager.trashFile(file);
+			}
+		}
+
+		// Also clean up legacy active session file if it exists
+		const legacyPath = `${this.basePath}/${ACTIVE_SESSION_FILENAME}`;
+		const legacyFile = this.app.vault.getFileByPath(legacyPath);
+		if (legacyFile) {
+			await this.app.fileManager.trashFile(legacyFile);
 		}
 	}
 
