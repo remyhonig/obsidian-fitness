@@ -686,6 +686,68 @@ function formatTimeFromISO(isoString: string): string {
 	}
 }
 
+// ========== Previous Session Body Utilities ==========
+
+/**
+ * Creates previous exercises body under # Previous heading
+ * Shows exercises from the previous session of the same workout for AI comparison
+ */
+export function createPreviousExercisesBody(
+	exercises: SessionExerciseBlock[],
+	sessionDate: string
+): string {
+	const lines: string[] = ['# Previous', ''];
+	lines.push(`Date: ${sessionDate}`);
+	lines.push('');
+
+	if (exercises.length === 0) {
+		return lines.join('\n');
+	}
+
+	const blocks: string[] = [];
+
+	for (const exercise of exercises) {
+		const exerciseLines: string[] = [];
+
+		// Exercise header with wikilink
+		const exerciseSlug = toFilename(exercise.exercise);
+		exerciseLines.push(`## [[${exerciseSlug}]]`);
+
+		// Target line
+		const repsDisplay = exercise.targetRepsMin === exercise.targetRepsMax
+			? String(exercise.targetRepsMin)
+			: `${exercise.targetRepsMin}-${exercise.targetRepsMax}`;
+		exerciseLines.push(`Target: ${exercise.targetSets} × ${repsDisplay} | Rest: ${exercise.restSeconds}s`);
+		exerciseLines.push('');
+
+		// Sets table
+		const columns = [
+			{ key: 'num', header: '#' },
+			{ key: 'kg', header: 'kg' },
+			{ key: 'reps', header: 'reps' },
+			{ key: 'rpe', header: 'rpe' },
+			{ key: 'time', header: 'time' }
+		];
+
+		const completedSets = exercise.sets.filter(s => s.completed);
+		const setRows = completedSets.map((set, idx) => ({
+			num: String(set.setNumber || idx + 1),
+			kg: String(set.weight),
+			reps: String(set.reps),
+			rpe: set.rpe !== undefined ? String(set.rpe) : '-',
+			time: formatTimeFromISO(set.timestamp)
+		}));
+
+		if (setRows.length > 0) {
+			exerciseLines.push(createMarkdownTable(columns, setRows));
+		}
+
+		blocks.push(exerciseLines.join('\n'));
+	}
+
+	return lines.join('\n') + blocks.join('\n\n') + '\n';
+}
+
 // ========== Session Review Body Utilities ==========
 
 /**

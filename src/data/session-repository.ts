@@ -10,6 +10,7 @@ import {
 	createSessionBody,
 	createSessionReviewBody,
 	parseSessionReviewBody,
+	createPreviousExercisesBody,
 	toFilename,
 	extractWikiLinkName
 } from './file-utils';
@@ -173,6 +174,31 @@ export class SessionRepository {
 			}))
 		);
 
+		// Add previous session section if available (for AI comparison)
+		if (session.workout) {
+			const previousSession = await this.getPreviousSession(session.workout, session.id);
+			if (previousSession) {
+				body += '\n' + createPreviousExercisesBody(
+					previousSession.exercises.map(e => ({
+						exercise: e.exercise,
+						targetSets: e.targetSets,
+						targetRepsMin: e.targetRepsMin,
+						targetRepsMax: e.targetRepsMax,
+						restSeconds: e.restSeconds,
+						sets: e.sets.map((s, idx) => ({
+							setNumber: idx + 1,
+							weight: s.weight,
+							reps: s.reps,
+							rpe: s.rpe,
+							timestamp: s.timestamp,
+							completed: s.completed
+						}))
+					})),
+					previousSession.date
+				);
+			}
+		}
+
 		// Add review section if present
 		if (session.review) {
 			body += '\n' + createSessionReviewBody(session.review);
@@ -320,6 +346,21 @@ export class SessionRepository {
 		return sessions.filter(s =>
 			s.workout?.toLowerCase() === workoutName.toLowerCase()
 		);
+	}
+
+	/**
+	 * Gets the previous completed session for the same workout (excluding current)
+	 */
+	async getPreviousSession(workoutName: string, currentSessionId: string): Promise<Session | null> {
+		if (!workoutName) return null;
+		const sessions = await this.getByWorkout(workoutName);
+		// Sessions are sorted newest first, find first one that isn't current
+		for (const session of sessions) {
+			if (session.id !== currentSessionId && session.status === 'completed') {
+				return session;
+			}
+		}
+		return null;
 	}
 
 	/**
