@@ -1,8 +1,9 @@
 import { Notice, setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
-import type { ScreenParams, Session } from '../../types';
+import type { ScreenParams, Session, Program } from '../../types';
 import { createBackButton } from '../components/button';
 import { formatDuration } from '../components/timer';
+import { toFilename } from '../../data/file-utils';
 
 /**
  * Session detail screen - shows full details of a completed session
@@ -140,13 +141,49 @@ export class SessionDetailScreen implements Screen {
 		const settings = this.ctx.plugin.settings;
 		const path = `${settings.basePath}/Sessions/${session.id}.md`;
 		const file = this.ctx.view.app.vault.getFileByPath(path);
-		if (file) {
-			const sessionContent = await this.ctx.view.app.vault.read(file);
-			const prompt = settings.aiCoachPrompt.trim();
-			const content = prompt ? `${prompt}\n\n---\n\n${sessionContent}` : sessionContent;
-			await navigator.clipboard.writeText(content);
-			new Notice('Copied to clipboard');
+		if (!file) return;
+
+		const sessionContent = await this.ctx.view.app.vault.read(file);
+
+		// Build the full content with prompt and program description
+		const parts: string[] = [];
+
+		// 1. AI Coach prompt from settings
+		const prompt = settings.aiCoachPrompt.trim();
+		if (prompt) {
+			parts.push(prompt);
 		}
+
+		// 2. Program description if session belongs to a program
+		const program = await this.findProgramForSession(session);
+		if (program?.description) {
+			parts.push(`## Program: ${program.name}\n\n${program.description}`);
+		}
+
+		// 3. Session data
+		parts.push(sessionContent);
+
+		const content = parts.join('\n\n---\n\n');
+		await navigator.clipboard.writeText(content);
+		new Notice('Copied to clipboard');
+	}
+
+	/**
+	 * Finds the program that contains the workout used in this session
+	 */
+	private async findProgramForSession(session: Session): Promise<Program | null> {
+		if (!session.workout) return null;
+
+		const workoutId = toFilename(session.workout);
+		const programs = await this.ctx.programRepo.list();
+
+		for (const program of programs) {
+			if (program.workouts.includes(workoutId)) {
+				return program;
+			}
+		}
+
+		return null;
 	}
 
 	destroy(): void {
