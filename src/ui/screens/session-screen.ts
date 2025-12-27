@@ -1,6 +1,6 @@
 import { setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
-import type { Session, Exercise, WorkoutExercise } from '../../types';
+import type { Session, Exercise } from '../../types';
 import { createBackButton, createButton, createPrimaryAction } from '../components/button';
 import { createExerciseCard } from '../components/card';
 import { createExerciseAutocomplete } from '../components/autocomplete';
@@ -54,6 +54,11 @@ export class SessionScreen implements Screen {
 			});
 		}
 
+		// Show coach feedback notice from previous session if available
+		if (session.workout) {
+			void this.renderFeedbackNotice(session);
+		}
+
 		// Exercise list
 		const exerciseList = this.containerEl.createDiv({ cls: 'fit-exercise-list' });
 
@@ -90,6 +95,38 @@ export class SessionScreen implements Screen {
 			});
 		}
 
+	}
+
+	private async renderFeedbackNotice(currentSession: Session): Promise<void> {
+		if (!currentSession.workout) return;
+
+		// Get previous session for this workout to check for feedback
+		const previousSession = await this.ctx.sessionRepo.getPreviousSession(
+			currentSession.workout,
+			currentSession.id
+		);
+
+		if (!previousSession?.coachFeedback) return;
+
+		// Create feedback notice (insert after header)
+		const header = this.containerEl.querySelector('.fit-header');
+		if (!header) return;
+
+		// Create a temporary container to use Obsidian's createDiv
+		const tempContainer = this.containerEl.createDiv({ cls: 'fit-feedback-notice' });
+		header.insertAdjacentElement('afterend', tempContainer);
+
+		const closeBtn = tempContainer.createEl('button', {
+			cls: 'fit-feedback-notice-close',
+			attr: { 'aria-label': 'Dismiss feedback' }
+		});
+		setIcon(closeBtn, 'x');
+		closeBtn.addEventListener('click', () => {
+			tempContainer.remove();
+		});
+
+		tempContainer.createDiv({ cls: 'fit-feedback-notice-title', text: 'Coach Feedback' });
+		tempContainer.createDiv({ cls: 'fit-feedback-notice-content', text: previousSession.coachFeedback });
 	}
 
 	private async renderExerciseCards(session: Session, exerciseList: HTMLElement): Promise<void> {

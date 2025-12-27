@@ -220,56 +220,21 @@ export function createWorkoutCard(parent: HTMLElement, options: WorkoutCardOptio
 export interface SessionCardOptions {
 	date: string;
 	workoutName?: string;
-	duration?: string;
-	exercises: SessionExercise[];
-	unit: string;
 	onClick: () => void;
-	onCopy?: () => void;
 }
 
 export function createSessionCard(parent: HTMLElement, options: SessionCardOptions): HTMLElement {
 	const card = parent.createDiv({ cls: 'fit-session-card' });
 
-	// Header: Workout name on left, date + duration + copy on right
-	const header = card.createDiv({ cls: 'fit-session-card-header' });
-	header.createSpan({ cls: 'fit-session-card-workout', text: options.workoutName ?? 'Workout' });
+	// Icon on the left
+	const iconEl = card.createDiv({ cls: 'fit-session-card-icon' });
+	setIcon(iconEl, 'clipboard-list');
 
-	const headerRight = header.createDiv({ cls: 'fit-session-card-header-right' });
-	headerRight.createSpan({ cls: 'fit-session-card-date', text: formatDate(options.date) });
-	if (options.duration) {
-		headerRight.createSpan({ cls: 'fit-session-card-duration', text: options.duration });
-	}
+	// Workout name in the middle
+	card.createDiv({ cls: 'fit-session-card-workout', text: options.workoutName ?? 'Workout' });
 
-	// Copy button
-	if (options.onCopy) {
-		const copyBtn = headerRight.createEl('button', {
-			cls: 'fit-session-card-copy',
-			attr: { 'aria-label': 'Copy' }
-		});
-		setIcon(copyBtn, 'copy');
-		copyBtn.addEventListener('click', (e) => {
-			e.stopPropagation();
-			options.onCopy?.();
-		});
-	}
-
-	// Sets as chips (exercise name + chips inline)
-	const setsContainer = card.createDiv({ cls: 'fit-session-card-sets' });
-
-	for (const exercise of options.exercises) {
-		const completedSets = exercise.sets.filter(s => s.completed);
-		if (completedSets.length === 0) continue;
-
-		const exerciseRow = setsContainer.createDiv({ cls: 'fit-session-card-exercise' });
-		exerciseRow.createSpan({ cls: 'fit-session-card-exercise-name', text: exercise.exercise });
-
-		for (const set of completedSets) {
-			exerciseRow.createSpan({
-				cls: 'fit-set-chip fit-set-chip-history',
-				text: `${set.reps}×${formatWeight(set.weight)}${options.unit}`
-			});
-		}
-	}
+	// Date on the right
+	card.createDiv({ cls: 'fit-session-card-date', text: formatDate(options.date) });
 
 	card.addEventListener('click', options.onClick);
 

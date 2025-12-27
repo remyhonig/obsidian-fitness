@@ -17,6 +17,8 @@ import { HistoryScreen } from '../ui/screens/history-screen';
 import { WorkoutEditorScreen } from '../ui/screens/workout-editor';
 import { ExerciseLibraryScreen } from '../ui/screens/exercise-library';
 import { QuestionnaireScreen } from '../ui/screens/questionnaire-screen';
+import { FeedbackScreen } from '../ui/screens/feedback-screen';
+import { SessionDetailScreen } from '../ui/screens/session-detail-screen';
 
 export const VIEW_TYPE_FIT = 'obsidian-fitness-view';
 
@@ -104,14 +106,10 @@ export class FitView extends ItemView {
 		// Register vault event listeners for file changes
 		this.registerVaultEvents();
 
-		// Try to restore active session
-		const hasActiveSession = await this.sessionState.loadFromDisk();
+		// Try to restore active session (but don't auto-navigate, let user choose)
+		await this.sessionState.loadFromDisk();
 
-		if (hasActiveSession) {
-			this.navigateTo('session');
-		} else {
-			this.navigateTo('home');
-		}
+		this.navigateTo('home');
 	}
 
 	async onClose(): Promise<void> {
@@ -279,6 +277,12 @@ export class FitView extends ItemView {
 			case 'questionnaire':
 				this.currentScreen = new QuestionnaireScreen(container, ctx, params);
 				break;
+			case 'feedback':
+				this.currentScreen = new FeedbackScreen(container, ctx, params);
+				break;
+			case 'session-detail':
+				this.currentScreen = new SessionDetailScreen(container, ctx, params);
+				break;
 			default:
 				// Fallback to home
 				this.currentScreen = new HomeScreen(container, ctx);
@@ -311,6 +315,8 @@ export class FitView extends ItemView {
 			case 'exercise-library':
 			case 'finish':
 			case 'questionnaire':
+			case 'feedback':
+			case 'session-detail':
 				this.navigateTo('home');
 				break;
 			case 'workout-editor':

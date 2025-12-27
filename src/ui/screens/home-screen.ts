@@ -1,10 +1,9 @@
-import { setIcon, Notice } from 'obsidian';
+import { setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import { createButton } from '../components/button';
 import { createWorkoutCard, createSessionCard } from '../components/card';
-import { formatDuration } from '../components/timer';
 import { toFilename } from '../../data/file-utils';
-import type { Workout, Program, Session } from '../../types';
+import type { Workout, Session } from '../../types';
 
 /**
  * Home screen - entry point for the workout tracker
@@ -25,18 +24,6 @@ export class HomeScreen implements Screen {
 
 		// Main content
 		const content = this.containerEl.createDiv({ cls: 'fit-content' });
-
-		// Check for active session with at least one completed set
-		if (this.ctx.sessionState.hasActiveSession()) {
-			const session = this.ctx.sessionState.getSession();
-			const hasCompletedSets = session?.exercises.some(ex =>
-				ex.sets.some(s => s.completed)
-			) ?? false;
-
-			if (hasCompletedSets) {
-				this.renderActiveSessionCard(content);
-			}
-		}
 
 		// Render sections in order (must await to maintain order)
 		void this.renderSectionsInOrder(content);
@@ -59,62 +46,60 @@ export class HomeScreen implements Screen {
 		const settings = this.ctx.plugin.settings;
 		const hasActiveProgram = settings.activeProgram != null;
 
+		// Check for active session to resume
+		const hasActiveSession = this.ctx.sessionState.hasActiveSession();
+		const activeSession = this.ctx.sessionState.getSession();
+
+		// Show resume card if there's an active session
+		if (hasActiveSession && activeSession) {
+			this.renderResumeCard(parent, activeSession);
+		}
+
 		if (hasActiveProgram) {
 			// Show program section with view all workouts link
-			await this.renderActiveProgram(parent);
+			await this.renderActiveProgram(parent, hasActiveSession);
 		} else {
 			// Show quick start when no program is active
 			await this.renderQuickStart(parent);
 		}
 	}
 
-	private renderActiveSessionCard(parent: HTMLElement): void {
-		const session = this.ctx.sessionState.getSession();
-		if (!session) return;
+	private renderResumeCard(parent: HTMLElement, session: Session): void {
+		const section = parent.createDiv({ cls: 'fit-section' });
+		const grid = section.createDiv({ cls: 'fit-program-grid' });
 
-		const card = parent.createDiv({ cls: 'fit-active-session-card' });
-
-		// Header with badge and delete button
-		const header = card.createDiv({ cls: 'fit-active-session-header' });
-		header.createDiv({ cls: 'fit-active-session-badge', text: 'In progress' });
-
-		const deleteBtn = header.createEl('button', {
-			cls: 'fit-active-session-delete',
-			attr: { 'aria-label': 'Discard workout' }
-		});
-		setIcon(deleteBtn, 'trash-2');
-		deleteBtn.addEventListener('click', (e) => {
-			e.stopPropagation();
-			void this.discardSession();
+		const resumeCard = grid.createDiv({
+			cls: 'fit-program-workout-card fit-program-workout-current'
 		});
 
-		const info = card.createDiv({ cls: 'fit-active-session-info' });
-		if (session.workout) {
-			info.createDiv({ cls: 'fit-active-session-workout', text: session.workout });
-		}
+		// Play icon
+		const playIcon = resumeCard.createDiv({ cls: 'fit-program-workout-play' });
+		setIcon(playIcon, 'play');
 
-		const completedSets = session.exercises.reduce(
-			(sum, ex) => sum + ex.sets.filter(s => s.completed).length,
-			0
-		);
-		const totalSets = session.exercises.reduce((sum, ex) => sum + ex.targetSets, 0);
-
-		info.createDiv({
-			cls: 'fit-active-session-progress',
-			text: `${completedSets}/${totalSets} sets completed`
+		// Workout name
+		resumeCard.createDiv({
+			cls: 'fit-program-workout-name',
+			text: session.workout ?? 'Workout'
 		});
 
-		card.addEventListener('click', () => {
+		// Start time on the right (hh:mm, 24h format)
+		const startDate = new Date(session.startTime);
+		const timeStr = startDate.toLocaleTimeString(undefined, {
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false
+		});
+		resumeCard.createDiv({
+			cls: 'fit-program-workout-time',
+			text: timeStr
+		});
+
+		resumeCard.addEventListener('click', () => {
 			this.ctx.view.navigateTo('session');
 		});
 	}
 
-	private async discardSession(): Promise<void> {
-		await this.ctx.sessionState.discardSession();
-		this.render();
-	}
-
-	private async renderActiveProgram(parent: HTMLElement): Promise<void> {
+	private async renderActiveProgram(parent: HTMLElement, hasResumeCard: boolean): Promise<void> {
 		const settings = this.ctx.plugin.settings;
 		if (!settings.activeProgram) return;
 
@@ -139,8 +124,9 @@ export class HomeScreen implements Screen {
 			header.createDiv({ cls: 'fit-program-description', text: program.description });
 		}
 
-		// Show next 4 workouts
 		const grid = section.createDiv({ cls: 'fit-program-grid' });
+
+		// Show next workouts (not accented if there's a resume card above)
 		const currentIndex = settings.programWorkoutIndex % program.workouts.length;
 
 		for (let i = 0; i < 4 && i < program.workouts.length; i++) {
@@ -149,17 +135,18 @@ export class HomeScreen implements Screen {
 			if (!workoutId) continue;
 
 			const workout = workoutMap.get(workoutId);
-			const isCurrent = i === 0;
+			// Only accent first card if no resume card
+			const isAccented = i === 0 && !hasResumeCard;
 
 			const card = grid.createDiv({
-				cls: `fit-program-workout-card ${isCurrent ? 'fit-program-workout-current' : ''}`
+				cls: `fit-program-workout-card ${isAccented ? 'fit-program-workout-current' : ''}`
 			});
 
-			// Position indicator
-			card.createDiv({
-				cls: 'fit-program-workout-position',
-				text: isCurrent ? 'Next' : `+${i}`
+			// Play icon indicator
+			const playIcon = card.createDiv({
+				cls: 'fit-program-workout-play'
 			});
+			setIcon(playIcon, 'play');
 
 			// Workout info
 			const info = card.createDiv({ cls: 'fit-program-workout-info' });
@@ -167,12 +154,6 @@ export class HomeScreen implements Screen {
 				cls: 'fit-program-workout-name',
 				text: workout?.name ?? workoutId
 			});
-			if (workout) {
-				info.createDiv({
-					cls: 'fit-program-workout-meta',
-					text: `${workout.exercises.length} exercises`
-				});
-			}
 
 			// Click to start
 			if (workout) {
@@ -236,10 +217,6 @@ export class HomeScreen implements Screen {
 		const list = section.createDiv({ cls: 'fit-session-list' });
 
 		for (const session of sessions) {
-			const duration = session.endTime
-				? formatDuration(session.startTime, session.endTime)
-				: undefined;
-
 			// Look up actual workout name by converting session.workout to slug
 			let workoutName = session.workout;
 			if (session.workout) {
@@ -253,11 +230,7 @@ export class HomeScreen implements Screen {
 			createSessionCard(list, {
 				date: session.date,
 				workoutName,
-				duration,
-				exercises: session.exercises,
-				unit: this.ctx.plugin.settings.weightUnit,
-				onClick: () => this.ctx.view.navigateTo('session-detail', { sessionId: session.id }),
-				onCopy: () => { void this.copySession(session); }
+				onClick: () => this.ctx.view.navigateTo('session-detail', { sessionId: session.id })
 			});
 		}
 
@@ -268,17 +241,6 @@ export class HomeScreen implements Screen {
 			variant: 'ghost',
 			onClick: () => this.ctx.view.navigateTo('history')
 		});
-	}
-
-	private async copySession(session: Session): Promise<void> {
-		const basePath = this.ctx.plugin.settings.basePath;
-		const path = `${basePath}/Sessions/${session.id}.md`;
-		const file = this.ctx.view.app.vault.getFileByPath(path);
-		if (file) {
-			const content = await this.ctx.view.app.vault.read(file);
-			await navigator.clipboard.writeText(content);
-			new Notice('Copied to clipboard');
-		}
 	}
 
 	private async startFromWorkout(workout: Workout): Promise<void> {

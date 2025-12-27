@@ -543,9 +543,9 @@ export interface SessionExerciseBlock {
 export function parseSessionBody(body: string): SessionExerciseBlock[] {
 	const exercises: SessionExerciseBlock[] = [];
 
-	// Extract only the Exercises section (stop at # Review if present)
+	// Extract only the Exercises section (stop at any other H1 section)
 	let exercisesSection = body;
-	const exercisesMatch = body.match(/# Exercises\s*([\s\S]*?)(?=# Review|$)/i);
+	const exercisesMatch = body.match(/# Exercises\s*([\s\S]*?)(?=# Previous|# Review|# Coach Feedback|$)/i);
 	if (exercisesMatch) {
 		exercisesSection = exercisesMatch[1] ?? '';
 	}
@@ -879,4 +879,24 @@ export function createProgramBody(workoutIds: string[]): string {
 	lines.push('');
 
 	return lines.join('\n');
+}
+
+/**
+ * Creates coach feedback section body
+ */
+export function createCoachFeedbackBody(feedback: string): string {
+	if (!feedback) return '';
+	return `# Coach Feedback\n\n${feedback}\n`;
+}
+
+/**
+ * Parses coach feedback from body (the current session's feedback, not previous)
+ */
+export function parseCoachFeedbackBody(body: string): string | undefined {
+	// Match "# Coach Feedback" but not "# Previous Coach Feedback"
+	const feedbackMatch = body.match(/(?<!Previous )# Coach Feedback\s*([\s\S]*?)(?=# Previous|# Review|$)/i);
+	if (!feedbackMatch) return undefined;
+
+	const feedback = feedbackMatch[1]?.trim();
+	return feedback || undefined;
 }

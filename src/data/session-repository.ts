@@ -11,13 +11,15 @@ import {
 	createSessionReviewBody,
 	parseSessionReviewBody,
 	createPreviousExercisesBody,
+	createCoachFeedbackBody,
+	parseCoachFeedbackBody,
 	toFilename,
 	extractWikiLinkName
 } from './file-utils';
 
 const ACTIVE_SESSION_FILENAME = '.active-session.md';
 
-// Frontmatter only contains metadata, not exercises or review
+// Frontmatter only contains metadata, not exercises, review, or coach feedback
 interface SessionMetadata {
 	date: string;
 	startTime: string;
@@ -143,7 +145,7 @@ export class SessionRepository {
 			? `[[Workouts/${toFilename(session.workout)}]]`
 			: undefined;
 
-		// Frontmatter: metadata only (no review - that goes in body)
+		// Frontmatter: metadata only (no review, coach feedback - those go in body)
 		const frontmatter: Record<string, unknown> = {
 			date: session.date,
 			startTime: session.startTime,
@@ -174,10 +176,21 @@ export class SessionRepository {
 			}))
 		);
 
-		// Add previous session section if available (for AI comparison)
+		// Add coach feedback section if present
+		if (session.coachFeedback) {
+			body += '\n' + createCoachFeedbackBody(session.coachFeedback);
+		}
+
+		// Add previous session data if available (for AI comparison)
 		if (session.workout) {
 			const previousSession = await this.getPreviousSession(session.workout, session.id);
 			if (previousSession) {
+				// Add previous coach feedback if present
+				if (previousSession.coachFeedback) {
+					body += '\n# Previous Coach Feedback\n\n' + previousSession.coachFeedback + '\n';
+				}
+
+				// Add previous exercises
 				body += '\n' + createPreviousExercisesBody(
 					previousSession.exercises.map(e => ({
 						exercise: e.exercise,
@@ -321,6 +334,19 @@ export class SessionRepository {
 	}
 
 	/**
+	 * Adds or updates coach feedback on a session
+	 */
+	async setCoachFeedback(id: string, feedback: string | undefined): Promise<void> {
+		const session = await this.get(id);
+		if (!session) {
+			throw new Error(`Session not found: ${id}`);
+		}
+
+		session.coachFeedback = feedback;
+		await this.saveActive(session);
+	}
+
+	/**
 	 * Gets recent sessions (for home screen)
 	 */
 	async getRecent(limit = 5): Promise<Session[]> {
@@ -427,8 +453,9 @@ export class SessionRepository {
 				? extractWikiLinkName(frontmatter.workout)
 				: undefined;
 
-			// Parse review from body (not frontmatter)
+			// Parse review and coach feedback from body (not frontmatter)
 			const review = parseSessionReviewBody(body);
+			const coachFeedback = parseCoachFeedbackBody(body);
 
 			return {
 				id: getIdFromPath(file.path),
@@ -439,7 +466,8 @@ export class SessionRepository {
 				status: frontmatter.status ?? 'completed',
 				exercises,
 				notes: frontmatter.notes,
-				review
+				review,
+				coachFeedback
 			};
 		} catch {
 			return null;

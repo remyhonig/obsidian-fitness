@@ -51,6 +51,24 @@
 	cursor: pointer;
 }
 
+.fit-header-action {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	border-radius: 8px;
+	cursor: pointer;
+}
+
+.fit-header-action:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
 /* ========== Buttons ========== */
 .fit-button {
 	display: inline-flex;
@@ -491,83 +509,50 @@
 	color: var(--text-faint);
 }
 
-/* Session cards */
+/* Session cards - matches program workout card layout */
 .fit-session-card {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 12px;
 	background: var(--background-secondary);
 	border-radius: 12px;
-	padding: 10px 12px;
-	margin-bottom: 8px;
+	padding: 12px 16px;
 	cursor: pointer;
+	transition: transform 0.15s;
 }
 
-.fit-session-card-header {
+.fit-session-card:active {
+	transform: scale(0.98);
+}
+
+.fit-session-card-icon {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
-	margin-bottom: 8px;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	opacity: 0.7;
+}
+
+.fit-session-card-icon svg {
+	width: 16px;
+	height: 16px;
 }
 
 .fit-session-card-workout {
-	font-size: 16px;
+	flex: 1;
+	font-size: 15px;
 	font-weight: 600;
-}
-
-.fit-session-card-header-right {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .fit-session-card-date {
-	font-size: 14px;
-	color: var(--text-muted);
-}
-
-.fit-session-card-duration {
-	font-size: 14px;
-	color: var(--text-muted);
-}
-
-.fit-session-card-copy {
-	background: none;
-	border: none;
-	cursor: pointer;
-	opacity: 0.5;
-	padding: 4px;
-	color: var(--text-muted);
-	display: flex;
-	align-items: center;
-}
-
-.fit-session-card-copy:hover {
-	opacity: 1;
-	color: var(--text-normal);
-}
-
-.fit-session-card-sets {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.fit-session-card-exercise {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 6px;
-}
-
-.fit-session-card-exercise-name {
 	font-size: 13px;
-	font-weight: 500;
 	color: var(--text-muted);
-	margin-right: auto;
-}
-
-.fit-session-card-exercise .fit-set-chip {
-	padding: 4px 8px;
-	font-size: 12px;
+	white-space: nowrap;
 }
 
 /* ========== Timer ========== */
@@ -1857,18 +1842,19 @@
 
 .fit-program-grid {
 	display: flex;
+	flex-direction: column;
 	gap: 8px;
 	padding: 4px 0;
 }
 
 .fit-program-workout-card {
 	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-width: 0;
+	flex-direction: row;
+	align-items: center;
+	gap: 12px;
 	background: var(--background-secondary);
 	border-radius: 12px;
-	padding: 10px;
+	padding: 12px 16px;
 	cursor: pointer;
 	transition: transform 0.15s, box-shadow 0.15s;
 }
@@ -1882,30 +1868,47 @@
 	color: var(--text-on-accent);
 }
 
-.fit-program-workout-position {
-	font-size: 10px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
+.fit-program-workout-play {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
 	opacity: 0.7;
-	margin-bottom: 4px;
+}
+
+.fit-program-workout-play svg {
+	width: 16px;
+	height: 16px;
+}
+
+.fit-program-workout-current .fit-program-workout-play {
+	opacity: 1;
 }
 
 .fit-program-workout-info {
 	flex: 1;
+	min-width: 0;
 }
 
 .fit-program-workout-name {
-	font-size: 13px;
+	flex: 1;
+	font-size: 15px;
 	font-weight: 600;
-	margin-bottom: 2px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
+.fit-program-workout-time {
+	font-size: 13px;
+	font-weight: 500;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
 .fit-program-workout-meta {
-	font-size: 11px;
+	font-size: 12px;
 	opacity: 0.8;
 }
 
@@ -2215,5 +2218,269 @@
 }
 
 .fit-question-freetext-input::placeholder {
+	color: var(--text-muted);
+}
+
+/* ========== Coach Feedback ========== */
+
+/* Feedback button on program workout cards */
+.fit-program-workout-card {
+	position: relative;
+}
+
+.fit-program-feedback-btn {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.15);
+	color: inherit;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0.6;
+	transition: opacity 0.15s, background 0.15s;
+}
+
+.fit-program-feedback-btn:hover {
+	opacity: 1;
+	background: rgba(255, 255, 255, 0.25);
+}
+
+.fit-program-feedback-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* Feedback modal */
+.fit-feedback-modal {
+	padding: 20px;
+}
+
+.fit-feedback-modal-title {
+	margin: 0 0 8px 0;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.fit-feedback-modal-desc {
+	margin: 0 0 16px 0;
+	font-size: 14px;
+	color: var(--text-muted);
+}
+
+.fit-feedback-modal-input {
+	width: 100%;
+	min-height: 100px;
+	padding: 12px;
+	font-size: 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	resize: vertical;
+	font-family: inherit;
+}
+
+.fit-feedback-modal-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+.fit-feedback-modal-input::placeholder {
+	color: var(--text-muted);
+}
+
+.fit-feedback-modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 16px;
+}
+
+/* Feedback notice in session */
+.fit-feedback-notice {
+	position: relative;
+	background: var(--background-secondary);
+	border-left: 3px solid var(--interactive-accent);
+	padding: 12px 36px 12px 16px;
+	margin-bottom: 16px;
+	border-radius: 8px;
+}
+
+.fit-feedback-notice-close {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.fit-feedback-notice-close:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.fit-feedback-notice-close svg {
+	width: 16px;
+	height: 16px;
+}
+
+.fit-feedback-notice-title {
+	font-weight: 600;
+	margin-bottom: 4px;
+	font-size: 14px;
+	color: var(--text-normal);
+}
+
+.fit-feedback-notice-content {
+	color: var(--text-muted);
+	font-size: 14px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+
+/* ========== Feedback Screen ========== */
+.fit-feedback-screen-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 16px 0;
+}
+
+.fit-feedback-screen-desc {
+	font-size: 14px;
+	color: var(--text-muted);
+	margin: 0;
+	line-height: 1.5;
+}
+
+.fit-feedback-screen-input {
+	width: 100%;
+	min-height: 200px;
+	padding: 12px;
+	font-size: 16px;
+	font-family: inherit;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	resize: vertical;
+	flex: 1;
+}
+
+.fit-feedback-screen-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+.fit-feedback-screen-input::placeholder {
+	color: var(--text-muted);
+}
+
+/* ========== Session Detail Screen ========== */
+.fit-session-detail-info {
+	margin-bottom: 20px;
+}
+
+.fit-session-detail-date {
+	font-size: 16px;
+	color: var(--text-normal);
+	margin-bottom: 4px;
+}
+
+.fit-session-detail-duration {
+	font-size: 14px;
+	color: var(--text-muted);
+}
+
+.fit-session-detail-section-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 12px;
+}
+
+.fit-session-detail-feedback {
+	margin-bottom: 20px;
+}
+
+.fit-feedback-textarea {
+	width: 100%;
+	height: 4.5em; /* ~3 lines */
+	padding: 12px;
+	font-size: 14px;
+	font-family: inherit;
+	line-height: 1.5;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	resize: none;
+}
+
+.fit-feedback-textarea:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+.fit-feedback-textarea::placeholder {
+	color: var(--text-muted);
+}
+
+.fit-session-detail-exercises {
+	margin-bottom: 20px;
+}
+
+.fit-session-detail-exercise {
+	background: var(--background-secondary);
+	border-radius: 12px;
+	padding: 12px 16px;
+	margin-bottom: 8px;
+}
+
+.fit-session-detail-exercise-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+.fit-session-detail-exercise-name {
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.fit-session-detail-exercise-rest {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.fit-session-detail-sets {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.fit-session-detail-set {
+	font-size: 14px;
 	color: var(--text-muted);
 }

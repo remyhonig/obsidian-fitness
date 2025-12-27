@@ -110,6 +110,7 @@ export interface Session {
 	exercises: SessionExercise[];
 	notes?: string;
 	review?: SessionReview; // Post-workout questionnaire answers
+	coachFeedback?: string; // Feedback for the next session of this workout
 }
 
 // Rest timer state
@@ -139,7 +140,8 @@ export type ScreenType =
 	| 'workout-editor'
 	| 'exercise-library'
 	| 'exercise-detail'
-	| 'questionnaire';
+	| 'questionnaire'
+	| 'feedback';
 
 // Screen navigation parameters
 export interface ScreenParams {
@@ -150,6 +152,8 @@ export interface ScreenParams {
 	programId?: string;
 	questions?: Question[];
 	isNew?: boolean;
+	workoutName?: string; // For feedback screen title
+	existingFeedback?: string; // For pre-populating feedback textarea
 }
 
 // Event listener types
@@ -184,5 +188,5 @@ export interface SessionFrontmatter {
 	workout?: string;
 	status: SessionStatus;
 	notes?: string;
-	// exercises stored in body as markdown blocks with tables
+	// exercises and coachFeedback stored in body as markdown sections
 }
