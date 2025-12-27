@@ -1,3 +1,4 @@
+import { Notice } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import { createBackButton } from '../components/button';
 import { createSessionCard } from '../components/card';
@@ -55,7 +56,8 @@ export class HistoryScreen implements Screen {
 						duration,
 						exercises: session.exercises,
 						unit: this.ctx.plugin.settings.weightUnit,
-						onClick: () => this.viewSession(session)
+						onClick: () => this.viewSession(session),
+						onCopy: () => { void this.copySessionForAI(session); }
 					});
 				}
 			}
@@ -106,6 +108,17 @@ export class HistoryScreen implements Screen {
 	private viewSession(session: Session): void {
 		// Navigate to session detail view
 		this.ctx.view.navigateTo('session-detail', { sessionId: session.id });
+	}
+
+	private async copySessionForAI(session: Session): Promise<void> {
+		const basePath = this.ctx.plugin.settings.basePath;
+		const path = `${basePath}/Sessions/${session.id}.md`;
+		const file = this.ctx.view.app.vault.getFileByPath(path);
+		if (file) {
+			const content = await this.ctx.view.app.vault.read(file);
+			await navigator.clipboard.writeText(content);
+			new Notice('Copied to clipboard');
+		}
 	}
 
 	destroy(): void {

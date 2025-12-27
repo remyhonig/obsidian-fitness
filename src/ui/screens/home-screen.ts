@@ -1,10 +1,10 @@
-import { setIcon } from 'obsidian';
+import { setIcon, Notice } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import { createButton } from '../components/button';
 import { createWorkoutCard, createSessionCard } from '../components/card';
 import { formatDuration } from '../components/timer';
 import { toFilename } from '../../data/file-utils';
-import type { Workout, Program } from '../../types';
+import type { Workout, Program, Session } from '../../types';
 
 /**
  * Home screen - entry point for the workout tracker
@@ -256,7 +256,8 @@ export class HomeScreen implements Screen {
 				duration,
 				exercises: session.exercises,
 				unit: this.ctx.plugin.settings.weightUnit,
-				onClick: () => this.ctx.view.navigateTo('session-detail', { sessionId: session.id })
+				onClick: () => this.ctx.view.navigateTo('session-detail', { sessionId: session.id }),
+				onCopy: () => { void this.copySession(session); }
 			});
 		}
 
@@ -267,6 +268,17 @@ export class HomeScreen implements Screen {
 			variant: 'ghost',
 			onClick: () => this.ctx.view.navigateTo('history')
 		});
+	}
+
+	private async copySession(session: Session): Promise<void> {
+		const basePath = this.ctx.plugin.settings.basePath;
+		const path = `${basePath}/Sessions/${session.id}.md`;
+		const file = this.ctx.view.app.vault.getFileByPath(path);
+		if (file) {
+			const content = await this.ctx.view.app.vault.read(file);
+			await navigator.clipboard.writeText(content);
+			new Notice('Copied to clipboard');
+		}
 	}
 
 	private async startFromWorkout(workout: Workout): Promise<void> {

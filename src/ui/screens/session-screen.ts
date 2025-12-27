@@ -272,7 +272,18 @@ export class SessionScreen implements Screen {
 			if (session) {
 				// Advance program if this workout matches the current program workout
 				await this.advanceProgramIfMatching(session);
-				this.ctx.view.navigateTo('finish', { sessionId: session.id });
+
+				// Check if active program has review questions
+				const reviewData = await this.getReviewQuestionsForSession();
+				if (reviewData) {
+					this.ctx.view.navigateTo('questionnaire', {
+						sessionId: session.id,
+						programId: reviewData.programId,
+						questions: reviewData.questions
+					});
+				} else {
+					this.ctx.view.navigateTo('finish', { sessionId: session.id });
+				}
 			} else {
 				this.ctx.view.navigateTo('home');
 			}
@@ -281,6 +292,21 @@ export class SessionScreen implements Screen {
 			// Still navigate home on error
 			this.ctx.view.navigateTo('home');
 		}
+	}
+
+	private async getReviewQuestionsForSession(): Promise<{ programId: string; questions: import('../../types').Question[] } | null> {
+		const settings = this.ctx.plugin.settings;
+		if (!settings.activeProgram) return null;
+
+		try {
+			const program = await this.ctx.programRepo.get(settings.activeProgram);
+			if (program?.questions && program.questions.length > 0) {
+				return { programId: program.id, questions: program.questions };
+			}
+		} catch (error) {
+			console.error('Failed to get review questions:', error);
+		}
+		return null;
 	}
 
 	private async advanceProgramIfMatching(session: Session): Promise<void> {

@@ -224,12 +224,13 @@ export interface SessionCardOptions {
 	exercises: SessionExercise[];
 	unit: string;
 	onClick: () => void;
+	onCopy?: () => void;
 }
 
 export function createSessionCard(parent: HTMLElement, options: SessionCardOptions): HTMLElement {
 	const card = parent.createDiv({ cls: 'fit-session-card' });
 
-	// Header: Workout name on left, date + duration on right
+	// Header: Workout name on left, date + duration + copy on right
 	const header = card.createDiv({ cls: 'fit-session-card-header' });
 	header.createSpan({ cls: 'fit-session-card-workout', text: options.workoutName ?? 'Workout' });
 
@@ -237,6 +238,19 @@ export function createSessionCard(parent: HTMLElement, options: SessionCardOptio
 	headerRight.createSpan({ cls: 'fit-session-card-date', text: formatDate(options.date) });
 	if (options.duration) {
 		headerRight.createSpan({ cls: 'fit-session-card-duration', text: options.duration });
+	}
+
+	// Copy button
+	if (options.onCopy) {
+		const copyBtn = headerRight.createEl('button', {
+			cls: 'fit-session-card-copy',
+			attr: { 'aria-label': 'Copy' }
+		});
+		setIcon(copyBtn, 'copy');
+		copyBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			options.onCopy?.();
+		});
 	}
 
 	// Sets as chips (exercise name + chips inline)

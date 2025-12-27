@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian';
-import type { Program } from '../types';
+import type { Program, Question, QuestionOption } from '../types';
 import {
 	ensureFolder,
 	getFilesInFolder,
@@ -101,8 +101,11 @@ export class ProgramRepository {
 			description: program.description
 		};
 
-		// Body: ordered list of workout wikilinks
-		const body = createProgramBody(program.workouts);
+		// Body: workouts + optional review section
+		let body = createProgramBody(program.workouts);
+		if (program.questions && program.questions.length > 0) {
+			body += this.createReviewSection(program.questions);
+		}
 
 		const content = createFileContent(frontmatter, body);
 		await this.app.vault.create(path, content);
@@ -133,8 +136,11 @@ export class ProgramRepository {
 			description: updated.description
 		};
 
-		// Body: ordered list of workout wikilinks
-		const body = createProgramBody(updated.workouts);
+		// Body: workouts + optional review section
+		let body = createProgramBody(updated.workouts);
+		if (updated.questions && updated.questions.length > 0) {
+			body += this.createReviewSection(updated.questions);
+		}
 
 		const content = createFileContent(frontmatter, body);
 		await this.app.vault.modify(file, content);
@@ -166,14 +172,143 @@ export class ProgramRepository {
 			// Parse workouts from body list
 			const workouts = parseProgramBody(body);
 
+			// Parse review questions from body
+			const questions = this.parseReviewSection(body);
+
 			return {
 				id: getIdFromPath(file.path),
 				name: frontmatter.name,
 				description: frontmatter.description,
-				workouts
+				workouts,
+				questions: questions.length > 0 ? questions : undefined
 			};
 		} catch {
 			return null;
 		}
+	}
+
+	/**
+	 * Parses the Review section from the program body
+	 * Format:
+	 * ## Review
+	 * ### question-id
+	 * **Question text?**
+	 * - option-id: Option label
+	 * - option-id: Option label | freeText: 120
+	 */
+	private parseReviewSection(body: string): Question[] {
+		const questions: Question[] = [];
+
+		// Find the Review section (always last section, so match to end)
+		const reviewMatch = body.match(/## Review\s*([\s\S]*)$/i);
+		if (!reviewMatch) return questions;
+
+		const reviewContent = reviewMatch[1] ?? '';
+
+		// Split by ### headers to get individual questions
+		const questionBlocks = reviewContent.split(/(?=^### )/m).filter(block => block.trim().startsWith('### '));
+
+		for (const block of questionBlocks) {
+			const question = this.parseQuestionBlock(block);
+			if (question) {
+				questions.push(question);
+			}
+		}
+
+		return questions;
+	}
+
+	/**
+	 * Parses a single question block
+	 */
+	private parseQuestionBlock(block: string): Question | null {
+		// Remove HTML comments before parsing
+		const cleanBlock = block.replace(/<!--[\s\S]*?-->/g, '');
+		const lines = cleanBlock.split('\n').map(l => l.trim()).filter(l => l);
+
+		// First line should be ### id
+		const idMatch = lines[0]?.match(/^### (.+)$/);
+		if (!idMatch) return null;
+		const id = idMatch[1]?.trim() ?? '';
+		if (!id) return null;
+
+		// Second line should be **Question text?**
+		const textMatch = lines[1]?.match(/^\*\*(.+)\*\*$/);
+		if (!textMatch) return null;
+		const text = textMatch[1]?.trim() ?? '';
+		if (!text) return null;
+
+		// Remaining lines are options: - option-id: Option label
+		const options: QuestionOption[] = [];
+		let allowFreeText = false;
+		let freeTextTrigger: string | undefined;
+		let freeTextMaxLength: number | undefined;
+
+		for (let i = 2; i < lines.length; i++) {
+			const line = lines[i];
+			if (!line?.startsWith('- ')) continue;
+
+			// Parse option: - id: Label or - id: Label | freeText: 120
+			const optionContent = line.slice(2); // Remove "- "
+
+			// Check for freeText modifier
+			const freeTextMatch = optionContent.match(/^([^:]+):\s*(.+?)\s*\|\s*freeText:\s*(\d+)$/);
+			if (freeTextMatch) {
+				const optionId = freeTextMatch[1]?.trim() ?? '';
+				const optionLabel = freeTextMatch[2]?.trim() ?? '';
+				const maxLength = parseInt(freeTextMatch[3] ?? '200', 10);
+
+				if (optionId && optionLabel) {
+					options.push({ id: optionId, label: optionLabel });
+					allowFreeText = true;
+					freeTextTrigger = optionId;
+					freeTextMaxLength = maxLength;
+				}
+				continue;
+			}
+
+			// Standard option: - id: Label
+			const optionMatch = optionContent.match(/^([^:]+):\s*(.+)$/);
+			if (optionMatch) {
+				const optionId = optionMatch[1]?.trim() ?? '';
+				const optionLabel = optionMatch[2]?.trim() ?? '';
+				if (optionId && optionLabel) {
+					options.push({ id: optionId, label: optionLabel });
+				}
+			}
+		}
+
+		if (options.length === 0) return null;
+
+		return {
+			id,
+			text,
+			options,
+			allowFreeText: allowFreeText || undefined,
+			freeTextTrigger,
+			freeTextMaxLength
+		};
+	}
+
+	/**
+	 * Creates the Review section markdown
+	 */
+	private createReviewSection(questions: Question[]): string {
+		const lines: string[] = ['', '## Review', ''];
+
+		for (const question of questions) {
+			lines.push(`### ${question.id}`);
+			lines.push(`**${question.text}**`);
+			for (const option of question.options) {
+				if (question.freeTextTrigger === option.id && question.freeTextMaxLength) {
+					lines.push(`- ${option.id}: ${option.label} | freeText: ${question.freeTextMaxLength}`);
+				} else {
+					lines.push(`- ${option.id}: ${option.label}`);
+				}
+			}
+			lines.push('');
+		}
+
+		return lines.join('\n');
 	}
 }

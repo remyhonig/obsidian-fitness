@@ -1,0 +1,127 @@
+import type { Screen, ScreenContext } from '../../views/fit-view';
+import type { ScreenParams, Question, QuestionAnswer, SessionReview } from '../../types';
+import { createButton, createPrimaryAction } from '../components/button';
+import { createQuestionCard } from '../components/question-card';
+
+interface AnswerState {
+	selectedOptionId?: string;
+	freeText?: string;
+}
+
+/**
+ * Questionnaire screen - post-workout review questions
+ */
+export class QuestionnaireScreen implements Screen {
+	private containerEl: HTMLElement;
+	private sessionId: string;
+	private programId: string;
+	private questions: Question[];
+	private answers: Map<string, AnswerState> = new Map();
+
+	constructor(
+		parentEl: HTMLElement,
+		private ctx: ScreenContext,
+		params: ScreenParams
+	) {
+		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-questionnaire-screen' });
+		this.sessionId = params.sessionId ?? '';
+		this.programId = params.programId ?? '';
+		this.questions = params.questions ?? [];
+	}
+
+	render(): void {
+		this.containerEl.empty();
+
+		// If no questions, skip to finish
+		if (this.questions.length === 0) {
+			this.ctx.view.navigateTo('finish', { sessionId: this.sessionId });
+			return;
+		}
+
+		this.renderContent();
+	}
+
+	private renderContent(): void {
+		// Header
+		const header = this.containerEl.createDiv({ cls: 'fit-questionnaire-header' });
+		header.createEl('h1', { text: 'Training Review', cls: 'fit-questionnaire-title' });
+
+		// Questions
+		const questionsContainer = this.containerEl.createDiv({ cls: 'fit-questionnaire-questions' });
+
+		for (const question of this.questions) {
+			const answer = this.answers.get(question.id);
+			createQuestionCard(questionsContainer, {
+				question,
+				selectedOptionId: answer?.selectedOptionId,
+				freeText: answer?.freeText,
+				onSelect: (optionId) => {
+					const current = this.answers.get(question.id) ?? {};
+					this.answers.set(question.id, { ...current, selectedOptionId: optionId });
+				},
+				onFreeTextChange: (text) => {
+					const current = this.answers.get(question.id) ?? {};
+					this.answers.set(question.id, { ...current, freeText: text });
+				}
+			});
+		}
+
+		// Actions
+		const actions = this.containerEl.createDiv({ cls: 'fit-bottom-actions fit-questionnaire-actions' });
+
+		createButton(actions, {
+			text: 'Overslaan',
+			variant: 'secondary',
+			onClick: () => { void this.saveReview(true); }
+		});
+
+		createPrimaryAction(actions, 'Voltooien', () => {
+			void this.saveReview(false);
+		});
+	}
+
+	private async saveReview(skipped: boolean): Promise<void> {
+		// Build the answers array
+		const answersArray: QuestionAnswer[] = [];
+
+		if (!skipped) {
+			for (const question of this.questions) {
+				const answer = this.answers.get(question.id);
+				if (answer?.selectedOptionId) {
+					const selectedOption = question.options.find(o => o.id === answer.selectedOptionId);
+					if (selectedOption) {
+						answersArray.push({
+							questionId: question.id,
+							questionText: question.text,
+							selectedOptionId: selectedOption.id,
+							selectedOptionLabel: selectedOption.label,
+							freeText: answer.freeText
+						});
+					}
+				}
+			}
+		}
+
+		// Create the review object
+		const review: SessionReview = {
+			programId: this.programId,
+			completedAt: new Date().toISOString(),
+			answers: answersArray,
+			skipped
+		};
+
+		// Save to the session
+		try {
+			await this.ctx.sessionRepo.addReview(this.sessionId, review);
+		} catch (error) {
+			console.error('Failed to save review:', error);
+		}
+
+		// Navigate to finish screen
+		this.ctx.view.navigateTo('finish', { sessionId: this.sessionId });
+	}
+
+	destroy(): void {
+		this.containerEl.remove();
+	}
+}

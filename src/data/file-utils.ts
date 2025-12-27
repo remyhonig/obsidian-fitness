@@ -1,4 +1,5 @@
 import { App, TFile, TFolder } from 'obsidian';
+import type { SessionReview, QuestionAnswer } from '../types';
 
 /**
  * Ensures a folder exists, creating it and any parent folders if necessary
@@ -542,8 +543,15 @@ export interface SessionExerciseBlock {
 export function parseSessionBody(body: string): SessionExerciseBlock[] {
 	const exercises: SessionExerciseBlock[] = [];
 
+	// Extract only the Exercises section (stop at # Review if present)
+	let exercisesSection = body;
+	const exercisesMatch = body.match(/# Exercises\s*([\s\S]*?)(?=# Review|$)/i);
+	if (exercisesMatch) {
+		exercisesSection = exercisesMatch[1] ?? '';
+	}
+
 	// Split by exercise headers (## Exercise Name)
-	const exerciseBlocks = body.split(/(?=^## )/m).filter(block => block.trim());
+	const exerciseBlocks = exercisesSection.split(/(?=^## )/m).filter(block => block.trim());
 
 	for (const block of exerciseBlocks) {
 		// Parse exercise header (may be wikilink like ## [[exercise-slug]])
@@ -598,26 +606,30 @@ export function parseSessionBody(body: string): SessionExerciseBlock[] {
 }
 
 /**
- * Creates session body with exercise blocks and set tables
+ * Creates session body with exercise blocks and set tables under # Exercises heading
  */
 export function createSessionBody(exercises: SessionExerciseBlock[]): string {
-	if (exercises.length === 0) return '';
+	const lines: string[] = ['# Exercises', ''];
+
+	if (exercises.length === 0) {
+		return lines.join('\n') + '\n';
+	}
 
 	const blocks: string[] = [];
 
 	for (const exercise of exercises) {
-		const lines: string[] = [];
+		const exerciseLines: string[] = [];
 
 		// Exercise header with wikilink
 		const exerciseSlug = toFilename(exercise.exercise);
-		lines.push(`## [[${exerciseSlug}]]`);
+		exerciseLines.push(`## [[${exerciseSlug}]]`);
 
 		// Target line
 		const repsDisplay = exercise.targetRepsMin === exercise.targetRepsMax
 			? String(exercise.targetRepsMin)
 			: `${exercise.targetRepsMin}-${exercise.targetRepsMax}`;
-		lines.push(`Target: ${exercise.targetSets} × ${repsDisplay} | Rest: ${exercise.restSeconds}s`);
-		lines.push('');
+		exerciseLines.push(`Target: ${exercise.targetSets} × ${repsDisplay} | Rest: ${exercise.restSeconds}s`);
+		exerciseLines.push('');
 
 		// Sets table
 		const columns = [
@@ -637,25 +649,34 @@ export function createSessionBody(exercises: SessionExerciseBlock[]): string {
 		}));
 
 		if (setRows.length > 0) {
-			lines.push(createMarkdownTable(columns, setRows));
+			exerciseLines.push(createMarkdownTable(columns, setRows));
 		} else {
 			// Empty table for exercises with no sets yet
-			lines.push(createMarkdownTable(columns, []));
+			exerciseLines.push(createMarkdownTable(columns, []));
 		}
 
-		blocks.push(lines.join('\n'));
+		blocks.push(exerciseLines.join('\n'));
 	}
 
-	return '\n' + blocks.join('\n\n') + '\n';
+	return lines.join('\n') + blocks.join('\n\n') + '\n';
 }
 
 /**
  * Formats an ISO timestamp to HH:MM:SS for display in tables
+ * Also handles already-formatted HH:MM:SS strings (pass-through)
  */
 function formatTimeFromISO(isoString: string): string {
 	if (!isoString) return '-';
+
+	// If already in HH:MM:SS format, return as-is
+	if (/^\d{2}:\d{2}:\d{2}$/.test(isoString)) {
+		return isoString;
+	}
+
 	try {
 		const date = new Date(isoString);
+		// Check for invalid date
+		if (isNaN(date.getTime())) return '-';
 		const hours = date.getHours().toString().padStart(2, '0');
 		const minutes = date.getMinutes().toString().padStart(2, '0');
 		const seconds = date.getSeconds().toString().padStart(2, '0');
@@ -663,6 +684,93 @@ function formatTimeFromISO(isoString: string): string {
 	} catch {
 		return '-';
 	}
+}
+
+// ========== Session Review Body Utilities ==========
+
+/**
+ * Creates session review body under # Review heading
+ * Format: **Question?** Answer (optional comment)
+ */
+export function createSessionReviewBody(review: SessionReview): string {
+	const lines: string[] = ['# Review', ''];
+
+	lines.push(`Program: [[Programs/${review.programId}]]`);
+	lines.push(`Completed: ${review.completedAt}`);
+	lines.push(`Skipped: ${review.skipped ? 'yes' : 'no'}`);
+
+	if (review.answers.length > 0) {
+		lines.push('');
+		for (const answer of review.answers) {
+			let line = `**${answer.questionText}** ${answer.selectedOptionLabel}`;
+			if (answer.freeText) {
+				line += ` (${answer.freeText})`;
+			}
+			lines.push(line);
+		}
+	}
+
+	return lines.join('\n');
+}
+
+/**
+ * Parses session review from body
+ * Format: **Question?** Answer (optional comment)
+ */
+export function parseSessionReviewBody(body: string): SessionReview | undefined {
+	// Find the Review section
+	const reviewMatch = body.match(/# Review\s*([\s\S]*)$/i);
+	if (!reviewMatch) return undefined;
+
+	const reviewContent = reviewMatch[1] ?? '';
+
+	// Parse program ID from wikilink
+	const programMatch = reviewContent.match(/Program:\s*\[\[(?:Programs\/)?([^\]]+)\]\]/i);
+	const programId = programMatch?.[1] ?? '';
+	if (!programId) return undefined;
+
+	// Parse completed timestamp
+	const completedMatch = reviewContent.match(/Completed:\s*(.+)/i);
+	const completedAt = completedMatch?.[1]?.trim() ?? '';
+
+	// Parse skipped flag
+	const skippedMatch = reviewContent.match(/Skipped:\s*(yes|no)/i);
+	const skipped = skippedMatch?.[1]?.toLowerCase() === 'yes';
+
+	// Parse answers: **Question?** Answer (optional comment)
+	const answers: QuestionAnswer[] = [];
+	const answerRegex = /\*\*(.+?)\*\*\s+(.+)/g;
+	let match;
+
+	while ((match = answerRegex.exec(reviewContent)) !== null) {
+		const questionText = match[1]?.trim() ?? '';
+		let answerPart = match[2]?.trim() ?? '';
+
+		// Extract optional comment in parentheses at end
+		let freeText: string | undefined;
+		const commentMatch = answerPart.match(/^(.+?)\s+\((.+)\)$/);
+		if (commentMatch) {
+			answerPart = commentMatch[1]?.trim() ?? '';
+			freeText = commentMatch[2]?.trim();
+		}
+
+		if (questionText && answerPart) {
+			answers.push({
+				questionId: questionText, // Use question text as ID
+				questionText,
+				selectedOptionId: answerPart,
+				selectedOptionLabel: answerPart,
+				freeText
+			});
+		}
+	}
+
+	return {
+		programId,
+		completedAt,
+		answers,
+		skipped
+	};
 }
 
 // ========== Program Body Utilities ==========

@@ -40,6 +40,40 @@ export interface Program {
 	name: string;
 	description?: string;
 	workouts: string[]; // Workout IDs in order
+	questions?: Question[]; // Optional review questions embedded in program
+}
+
+// Questionnaire option (single choice)
+export interface QuestionOption {
+	id: string;
+	label: string;
+}
+
+// Question definition
+export interface Question {
+	id: string;
+	text: string;
+	options: QuestionOption[];
+	allowFreeText?: boolean;
+	freeTextTrigger?: string; // Option ID that triggers free text
+	freeTextMaxLength?: number;
+}
+
+// Answer to a single question
+export interface QuestionAnswer {
+	questionId: string;
+	questionText: string;
+	selectedOptionId: string;
+	selectedOptionLabel: string;
+	freeText?: string;
+}
+
+// Review attached to a completed session
+export interface SessionReview {
+	programId: string;
+	completedAt: string; // ISO 8601 datetime
+	answers: QuestionAnswer[];
+	skipped: boolean;
 }
 
 // Logged set during a workout session
@@ -75,6 +109,7 @@ export interface Session {
 	status: SessionStatus;
 	exercises: SessionExercise[];
 	notes?: string;
+	review?: SessionReview; // Post-workout questionnaire answers
 }
 
 // Rest timer state
@@ -103,7 +138,8 @@ export type ScreenType =
 	| 'session-detail'
 	| 'workout-editor'
 	| 'exercise-library'
-	| 'exercise-detail';
+	| 'exercise-detail'
+	| 'questionnaire';
 
 // Screen navigation parameters
 export interface ScreenParams {
@@ -111,6 +147,8 @@ export interface ScreenParams {
 	sessionId?: string;
 	workoutId?: string;
 	exerciseId?: string;
+	programId?: string;
+	questions?: Question[];
 	isNew?: boolean;
 }
 

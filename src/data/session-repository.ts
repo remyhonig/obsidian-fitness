@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian';
-import type { Session, SessionExercise, SessionStatus } from '../types';
+import type { Session, SessionExercise, SessionStatus, SessionReview } from '../types';
 import {
 	ensureFolder,
 	getFilesInFolder,
@@ -8,13 +8,15 @@ import {
 	createFileContent,
 	parseSessionBody,
 	createSessionBody,
+	createSessionReviewBody,
+	parseSessionReviewBody,
 	toFilename,
 	extractWikiLinkName
 } from './file-utils';
 
 const ACTIVE_SESSION_FILENAME = '.active-session.md';
 
-// Frontmatter only contains metadata, not exercises
+// Frontmatter only contains metadata, not exercises or review
 interface SessionMetadata {
 	date: string;
 	startTime: string;
@@ -140,7 +142,7 @@ export class SessionRepository {
 			? `[[Workouts/${toFilename(session.workout)}]]`
 			: undefined;
 
-		// Frontmatter: metadata only
+		// Frontmatter: metadata only (no review - that goes in body)
 		const frontmatter: Record<string, unknown> = {
 			date: session.date,
 			startTime: session.startTime,
@@ -152,8 +154,8 @@ export class SessionRepository {
 			notes: session.notes
 		};
 
-		// Body: exercise blocks with set tables
-		const body = createSessionBody(
+		// Body: exercise blocks with set tables under # Exercises
+		let body = createSessionBody(
 			session.exercises.map(e => ({
 				exercise: e.exercise,
 				targetSets: e.targetSets,
@@ -170,6 +172,11 @@ export class SessionRepository {
 				}))
 			}))
 		);
+
+		// Add review section if present
+		if (session.review) {
+			body += '\n' + createSessionReviewBody(session.review);
+		}
 
 		const content = createFileContent(frontmatter, body);
 
@@ -275,6 +282,19 @@ export class SessionRepository {
 	}
 
 	/**
+	 * Adds a review to a completed session
+	 */
+	async addReview(id: string, review: SessionReview): Promise<void> {
+		const session = await this.get(id);
+		if (!session) {
+			throw new Error(`Session not found: ${id}`);
+		}
+
+		session.review = review;
+		await this.saveActive(session);
+	}
+
+	/**
 	 * Gets recent sessions (for home screen)
 	 */
 	async getRecent(limit = 5): Promise<Session[]> {
@@ -366,6 +386,9 @@ export class SessionRepository {
 				? extractWikiLinkName(frontmatter.workout)
 				: undefined;
 
+			// Parse review from body (not frontmatter)
+			const review = parseSessionReviewBody(body);
+
 			return {
 				id: getIdFromPath(file.path),
 				date: frontmatter.date ?? frontmatter.startTime.split('T')[0],
@@ -374,7 +397,8 @@ export class SessionRepository {
 				workout: workoutName,
 				status: frontmatter.status ?? 'completed',
 				exercises,
-				notes: frontmatter.notes
+				notes: frontmatter.notes,
+				review
 			};
 		} catch {
 			return null;

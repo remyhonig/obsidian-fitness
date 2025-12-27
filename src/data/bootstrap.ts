@@ -134,14 +134,71 @@ const STARTER_WORKOUTS = [
 ];
 
 /**
- * Starter programs
+ * Starter programs with embedded review questions
  */
 const STARTER_PROGRAMS = [
 	{
 		id: 'full-body-2x',
 		name: 'Full Body 2x',
 		description: 'Simple 2-day full body program for beginners',
-		workouts: ['full-body-a', 'full-body-b']
+		workouts: ['full-body-a', 'full-body-b'],
+		questions: [
+			{
+				id: 'training-effectiveness',
+				text: 'Voelde de training effectief voor de doelspieren?',
+				options: [
+					{ id: 'ja', label: 'Ja, duidelijk' },
+					{ id: 'matig', label: 'Matig' },
+					{ id: 'nee', label: 'Nee / verkeerd gevoel' }
+				]
+			},
+			{
+				id: 'fatigue-level',
+				text: 'Hoe vermoeid voel je je direct na de training?',
+				options: [
+					{ id: 'fris', label: 'Fris / licht geprikkeld' },
+					{ id: 'goed', label: 'Goed gewerkt, lichte loomheid' },
+					{ id: 'leeg', label: 'Leeg / te zwaar' }
+				]
+			},
+			{
+				id: 'recovery-expectation',
+				text: 'Hoe schat je je herstel voor de volgende training?',
+				options: [
+					{ id: 'volledig', label: 'Volledig hersteld binnen 24-48u' },
+					{ id: 'ok', label: 'Waarschijnlijk oké, maar scherp blijven' },
+					{ id: 'twijfel', label: 'Twijfelachtig / voelt te veel' }
+				]
+			},
+			{
+				id: 'impulse-control',
+				text: 'Heb je overwogen om extra oefeningen/sets toe te voegen?',
+				options: [
+					{ id: 'nee', label: 'Nee' },
+					{ id: 'ja-niet', label: 'Ja, maar niet gedaan' },
+					{ id: 'ja-gedaan', label: 'Ja, en gedaan' }
+				]
+			},
+			{
+				id: 'aesthetic-look',
+				text: 'Hoe voelde je uiterlijk/\'look\' tijdens of na de training?',
+				options: [
+					{ id: 'vol', label: 'Vol & strak' },
+					{ id: 'neutraal', label: 'Neutraal' },
+					{ id: 'plat', label: 'Plat / opgeblazen' }
+				]
+			},
+			{
+				id: 'coach-feedback',
+				text: 'Is er iets waar je expliciet feedback op wilt?',
+				options: [
+					{ id: 'nee', label: 'Nee' },
+					{ id: 'ja', label: 'Ja' }
+				],
+				freeTextTrigger: 'ja',
+				freeTextMaxLength: 120
+			}
+		]
 	}
 ];
 
@@ -185,7 +242,7 @@ function createWorkoutContent(workout: typeof STARTER_WORKOUTS[0]): string {
 }
 
 /**
- * Creates program markdown content
+ * Creates program markdown content with embedded review questions
  */
 function createProgramContent(program: typeof STARTER_PROGRAMS[0]): string {
 	const lines = ['---'];
@@ -199,6 +256,25 @@ function createProgramContent(program: typeof STARTER_PROGRAMS[0]): string {
 		lines.push(`- [[${workoutId}]]`);
 	}
 	lines.push('');
+
+	// Add Review section if questions exist
+	if (program.questions && program.questions.length > 0) {
+		lines.push('## Review');
+		lines.push('');
+		for (const question of program.questions) {
+			lines.push(`### ${question.id}`);
+			lines.push(`**${question.text}**`);
+			for (const option of question.options) {
+				if (question.freeTextTrigger === option.id && question.freeTextMaxLength) {
+					lines.push(`- ${option.id}: ${option.label} | freeText: ${question.freeTextMaxLength}`);
+				} else {
+					lines.push(`- ${option.id}: ${option.label}`);
+				}
+			}
+			lines.push('');
+		}
+	}
+
 	return lines.join('\n');
 }
 
