@@ -91,10 +91,21 @@ export function createExerciseCard(parent: HTMLElement, options: ExerciseCardOpt
 	// Content container (right side)
 	const content = middleRow.createDiv({ cls: 'fit-exercise-card-content' });
 
-	// Progress indicator
-	content.createSpan({
+	// Stats row: sets + reps + rest
+	const statsRow = content.createDiv({ cls: 'fit-exercise-card-stats' });
+	statsRow.createSpan({
 		cls: 'fit-exercise-card-sets',
 		text: `${completedSets}/${targetSets} sets`
+	});
+	statsRow.createSpan({ cls: 'fit-exercise-card-separator', text: '•' });
+	statsRow.createSpan({
+		cls: 'fit-exercise-card-target',
+		text: `${exercise.targetRepsMin}-${exercise.targetRepsMax} reps`
+	});
+	statsRow.createSpan({ cls: 'fit-exercise-card-separator', text: '•' });
+	statsRow.createSpan({
+		cls: 'fit-exercise-card-rest',
+		text: `${exercise.restSeconds}s`
 	});
 
 	// Last set info (if any)
@@ -110,14 +121,6 @@ export function createExerciseCard(parent: HTMLElement, options: ExerciseCardOpt
 	const progressBar = content.createDiv({ cls: 'fit-exercise-card-progress-bar' });
 	const progressFill = progressBar.createDiv({ cls: 'fit-exercise-card-progress-fill' });
 	progressFill.style.width = `${(completedSets / targetSets) * 100}%`;
-
-	// Bottom row: target info (reps • rest)
-	const bottomRow = card.createDiv({ cls: 'fit-exercise-card-bottom' });
-	bottomRow.createSpan({
-		text: `${exercise.targetRepsMin}-${exercise.targetRepsMax} reps`
-	});
-	bottomRow.createSpan({ cls: 'fit-exercise-card-separator', text: '•' });
-	bottomRow.createSpan({ text: `${exercise.restSeconds}s rest` });
 
 	// Click handler (for navigating to exercise)
 	card.addEventListener('click', (e) => {

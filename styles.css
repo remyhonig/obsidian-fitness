@@ -364,7 +364,14 @@
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	gap: 4px;
+	gap: 2px;
+}
+
+.fit-exercise-card-stats {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
 }
 
 .fit-exercise-card-sets {
@@ -372,13 +379,24 @@
 	font-weight: 500;
 }
 
-.fit-exercise-card-last {
+.fit-exercise-card-target,
+.fit-exercise-card-rest {
 	font-size: 13px;
 	color: var(--text-muted);
 }
 
+.fit-exercise-card-separator {
+	color: var(--text-faint);
+	font-size: 10px;
+}
+
+.fit-exercise-card-last {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
 .fit-exercise-card-progress-bar {
-	height: 4px;
+	height: 3px;
 	background: var(--background-modifier-border);
 	border-radius: 2px;
 	margin-top: 4px;
@@ -390,18 +408,6 @@
 	background: var(--interactive-accent);
 	border-radius: 2px;
 	transition: width 0.3s;
-}
-
-/* Bottom row: target info */
-.fit-exercise-card-bottom {
-	display: flex;
-	gap: 8px;
-	font-size: 13px;
-	color: var(--text-muted);
-}
-
-.fit-exercise-card-separator {
-	color: var(--text-faint);
 }
 
 /* Set rows */
