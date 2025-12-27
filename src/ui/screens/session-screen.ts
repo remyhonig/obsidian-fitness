@@ -118,10 +118,6 @@ export class SessionScreen implements Screen {
 				image0: exerciseDetails?.image0,
 				image1: exerciseDetails?.image1,
 				onClick: () => this.ctx.view.navigateTo('exercise', { exerciseIndex: i }),
-				onDelete: () => {
-					this.ctx.sessionState.removeExercise(i);
-					this.render();
-				},
 				draggable: true,
 				onDrop: (fromIndex, toIndex) => {
 					this.ctx.sessionState.reorderExercises(fromIndex, toIndex);

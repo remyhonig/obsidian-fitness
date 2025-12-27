@@ -31,12 +31,12 @@ export function createExerciseCard(parent: HTMLElement, options: ExerciseCardOpt
 		attr: options.draggable ? { draggable: 'true', 'data-index': String(index) } : {}
 	});
 
-	// Card layout: drag handle, images, content, delete
-	const cardInner = card.createDiv({ cls: 'fit-exercise-card-inner' });
+	// Top row: drag handle + number + title
+	const topRow = card.createDiv({ cls: 'fit-exercise-card-top' });
 
 	// Drag handle (if draggable)
 	if (options.draggable) {
-		const dragHandle = cardInner.createDiv({ cls: 'fit-drag-handle fit-card-drag-handle' });
+		const dragHandle = topRow.createDiv({ cls: 'fit-drag-handle' });
 		setIcon(dragHandle, 'grip-vertical');
 
 		// Drag events
@@ -74,43 +74,35 @@ export function createExerciseCard(parent: HTMLElement, options: ExerciseCardOpt
 		});
 	}
 
+	topRow.createSpan({ cls: 'fit-exercise-card-number', text: String(index + 1) });
+	topRow.createSpan({ cls: 'fit-exercise-card-name', text: exercise.exercise });
+
+	// Middle row: image + content
+	const middleRow = card.createDiv({ cls: 'fit-exercise-card-middle' });
+
 	// Image (left side) - show only image1 (end position)
 	if (image1) {
-		cardInner.createEl('img', {
+		middleRow.createEl('img', {
 			cls: 'fit-exercise-card-img',
 			attr: { src: image1, alt: exercise.exercise }
 		});
 	}
 
 	// Content container (right side)
-	const content = cardInner.createDiv({ cls: 'fit-exercise-card-content' });
-
-	// Header row
-	const header = content.createDiv({ cls: 'fit-exercise-card-header' });
-	header.createSpan({ cls: 'fit-exercise-card-number', text: String(index + 1) });
-	header.createSpan({ cls: 'fit-exercise-card-name', text: exercise.exercise });
+	const content = middleRow.createDiv({ cls: 'fit-exercise-card-content' });
 
 	// Progress indicator
-	const progress = content.createDiv({ cls: 'fit-exercise-card-progress' });
-	progress.createSpan({
+	content.createSpan({
 		cls: 'fit-exercise-card-sets',
 		text: `${completedSets}/${targetSets} sets`
 	});
 
-	// Target info
-	const target = content.createDiv({ cls: 'fit-exercise-card-target' });
-	target.createSpan({
-		text: `${exercise.targetRepsMin}-${exercise.targetRepsMax} reps`
-	});
-	target.createSpan({ cls: 'fit-exercise-card-separator', text: '•' });
-	target.createSpan({ text: `${exercise.restSeconds}s rest` });
-
 	// Last set info (if any)
 	const lastSet = exercise.sets[exercise.sets.length - 1];
 	if (lastSet) {
-		const lastInfo = content.createDiv({ cls: 'fit-exercise-card-last' });
-		lastInfo.createSpan({
-			text: `Last: ${lastSet.weight} × ${lastSet.reps}`
+		content.createSpan({
+			cls: 'fit-exercise-card-last',
+			text: `Last: ${lastSet.weight}×${lastSet.reps}`
 		});
 	}
 
@@ -119,24 +111,19 @@ export function createExerciseCard(parent: HTMLElement, options: ExerciseCardOpt
 	const progressFill = progressBar.createDiv({ cls: 'fit-exercise-card-progress-fill' });
 	progressFill.style.width = `${(completedSets / targetSets) * 100}%`;
 
-	// Delete button (if handler provided)
-	if (options.onDelete) {
-		const deleteBtn = cardInner.createEl('button', {
-			cls: 'fit-button fit-button-ghost fit-card-delete',
-			attr: { 'aria-label': 'Remove exercise' }
-		});
-		setIcon(deleteBtn, 'trash-2');
-		deleteBtn.addEventListener('click', (e) => {
-			e.stopPropagation();
-			options.onDelete?.();
-		});
-	}
+	// Bottom row: target info (reps • rest)
+	const bottomRow = card.createDiv({ cls: 'fit-exercise-card-bottom' });
+	bottomRow.createSpan({
+		text: `${exercise.targetRepsMin}-${exercise.targetRepsMax} reps`
+	});
+	bottomRow.createSpan({ cls: 'fit-exercise-card-separator', text: '•' });
+	bottomRow.createSpan({ text: `${exercise.restSeconds}s rest` });
 
 	// Click handler (for navigating to exercise)
 	card.addEventListener('click', (e) => {
-		// Don't trigger click when clicking drag handle or delete button
+		// Don't trigger click when clicking drag handle
 		const target = e.target as HTMLElement;
-		if (target.closest('.fit-drag-handle') || target.closest('.fit-card-delete')) return;
+		if (target.closest('.fit-drag-handle')) return;
 		options.onClick();
 	});
 

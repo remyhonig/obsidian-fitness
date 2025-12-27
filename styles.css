@@ -294,9 +294,9 @@
 /* ========== Cards ========== */
 .fit-exercise-card {
 	background: var(--background-secondary);
-	border-radius: 16px;
-	padding: 16px;
-	margin-bottom: 12px;
+	border-radius: 12px;
+	padding: 12px;
+	margin-bottom: 8px;
 	cursor: pointer;
 	transition: transform 0.15s, box-shadow 0.15s;
 }
@@ -309,50 +309,71 @@
 	opacity: 0.7;
 }
 
-.fit-exercise-card-header {
+/* Top row: drag handle + number + title */
+.fit-exercise-card-top {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 8px;
 	margin-bottom: 8px;
 }
 
+.fit-exercise-card-top .fit-drag-handle {
+	margin-left: -4px;
+}
+
 .fit-exercise-card-number {
-	width: 28px;
-	height: 28px;
+	width: 22px;
+	height: 22px;
 	border-radius: 50%;
 	background: var(--background-modifier-border);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 14px;
+	font-size: 12px;
 	font-weight: 600;
+	flex-shrink: 0;
 }
 
 .fit-exercise-card-name {
-	font-size: 18px;
+	font-size: 16px;
 	font-weight: 600;
 	flex: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-.fit-exercise-card-progress {
-	margin-bottom: 4px;
+/* Middle row: image + content */
+.fit-exercise-card-middle {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 8px;
+}
+
+.fit-exercise-card-img {
+	width: 80px;
+	height: 60px;
+	object-fit: cover;
+	border-radius: 8px;
+	flex-shrink: 0;
+}
+
+.fit-exercise-card-content {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 4px;
 }
 
 .fit-exercise-card-sets {
 	font-size: 14px;
-	color: var(--text-muted);
-}
-
-.fit-exercise-card-target {
-	font-size: 14px;
-	color: var(--text-muted);
-	display: flex;
-	gap: 8px;
+	font-weight: 500;
 }
 
 .fit-exercise-card-last {
-	margin-top: 8px;
-	font-size: 14px;
+	font-size: 13px;
 	color: var(--text-muted);
 }
 
@@ -360,7 +381,7 @@
 	height: 4px;
 	background: var(--background-modifier-border);
 	border-radius: 2px;
-	margin-top: 12px;
+	margin-top: 4px;
 	overflow: hidden;
 }
 
@@ -371,23 +392,16 @@
 	transition: width 0.3s;
 }
 
-/* Exercise card with images */
-.fit-exercise-card-inner {
+/* Bottom row: target info */
+.fit-exercise-card-bottom {
 	display: flex;
-	gap: 12px;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--text-muted);
 }
 
-.fit-exercise-card-img {
-	width: 100px;
-	height: 56px;
-	object-fit: cover;
-	border-radius: 8px;
-	flex-shrink: 0;
-}
-
-.fit-exercise-card-content {
-	flex: 1;
-	min-width: 0;
+.fit-exercise-card-separator {
+	color: var(--text-faint);
 }
 
 /* Set rows */
