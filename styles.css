@@ -1143,7 +1143,7 @@
 
 .fit-weight-input {
 	width: 100%;
-	max-width: 160px;
+	max-width: 100px;
 	font-size: 56px;
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;

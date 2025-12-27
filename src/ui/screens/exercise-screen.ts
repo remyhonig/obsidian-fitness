@@ -531,8 +531,8 @@ export class ExerciseScreen implements Screen {
 	private renderExerciseDetails(sessionExercise: SessionExercise, parent: HTMLElement): void {
 		// Look up full exercise details asynchronously
 		void this.ctx.exerciseRepo.getByName(sessionExercise.exercise).then(exercise => {
-			// Check if we have any details to show
-			if (!exercise?.muscleGroups?.length && !exercise?.equipment && !exercise?.notes && !exercise?.image0) {
+			// Check if we have any details to show (only images and notes, skip properties)
+			if (!exercise?.notes && !exercise?.image0) {
 				return;
 			}
 
@@ -556,31 +556,7 @@ export class ExerciseScreen implements Screen {
 				}
 			}
 
-			// Muscle groups as tags
-			if (exercise.muscleGroups && exercise.muscleGroups.length > 0) {
-				const row = content.createDiv({ cls: 'fit-exercise-detail-row' });
-				row.createSpan({ cls: 'fit-exercise-detail-label', text: 'Muscles' });
-				const tags = row.createDiv({ cls: 'fit-exercise-detail-tags' });
-				for (const muscle of exercise.muscleGroups) {
-					tags.createSpan({ cls: 'fit-exercise-detail-tag', text: muscle });
-				}
-			}
-
-			// Equipment
-			if (exercise.equipment) {
-				const row = content.createDiv({ cls: 'fit-exercise-detail-row' });
-				row.createSpan({ cls: 'fit-exercise-detail-label', text: 'Equipment' });
-				row.createSpan({ cls: 'fit-exercise-detail-value', text: exercise.equipment });
-			}
-
-			// Category
-			if (exercise.category) {
-				const row = content.createDiv({ cls: 'fit-exercise-detail-row' });
-				row.createSpan({ cls: 'fit-exercise-detail-label', text: 'Category' });
-				row.createSpan({ cls: 'fit-exercise-detail-value', text: exercise.category });
-			}
-
-			// Notes - render as markdown
+			// Notes - render as markdown (skip muscles, equipment, category)
 			if (exercise.notes) {
 				const notesSection = content.createDiv({ cls: 'fit-exercise-notes' });
 				const notesContent = notesSection.createDiv({ cls: 'fit-exercise-notes-content' });
