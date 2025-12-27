@@ -599,11 +599,6 @@ export class ExerciseScreen implements Screen {
 			return;
 		}
 
-		// Check if exercise was already complete before this set
-		const exerciseBefore = this.getExercise();
-		if (!exerciseBefore) return;
-		const wasComplete = exerciseBefore.sets.filter(s => s.completed).length >= exerciseBefore.targetSets;
-
 		// Log the set and wait for persistence
 		await this.ctx.sessionState.logSet(
 			this.exerciseIndex,
@@ -611,16 +606,7 @@ export class ExerciseScreen implements Screen {
 			this.currentReps
 		);
 
-		// Check if exercise just became complete
-		const exerciseAfter = this.getExercise();
-		if (!exerciseAfter) return;
-		const isNowComplete = exerciseAfter.sets.filter(s => s.completed).length >= exerciseAfter.targetSets;
-
-		if (isNowComplete && !wasComplete) {
-			// Exercise just became complete - navigate to session overview immediately
-			// This prevents the subscription handler from triggering re-renders
-			this.ctx.view.navigateTo('session');
-		}
+		// Re-render will happen via subscription, showing RPE selector if exercise is now complete
 	}
 
 	private async editSet(setIndex: number): Promise<void> {
