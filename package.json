@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-plugin-template",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "An Obsidian plugin template",
 	"main": "main.js",
 	"type": "module",
