@@ -1,6 +1,7 @@
-import { ItemView, Platform, WorkspaceLeaf, TAbstractFile, EventRef } from 'obsidian';
+import { App, ItemView, Platform, WorkspaceLeaf, TAbstractFile, EventRef } from 'obsidian';
 import type MainPlugin from '../main';
 import type { ScreenType, ScreenParams } from '../types';
+import type { PluginSettings } from '../settings';
 import { SessionStateManager } from '../state/session-state';
 import { ExerciseRepository } from '../data/exercise-repository';
 import { WorkoutRepository } from '../data/workout-repository';
@@ -31,16 +32,27 @@ export interface Screen {
 }
 
 /**
- * Context passed to screens for accessing plugin functionality
+ * Context passed to screens for accessing plugin functionality.
+ * Provides facade properties to avoid deep chains like `ctx.plugin.settings.foo`
  */
+/** Callback for file change notifications */
+export type FileWatchCallback = (filePath: string) => void;
+
 export interface ScreenContext {
 	view: FitView;
+	/** @deprecated Use ctx.settings and ctx.app instead */
 	plugin: MainPlugin;
 	sessionState: SessionStateManager;
 	exerciseRepo: ExerciseRepository;
 	workoutRepo: WorkoutRepository;
 	sessionRepo: SessionRepository;
 	programRepo: ProgramRepository;
+	// Facade properties - prefer these over ctx.plugin.*
+	settings: PluginSettings;
+	app: App;
+	saveSettings: () => Promise<void>;
+	/** Subscribe to file modifications. Returns unsubscribe function. */
+	watchFile: (filePath: string, callback: FileWatchCallback) => () => void;
 }
 
 /**
@@ -61,6 +73,9 @@ export class FitView extends ItemView {
 	// Event listeners for file changes
 	private vaultEventRefs: EventRef[] = [];
 	private refreshDebounceTimer: number | null = null;
+
+	// Per-file watchers for screens that need specific file notifications
+	private fileWatchers = new Map<string, Set<FileWatchCallback>>();
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -141,10 +156,20 @@ export class FitView extends ItemView {
 		const basePath = this.plugin.settings.basePath;
 
 		const handleFileChange = (file: TAbstractFile) => {
-			// Only refresh if the file is in our data folder
+			// Only process if the file is in our data folder
 			if (file.path.startsWith(basePath + '/')) {
 				console.debug('[Fit] File changed:', file.path);
-				this.debouncedRefresh();
+
+				// Notify specific file watchers first
+				const watchers = this.fileWatchers.get(file.path);
+				if (watchers && watchers.size > 0) {
+					for (const callback of watchers) {
+						callback(file.path);
+					}
+				} else {
+					// No specific watchers, do general refresh
+					this.debouncedRefresh();
+				}
 			}
 		};
 
@@ -231,7 +256,36 @@ export class FitView extends ItemView {
 			exerciseRepo: this.exerciseRepo,
 			workoutRepo: this.workoutRepo,
 			sessionRepo: this.sessionRepo,
-			programRepo: this.programRepo
+			programRepo: this.programRepo,
+			// Facade properties
+			settings: this.plugin.settings,
+			app: this.app,
+			saveSettings: () => this.plugin.saveSettings(),
+			watchFile: (path, callback) => this.watchFile(path, callback)
+		};
+	}
+
+	/**
+	 * Subscribe to modifications of a specific file.
+	 * Returns an unsubscribe function that should be called in destroy().
+	 */
+	watchFile(filePath: string, callback: FileWatchCallback): () => void {
+		let watchers = this.fileWatchers.get(filePath);
+		if (!watchers) {
+			watchers = new Set();
+			this.fileWatchers.set(filePath, watchers);
+		}
+		watchers.add(callback);
+
+		// Return unsubscribe function
+		return () => {
+			const w = this.fileWatchers.get(filePath);
+			if (w) {
+				w.delete(callback);
+				if (w.size === 0) {
+					this.fileWatchers.delete(filePath);
+				}
+			}
 		};
 	}
 

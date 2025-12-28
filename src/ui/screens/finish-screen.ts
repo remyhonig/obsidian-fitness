@@ -57,7 +57,7 @@ export class FinishScreen implements Screen {
 
 		// Total volume
 		const volume = this.ctx.sessionRepo.calculateVolume(session);
-		const unit = this.ctx.plugin.settings.weightUnit;
+		const unit = this.ctx.settings.weightUnit;
 		this.renderStat(stats, 'Volume', `${volume.toLocaleString()} ${unit}`);
 
 		// Exercises
@@ -75,7 +75,7 @@ export class FinishScreen implements Screen {
 		section.createEl('h2', { text: 'Exercise summary', cls: 'fit-section-title' });
 
 		const list = section.createDiv({ cls: 'fit-finish-exercise-list' });
-		const unit = this.ctx.plugin.settings.weightUnit;
+		const unit = this.ctx.settings.weightUnit;
 
 		for (const exercise of session.exercises) {
 			const completedSets = exercise.sets.filter(s => s.completed);

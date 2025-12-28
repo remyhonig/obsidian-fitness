@@ -42,7 +42,7 @@ export class HomeScreen implements Screen {
 	}
 
 	private async renderMainSection(parent: HTMLElement): Promise<void> {
-		const settings = this.ctx.plugin.settings;
+		const settings = this.ctx.settings;
 		const hasActiveProgram = settings.activeProgram != null;
 
 		// Check for active session to resume
@@ -99,7 +99,7 @@ export class HomeScreen implements Screen {
 	}
 
 	private async renderActiveProgram(parent: HTMLElement, hasResumeCard: boolean): Promise<void> {
-		const settings = this.ctx.plugin.settings;
+		const settings = this.ctx.settings;
 		if (!settings.activeProgram) return;
 
 		// Get the active program

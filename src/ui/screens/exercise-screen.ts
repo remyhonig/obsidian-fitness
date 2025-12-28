@@ -281,7 +281,7 @@ export class ExerciseScreen implements Screen {
 	}
 
 	private renderWeightInput(parent: HTMLElement): void {
-		const settings = this.ctx.plugin.settings;
+		const settings = this.ctx.settings;
 		const unit = settings.weightUnit;
 		const smallInc = unit === 'kg' ? 0.5 : 1.25;
 		const largeInc = unit === 'kg' ? 2.5 : 5;
@@ -368,7 +368,7 @@ export class ExerciseScreen implements Screen {
 	 * Render integrated sets row - interweaved: history1, current1, history2, current2...
 	 */
 	private renderIntegratedSets(exercise: SessionExercise, parent: HTMLElement): void {
-		const unit = this.ctx.plugin.settings.weightUnit;
+		const unit = this.ctx.settings.weightUnit;
 		const currentSets = exercise.sets;
 
 		// Create placeholder containers for each set pair (history + current)
@@ -468,7 +468,7 @@ export class ExerciseScreen implements Screen {
 
 		// Horizontal scrollable row of compact set chips
 		const row = section.createDiv({ cls: 'fit-sets-chips' });
-		const unit = this.ctx.plugin.settings.weightUnit;
+		const unit = this.ctx.settings.weightUnit;
 
 		for (let i = 0; i < exercise.sets.length; i++) {
 			const set = exercise.sets[i];
@@ -541,7 +541,7 @@ export class ExerciseScreen implements Screen {
 
 			// Horizontal row of history chips (not deletable)
 			const row = section.createDiv({ cls: 'fit-sets-chips' });
-			const unit = this.ctx.plugin.settings.weightUnit;
+			const unit = this.ctx.settings.weightUnit;
 
 			for (const set of lastSession.sets) {
 				const chip = row.createDiv({ cls: 'fit-set-chip fit-set-chip-history' });
@@ -591,7 +591,7 @@ export class ExerciseScreen implements Screen {
 				tempComponent.load();
 
 				void MarkdownRenderer.render(
-					this.ctx.plugin.app,
+					this.ctx.app,
 					exercise.notes,
 					notesContent,
 					'',
@@ -812,7 +812,7 @@ export class ExerciseScreen implements Screen {
 	}
 
 	private async advanceProgramIfMatching(session: Session): Promise<void> {
-		const settings = this.ctx.plugin.settings;
+		const settings = this.ctx.settings;
 		if (!settings.activeProgram || !session.workout) return;
 
 		try {
@@ -829,7 +829,7 @@ export class ExerciseScreen implements Screen {
 			if (currentWorkoutId === sessionWorkoutId) {
 				// Advance to next workout in the program
 				settings.programWorkoutIndex = (currentIndex + 1) % program.workouts.length;
-				await this.ctx.plugin.saveSettings();
+				await this.ctx.saveSettings();
 			}
 		} catch (error) {
 			console.error('Failed to advance program:', error);

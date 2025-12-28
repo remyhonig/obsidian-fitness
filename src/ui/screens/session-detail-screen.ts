@@ -98,7 +98,7 @@ export class SessionDetailScreen implements Screen {
 		const exercisesSection = this.containerEl.createDiv({ cls: 'fit-session-detail-exercises' });
 		exercisesSection.createDiv({ cls: 'fit-session-detail-section-title', text: 'Exercises' });
 
-		const unit = this.ctx.plugin.settings.weightUnit;
+		const unit = this.ctx.settings.weightUnit;
 
 		for (const exercise of session.exercises) {
 			const completedSets = exercise.sets.filter(s => s.completed);
@@ -138,7 +138,7 @@ export class SessionDetailScreen implements Screen {
 	}
 
 	private async copySession(session: Session): Promise<void> {
-		const settings = this.ctx.plugin.settings;
+		const settings = this.ctx.settings;
 		const path = `${settings.basePath}/Sessions/${session.id}.md`;
 		const file = this.ctx.view.app.vault.getFileByPath(path);
 		if (!file) return;

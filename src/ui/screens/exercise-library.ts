@@ -238,7 +238,7 @@ export class ExerciseLibraryScreen implements Screen {
 
 		// Default weight
 		const weightGroup = form.createDiv({ cls: 'fit-form-group' });
-		const unit = this.ctx.plugin.settings.weightUnit;
+		const unit = this.ctx.settings.weightUnit;
 		weightGroup.createEl('label', { text: `Default weight (${unit})`, cls: 'fit-form-label' });
 		const weightInput = weightGroup.createEl('input', {
 			cls: 'fit-form-input',

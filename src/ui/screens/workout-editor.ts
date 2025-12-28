@@ -1,4 +1,4 @@
-import { Notice, setIcon, type EventRef } from 'obsidian';
+import { Notice, setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, Workout, WorkoutExercise } from '../../types';
 import { createBackButton, createButton } from '../components/button';
@@ -29,8 +29,8 @@ export class WorkoutEditorScreen implements Screen {
 	// Drag state
 	private draggedIndex: number | null = null;
 
-	// File change listener
-	private fileChangeRef: EventRef | null = null;
+	// File watcher cleanup
+	private unsubscribeFileWatch: (() => void) | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -41,24 +41,13 @@ export class WorkoutEditorScreen implements Screen {
 		this.isNew = params.isNew ?? true;
 		this.workoutId = params.workoutId ?? null;
 
-		// Listen for file changes to reload when workout file is modified externally
+		// Subscribe to file changes when editing an existing workout
 		if (!this.isNew && this.workoutId) {
-			this.registerFileChangeListener();
-		}
-	}
-
-	/**
-	 * Registers a listener for file modifications
-	 */
-	private registerFileChangeListener(): void {
-		this.fileChangeRef = this.ctx.plugin.app.vault.on('modify', (file) => {
-			// Check if the modified file is our workout file
-			const expectedPath = `${this.ctx.plugin.settings.basePath}/Workouts/${this.workoutId}.md`;
-			if (file.path === expectedPath) {
-				// Reload workout data and re-render
+			const workoutPath = `${ctx.settings.basePath}/Workouts/${this.workoutId}.md`;
+			this.unsubscribeFileWatch = ctx.watchFile(workoutPath, () => {
 				void this.reloadWorkout();
-			}
-		});
+			});
+		}
 	}
 
 	/**
@@ -389,7 +378,7 @@ export class WorkoutEditorScreen implements Screen {
 			targetSets: 3,
 			targetRepsMin: 8,
 			targetRepsMax: 12,
-			restSeconds: this.ctx.plugin.settings.defaultRestSeconds
+			restSeconds: this.ctx.settings.defaultRestSeconds
 		});
 
 		// Re-render
@@ -498,11 +487,9 @@ export class WorkoutEditorScreen implements Screen {
 	}
 
 	destroy(): void {
-		// Clean up file change listener
-		if (this.fileChangeRef) {
-			this.ctx.plugin.app.vault.offref(this.fileChangeRef);
-			this.fileChangeRef = null;
-		}
+		// Clean up file watcher
+		this.unsubscribeFileWatch?.();
+		this.unsubscribeFileWatch = null;
 		this.containerEl.remove();
 	}
 }

@@ -1,4 +1,4 @@
-import { setIcon, type EventRef } from 'obsidian';
+import { setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import type { Session, Exercise } from '../../types';
 import { createBackButton, createButton, createPrimaryAction } from '../components/button';
@@ -11,7 +11,7 @@ import { toFilename } from '../../data/file-utils';
  */
 export class SessionScreen implements Screen {
 	private containerEl: HTMLElement;
-	private fileChangeRef: EventRef | null = null;
+	private unsubscribeFileWatch: (() => void) | null = null;
 	private isSyncing = false;
 
 	constructor(
@@ -19,25 +19,16 @@ export class SessionScreen implements Screen {
 		private ctx: ScreenContext
 	) {
 		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-session-screen' });
-		this.registerFileChangeListener();
-	}
 
-	/**
-	 * Registers a listener for workout file modifications
-	 */
-	private registerFileChangeListener(): void {
-		this.fileChangeRef = this.ctx.plugin.app.vault.on('modify', (file) => {
-			const session = this.ctx.sessionState.getSession();
-			if (!session?.workout) return;
-
-			// Check if the modified file is our workout file
+		// Subscribe to workout file changes if there's an active session
+		const session = ctx.sessionState.getSession();
+		if (session?.workout) {
 			const workoutId = toFilename(session.workout);
-			const expectedPath = `${this.ctx.plugin.settings.basePath}/Workouts/${workoutId}.md`;
-			if (file.path === expectedPath) {
-				// Reload workout and sync session exercises
+			const workoutPath = `${ctx.settings.basePath}/Workouts/${workoutId}.md`;
+			this.unsubscribeFileWatch = ctx.watchFile(workoutPath, () => {
 				void this.syncSessionWithWorkout(workoutId);
-			}
-		});
+			});
+		}
 	}
 
 	/**
@@ -272,7 +263,7 @@ export class SessionScreen implements Screen {
 			targetSets: 3,
 			targetRepsMin: 8,
 			targetRepsMax: 12,
-			restSeconds: this.ctx.plugin.settings.defaultRestSeconds
+			restSeconds: this.ctx.settings.defaultRestSeconds
 		};
 
 		// Create inline form card
@@ -426,7 +417,7 @@ export class SessionScreen implements Screen {
 	}
 
 	private async getReviewQuestionsForSession(): Promise<{ programId: string; questions: import('../../types').Question[] } | null> {
-		const settings = this.ctx.plugin.settings;
+		const settings = this.ctx.settings;
 		if (!settings.activeProgram) return null;
 
 		try {
@@ -441,7 +432,7 @@ export class SessionScreen implements Screen {
 	}
 
 	private async advanceProgramIfMatching(session: Session): Promise<void> {
-		const settings = this.ctx.plugin.settings;
+		const settings = this.ctx.settings;
 		if (!settings.activeProgram || !session.workout) return;
 
 		try {
@@ -458,7 +449,7 @@ export class SessionScreen implements Screen {
 			if (currentWorkoutId === sessionWorkoutId) {
 				// Advance to next workout in the program
 				settings.programWorkoutIndex = (currentIndex + 1) % program.workouts.length;
-				await this.ctx.plugin.saveSettings();
+				await this.ctx.saveSettings();
 			}
 		} catch (error) {
 			console.error('Failed to advance program:', error);
@@ -466,11 +457,9 @@ export class SessionScreen implements Screen {
 	}
 
 	destroy(): void {
-		// Clean up file change listener
-		if (this.fileChangeRef) {
-			this.ctx.plugin.app.vault.offref(this.fileChangeRef);
-			this.fileChangeRef = null;
-		}
+		// Clean up file watcher
+		this.unsubscribeFileWatch?.();
+		this.unsubscribeFileWatch = null;
 		this.containerEl.remove();
 	}
 }
