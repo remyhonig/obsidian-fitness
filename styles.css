@@ -927,6 +927,36 @@
 	color: var(--text-muted);
 }
 
+.fit-library-exercise-name-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 2px;
+}
+
+.fit-library-exercise-badge {
+	font-size: 10px;
+	font-weight: 600;
+	padding: 2px 6px;
+	border-radius: 4px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.fit-badge-database {
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.fit-badge-custom {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.fit-library-exercise-row-database {
+	opacity: 0.85;
+}
+
 /* ========== Exercise Screen ========== */
 .fit-exercise-screen {
 	display: flex;

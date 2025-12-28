@@ -1,9 +1,12 @@
 // Weight unit types
 export type WeightUnit = 'kg' | 'lbs';
 
-// Exercise definition (stored in Exercises/ folder)
+// Exercise source - database (read-only, not synced) or custom (editable, synced)
+export type ExerciseSource = 'database' | 'custom';
+
+// Exercise definition
 export interface Exercise {
-	id: string; // Derived from filename
+	id: string; // Derived from filename or database key
 	name: string;
 	category?: string;
 	equipment?: string;
@@ -13,16 +16,31 @@ export interface Exercise {
 	image0?: string; // URL to first exercise image (start position)
 	image1?: string; // URL to second exercise image (end position)
 	notes?: string;
+	source: ExerciseSource; // Where the exercise comes from
+}
+
+// Raw database exercise entry (as stored in exercise-database.json)
+export interface DatabaseExerciseEntry {
+	id: string;
+	name: string;
+	category?: string;
+	equipment?: string;
+	primaryMuscles: string[];
+	secondaryMuscles: string[];
+	instructions: string[];
+	images: string[];
 }
 
 // Workout exercise entry (reference to an exercise with targets)
 export interface WorkoutExercise {
-	exercise: string; // Exercise name/id
+	exercise: string; // Exercise name (display)
+	exerciseId?: string; // Exercise ID/slug (for lookups)
 	targetSets: number;
 	targetRepsMin: number;
 	targetRepsMax: number;
 	restSeconds: number;
 	notes?: string;
+	source?: ExerciseSource; // Database or custom exercise
 }
 
 // Workout definition (stored in Workouts/ folder)

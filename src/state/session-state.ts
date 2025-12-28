@@ -312,6 +312,25 @@ export class SessionStateManager {
 		this.notifyListeners();
 	}
 
+	/**
+	 * Updates the session exercises (for syncing with workout file changes)
+	 */
+	updateExercises(exercises: SessionExercise[]): void {
+		if (!this.session) return;
+
+		this.session.exercises = exercises;
+
+		// Ensure current exercise index is valid
+		if (this.currentExerciseIndex >= exercises.length) {
+			this.currentExerciseIndex = Math.max(0, exercises.length - 1);
+		}
+
+		if (this.persisted) {
+			this.saveImmediately();
+		}
+		this.notifyListeners();
+	}
+
 	// ========== Set Operations ==========
 
 	/**

@@ -8,15 +8,24 @@ import {
 	parseFrontmatter,
 	createFileContent
 } from './file-utils';
+import type { DatabaseExerciseRepository } from './database-exercise-repository';
 
 export class ExerciseRepository {
 	private basePath: string;
+	private databaseRepo: DatabaseExerciseRepository | null = null;
 
 	constructor(
 		private app: App,
 		basePath: string
 	) {
 		this.basePath = `${basePath}/Exercises`;
+	}
+
+	/**
+	 * Sets the database repository for merged queries
+	 */
+	setDatabaseRepository(repo: DatabaseExerciseRepository): void {
+		this.databaseRepo = repo;
 	}
 
 	/**
@@ -34,9 +43,43 @@ export class ExerciseRepository {
 	}
 
 	/**
-	 * Gets all exercises
+	 * Gets all exercises (custom + database, custom takes precedence)
 	 */
 	async list(): Promise<Exercise[]> {
+		await this.ensureFolder();
+
+		// Get custom exercises from files
+		const files = getFilesInFolder(this.app, this.basePath);
+		const customExercises: Exercise[] = [];
+		const customIds = new Set<string>();
+
+		for (const file of files) {
+			const exercise = await this.parseExerciseFile(file);
+			if (exercise) {
+				customExercises.push(exercise);
+				customIds.add(exercise.id);
+			}
+		}
+
+		// Merge with database exercises (custom takes precedence)
+		const allExercises = [...customExercises];
+		if (this.databaseRepo) {
+			for (const dbExercise of this.databaseRepo.list()) {
+				if (!customIds.has(dbExercise.id)) {
+					allExercises.push(dbExercise);
+				}
+			}
+		}
+
+		// Sort by name
+		allExercises.sort((a, b) => a.name.localeCompare(b.name));
+		return allExercises;
+	}
+
+	/**
+	 * Gets only custom exercises (for migration/management)
+	 */
+	async listCustom(): Promise<Exercise[]> {
 		await this.ensureFolder();
 		const files = getFilesInFolder(this.app, this.basePath);
 		const exercises: Exercise[] = [];
@@ -48,36 +91,85 @@ export class ExerciseRepository {
 			}
 		}
 
-		// Sort by name
 		exercises.sort((a, b) => a.name.localeCompare(b.name));
 		return exercises;
 	}
 
 	/**
-	 * Gets a single exercise by ID
+	 * Gets a single exercise by ID (checks custom first, then database)
 	 */
 	async get(id: string): Promise<Exercise | null> {
+		// Check custom exercises first
 		const path = `${this.basePath}/${id}.md`;
 		const file = this.app.vault.getFileByPath(path);
-		if (!file) {
-			return null;
+		if (file) {
+			return this.parseExerciseFile(file);
 		}
-		return this.parseExerciseFile(file);
+
+		// Fall back to database
+		if (this.databaseRepo) {
+			return this.databaseRepo.get(id);
+		}
+
+		return null;
 	}
 
 	/**
 	 * Gets a single exercise by name or ID (slug)
-	 * Handles cases where the name might be a title-cased slug
+	 * Checks custom exercises first, then database
 	 */
 	async getByName(name: string): Promise<Exercise | null> {
-		const exercises = await this.list();
+		// Check custom exercises first
+		const customExercises = await this.listCustom();
 		const nameLower = name.toLowerCase();
 		const nameSlug = nameLower.replace(/\s+/g, '-');
 
-		// Try exact name match first, then ID match
-		return exercises.find(e => e.name.toLowerCase() === nameLower) ??
-			exercises.find(e => e.id.toLowerCase() === nameSlug) ??
-			null;
+		const customMatch = customExercises.find(e => e.name.toLowerCase() === nameLower) ??
+			customExercises.find(e => e.id.toLowerCase() === nameSlug);
+
+		if (customMatch) {
+			return customMatch;
+		}
+
+		// Fall back to database
+		if (this.databaseRepo) {
+			return this.databaseRepo.getByName(name);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Copies a database exercise to custom (for editing)
+	 */
+	async copyToCustom(id: string): Promise<Exercise | null> {
+		if (!this.databaseRepo) return null;
+
+		const dbExercise = this.databaseRepo.get(id);
+		if (!dbExercise) return null;
+
+		// Check if custom version already exists
+		const existingPath = `${this.basePath}/${id}.md`;
+		if (this.app.vault.getFileByPath(existingPath)) {
+			// Already exists as custom, return it
+			return this.get(id);
+		}
+
+		// Create custom copy
+		const created = await this.create({
+			name: dbExercise.name,
+			category: dbExercise.category,
+			equipment: dbExercise.equipment,
+			muscleGroups: dbExercise.muscleGroups,
+			defaultWeight: dbExercise.defaultWeight,
+			weightIncrement: dbExercise.weightIncrement,
+			image0: dbExercise.image0,
+			image1: dbExercise.image1,
+			notes: dbExercise.notes,
+			source: 'custom'
+		});
+
+		return created;
 	}
 
 	/**
@@ -154,10 +246,10 @@ export class ExerciseRepository {
 	}
 
 	/**
-	 * Searches exercises by name
+	 * Searches exercises by name (includes database exercises)
 	 */
 	async search(query: string): Promise<Exercise[]> {
-		const exercises = await this.list();
+		const exercises = await this.list(); // Already merges custom + database
 		const lowerQuery = query.toLowerCase();
 
 		return exercises.filter(e =>
@@ -166,6 +258,61 @@ export class ExerciseRepository {
 			e.equipment?.toLowerCase().includes(lowerQuery) ||
 			e.muscleGroups?.some(m => m.toLowerCase().includes(lowerQuery))
 		);
+	}
+
+	/**
+	 * Migrates from file-based database imports to the new system
+	 * Removes files that are identical to database entries
+	 * Returns stats about the migration
+	 */
+	async migrateFromFileImports(): Promise<{ removed: number; kept: number }> {
+		if (!this.databaseRepo) {
+			return { removed: 0, kept: 0 };
+		}
+
+		const customExercises = await this.listCustom();
+		let removed = 0;
+		let kept = 0;
+
+		for (const custom of customExercises) {
+			const dbExercise = this.databaseRepo.get(custom.id);
+			if (!dbExercise) {
+				// Not in database, keep it
+				kept++;
+				continue;
+			}
+
+			// Compare key fields to see if it's been customized
+			const isModified =
+				custom.defaultWeight !== undefined ||
+				custom.weightIncrement !== undefined ||
+				this.notesAreModified(custom.notes, dbExercise.notes);
+
+			if (isModified) {
+				// User has customized it, keep the file
+				kept++;
+			} else {
+				// It's a pure database import, remove the file
+				await this.delete(custom.id);
+				removed++;
+			}
+		}
+
+		return { removed, kept };
+	}
+
+	/**
+	 * Checks if notes have been meaningfully modified from database version
+	 */
+	private notesAreModified(customNotes: string | undefined, dbNotes: string | undefined): boolean {
+		if (!customNotes && !dbNotes) return false;
+		if (!customNotes || !dbNotes) return true;
+
+		// Normalize whitespace and compare
+		const normalizedCustom = customNotes.trim().replace(/\s+/g, ' ');
+		const normalizedDb = dbNotes.trim().replace(/\s+/g, ' ');
+
+		return normalizedCustom !== normalizedDb;
 	}
 
 	/**
@@ -190,7 +337,8 @@ export class ExerciseRepository {
 				weightIncrement: frontmatter.weightIncrement,
 				image0: frontmatter.image0,
 				image1: frontmatter.image1,
-				notes: body.trim() || undefined
+				notes: body.trim() || undefined,
+				source: 'custom'
 			};
 		} catch {
 			return null;

@@ -116,10 +116,21 @@ export class ExerciseLibraryScreen implements Screen {
 	}
 
 	private renderExerciseRow(parent: HTMLElement, exercise: Exercise): void {
-		const row = parent.createDiv({ cls: 'fit-library-exercise-row' });
+		const isDatabase = exercise.source === 'database';
+		const row = parent.createDiv({
+			cls: `fit-library-exercise-row ${isDatabase ? 'fit-library-exercise-row-database' : ''}`
+		});
 
 		const info = row.createDiv({ cls: 'fit-library-exercise-info' });
-		info.createDiv({ cls: 'fit-library-exercise-name', text: exercise.name });
+
+		// Name with source badge
+		const nameRow = info.createDiv({ cls: 'fit-library-exercise-name-row' });
+		nameRow.createSpan({ cls: 'fit-library-exercise-name', text: exercise.name });
+		if (isDatabase) {
+			nameRow.createSpan({ cls: 'fit-library-exercise-badge fit-badge-database', text: 'DB' });
+		} else {
+			nameRow.createSpan({ cls: 'fit-library-exercise-badge fit-badge-custom', text: 'Custom' });
+		}
 
 		const meta = info.createDiv({ cls: 'fit-library-exercise-meta' });
 		if (exercise.category) {
@@ -130,16 +141,41 @@ export class ExerciseLibraryScreen implements Screen {
 			meta.createSpan({ text: exercise.equipment });
 		}
 
-		// Edit button
-		const editBtn = row.createEl('button', {
-			cls: 'fit-button fit-button-ghost',
-			text: 'Edit'
-		});
-		editBtn.addEventListener('click', () => {
-			this.isEditing = true;
-			this.editingExercise = exercise;
-			void Promise.resolve().then(() => this.render());
-		});
+		// Edit/Copy button based on source
+		if (isDatabase) {
+			const copyBtn = row.createEl('button', {
+				cls: 'fit-button fit-button-ghost',
+				text: 'Copy'
+			});
+			copyBtn.addEventListener('click', () => {
+				void this.copyToCustom(exercise);
+			});
+		} else {
+			const editBtn = row.createEl('button', {
+				cls: 'fit-button fit-button-ghost',
+				text: 'Edit'
+			});
+			editBtn.addEventListener('click', () => {
+				this.isEditing = true;
+				this.editingExercise = exercise;
+				void Promise.resolve().then(() => this.render());
+			});
+		}
+	}
+
+	private async copyToCustom(exercise: Exercise): Promise<void> {
+		try {
+			const copied = await this.ctx.exerciseRepo.copyToCustom(exercise.id);
+			if (copied) {
+				new Notice(`Copied "${exercise.name}" to your exercises`);
+				// Reload and re-render
+				this.exercises = await this.ctx.exerciseRepo.list();
+				this.renderResults();
+			}
+		} catch (error) {
+			console.error('Failed to copy exercise:', error);
+			new Notice(`Failed to copy: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
 	}
 
 	private renderEditForm(): void {
@@ -285,7 +321,8 @@ export class ExerciseLibraryScreen implements Screen {
 						muscleGroups: parsedMuscles.length > 0 ? parsedMuscles : undefined,
 						defaultWeight: defaultWeight || undefined,
 						weightIncrement: weightIncrement || undefined,
-						notes: notes.trim() || undefined
+						notes: notes.trim() || undefined,
+						source: 'custom'
 					});
 
 			void savePromise.then(() => {

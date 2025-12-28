@@ -4,6 +4,7 @@ import type { SessionExercise } from '../../types';
 export interface ExerciseCardOptions {
 	exercise: SessionExercise;
 	index: number;
+	displayName?: string; // Override exercise name display (for showing proper name from database)
 	image0?: string;
 	image1?: string;
 	onClick: () => void;
@@ -75,7 +76,7 @@ export function createExerciseCard(parent: HTMLElement, options: ExerciseCardOpt
 	}
 
 	topRow.createSpan({ cls: 'fit-exercise-card-number', text: String(index + 1) });
-	topRow.createSpan({ cls: 'fit-exercise-card-name', text: exercise.exercise });
+	topRow.createSpan({ cls: 'fit-exercise-card-name', text: options.displayName ?? exercise.exercise });
 
 	// Middle row: image + content
 	const middleRow = card.createDiv({ cls: 'fit-exercise-card-middle' });

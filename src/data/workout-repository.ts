@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian';
-import type { Workout, WorkoutExercise } from '../types';
+import type { Workout, WorkoutExercise, ExerciseSource } from '../types';
 import {
 	ensureFolder,
 	getFilesInFolder,
@@ -10,6 +10,7 @@ import {
 	parseWorkoutBody,
 	createWorkoutBody
 } from './file-utils';
+import type { DatabaseExerciseRepository } from './database-exercise-repository';
 
 // Frontmatter only contains metadata, not exercises
 interface WorkoutMetadata {
@@ -20,12 +21,20 @@ interface WorkoutMetadata {
 
 export class WorkoutRepository {
 	private basePath: string;
+	private databaseRepo: DatabaseExerciseRepository | null = null;
 
 	constructor(
 		private app: App,
 		basePath: string
 	) {
 		this.basePath = `${basePath}/Workouts`;
+	}
+
+	/**
+	 * Sets the database repository for exercise name lookups
+	 */
+	setDatabaseRepository(repo: DatabaseExerciseRepository): void {
+		this.databaseRepo = repo;
 	}
 
 	/**
@@ -103,14 +112,16 @@ export class WorkoutRepository {
 			estimatedDuration: workout.estimatedDuration
 		};
 
-		// Body: exercises table
+		// Body: exercises table (with source info for proper formatting)
 		const body = createWorkoutBody(
 			workout.exercises.map(e => ({
 				exercise: e.exercise,
+				exerciseId: e.exerciseId,
 				sets: e.targetSets,
 				repsMin: e.targetRepsMin,
 				repsMax: e.targetRepsMax,
-				restSeconds: e.restSeconds
+				restSeconds: e.restSeconds,
+				source: e.source
 			}))
 		);
 
@@ -145,14 +156,16 @@ export class WorkoutRepository {
 			estimatedDuration: updated.estimatedDuration
 		};
 
-		// Body: exercises table
+		// Body: exercises table (with source info for proper formatting)
 		const body = createWorkoutBody(
 			updated.exercises.map(e => ({
 				exercise: e.exercise,
+				exerciseId: e.exerciseId,
 				sets: e.targetSets,
 				repsMin: e.targetRepsMin,
 				repsMax: e.targetRepsMax,
-				restSeconds: e.restSeconds
+				restSeconds: e.restSeconds,
+				source: e.source
 			}))
 		);
 
@@ -221,26 +234,88 @@ export class WorkoutRepository {
 	}
 
 	/**
+	 * Migrates workout files to use correct exercise reference format
+	 * Database exercises: plain text ID
+	 * Custom exercises: wikilinks [[id]]
+	 */
+	async migrateExerciseReferences(
+		databaseRepo: DatabaseExerciseRepository
+	): Promise<{ updated: number; skipped: number }> {
+		const workouts = await this.list();
+		let updated = 0;
+		let skipped = 0;
+
+		for (const workout of workouts) {
+			let needsUpdate = false;
+			const updatedExercises: WorkoutExercise[] = [];
+
+			for (const exercise of workout.exercises) {
+				// Determine the correct source based on database lookup
+				const exerciseId = exercise.exerciseId ?? toFilename(exercise.exercise);
+				const dbExercise = databaseRepo.get(exerciseId);
+				const correctSource: ExerciseSource = dbExercise ? 'database' : 'custom';
+
+				// Check if the stored source differs from the correct source
+				if (exercise.source !== correctSource) {
+					needsUpdate = true;
+				}
+
+				updatedExercises.push({
+					...exercise,
+					exerciseId,
+					source: correctSource
+				});
+			}
+
+			if (needsUpdate) {
+				// Re-save the workout with correct exercise references
+				await this.update(workout.id, { exercises: updatedExercises });
+				updated++;
+			} else {
+				skipped++;
+			}
+		}
+
+		return { updated, skipped };
+	}
+
+	/**
 	 * Parses a workout file into a Workout object
 	 */
 	private async parseWorkoutFile(file: TFile): Promise<Workout | null> {
 		try {
-			const content = await this.app.vault.cachedRead(file);
+			// Use read() instead of cachedRead() to ensure fresh content after file modifications
+			const content = await this.app.vault.read(file);
 			const { frontmatter, body } = parseFrontmatter<WorkoutMetadata>(content);
 
 			if (!frontmatter?.name) {
 				return null;
 			}
 
-			// Parse exercises from body table
+			// Parse exercises from body table (includes exerciseId and source)
 			const exerciseRows = parseWorkoutBody(body);
-			const exercises: WorkoutExercise[] = exerciseRows.map(row => ({
-				exercise: row.exercise,
-				targetSets: row.sets,
-				targetRepsMin: row.repsMin,
-				targetRepsMax: row.repsMax,
-				restSeconds: row.restSeconds
-			}));
+			const exercises: WorkoutExercise[] = exerciseRows.map(row => {
+				// Look up proper exercise name from database if available
+				let exerciseName = row.exercise;
+				const exerciseId = row.exerciseId ?? toFilename(row.exercise);
+
+				if (this.databaseRepo) {
+					const dbExercise = this.databaseRepo.get(exerciseId);
+					if (dbExercise) {
+						exerciseName = dbExercise.name;
+					}
+				}
+
+				return {
+					exercise: exerciseName,
+					exerciseId,
+					targetSets: row.sets,
+					targetRepsMin: row.repsMin,
+					targetRepsMax: row.repsMax,
+					restSeconds: row.restSeconds,
+					source: row.source
+				};
+			});
 
 			return {
 				id: getIdFromPath(file.path),

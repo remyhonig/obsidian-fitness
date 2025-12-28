@@ -2,7 +2,7 @@ import { App, PluginSettingTab as ObsidianPluginSettingTab, Setting } from 'obsi
 import type MainPlugin from './main';
 import type { WeightUnit } from './types';
 import { ProgramRepository } from './data/program-repository';
-import { bootstrapDataFolder, importExerciseDatabase } from './data/bootstrap';
+import { bootstrapDataFolder } from './data/bootstrap';
 
 export interface PluginSettings {
 	basePath: string;
@@ -172,16 +172,45 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 					}
 				}));
 
-		// Exercise database import
+		// Exercise database
 		containerEl.createEl('h3', { text: 'Exercise database' });
 
+		// Show database status
+		const dbInfo = this.plugin.databaseExerciseRepo.getInfo();
+		const statusText = dbInfo
+			? `${dbInfo.count} exercises (downloaded ${new Date(dbInfo.importedAt).toLocaleDateString()})`
+			: 'Not downloaded';
+
 		new Setting(containerEl)
-			.setName('Import exercises')
-			.setDesc('Import 800+ exercises from the free-exercise-db. Existing exercises will be skipped.')
+			.setName('Exercise database')
+			.setDesc(`Status: ${statusText}. The database is stored locally and not synced. Download on each device.`)
 			.addButton(button => button
-				.setButtonText('Import')
+				.setButtonText(dbInfo ? 'Re-download' : 'Download')
 				.onClick(async () => {
-					await importExerciseDatabase(this.app, this.plugin.settings.basePath);
+					await this.plugin.downloadExerciseDatabase();
+					// Refresh the settings tab to show updated status
+					this.display();
 				}));
+
+		// Migration option (only show if database is downloaded)
+		if (dbInfo) {
+			new Setting(containerEl)
+				.setName('Clean up duplicate files')
+				.setDesc('If you previously imported exercises as files, this removes duplicates that now come from the database. Custom exercises are kept.')
+				.addButton(button => button
+					.setButtonText('Clean up')
+					.onClick(async () => {
+						await this.plugin.migrateExercises();
+					}));
+
+			new Setting(containerEl)
+				.setName('Update workout references')
+				.setDesc('Updates workout files to use plain text for database exercises and wikilinks for custom exercises. Run this after downloading the database.')
+				.addButton(button => button
+					.setButtonText('Update workouts')
+					.onClick(async () => {
+						await this.plugin.migrateWorkouts();
+					}));
+		}
 	}
 }

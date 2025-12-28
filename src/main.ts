@@ -1,13 +1,41 @@
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, PluginSettings, PluginSettingTab } from './settings';
 import { FitView, VIEW_TYPE_FIT } from './views/fit-view';
-import { bootstrapDataFolder, importExerciseDatabase } from './data/bootstrap';
+import { bootstrapDataFolder } from './data/bootstrap';
+import { DatabaseExerciseRepository } from './data/database-exercise-repository';
+import type { DatabaseExerciseEntry } from './types';
+
+// Separate storage key for exercise database (not mixed with settings)
+const EXERCISE_DATABASE_KEY = 'exercise-database';
+
+interface ExerciseDatabaseData {
+	version: string;
+	importedAt: string;
+	exercises: DatabaseExerciseEntry[];
+}
 
 export default class MainPlugin extends Plugin {
 	settings: PluginSettings;
+	databaseExerciseRepo: DatabaseExerciseRepository;
 
 	async onload() {
 		await this.loadSettings();
+
+		// Initialize database exercise repository
+		this.databaseExerciseRepo = new DatabaseExerciseRepository(
+			async () => {
+				const data = await this.loadData();
+				return data?.[EXERCISE_DATABASE_KEY] as ExerciseDatabaseData | null;
+			},
+			async (dbData) => {
+				const data = await this.loadData() ?? {};
+				data[EXERCISE_DATABASE_KEY] = dbData;
+				await this.saveData(data);
+			}
+		);
+
+		// Load the exercise database
+		await this.databaseExerciseRepo.load();
 
 		// Bootstrap data folder structure and starter content
 		// Wrapped in try-catch to ensure plugin loads even if bootstrap fails
@@ -37,17 +65,73 @@ export default class MainPlugin extends Plugin {
 			}
 		});
 
-		// Add command to import exercise database
+		// Add command to download exercise database
 		this.addCommand({
-			id: 'import-exercise-database',
-			name: 'Import exercise database (800+ exercises)',
+			id: 'download-exercise-database',
+			name: 'Download exercise database (800+ exercises)',
 			callback: () => {
-				void importExerciseDatabase(this.app, this.settings.basePath);
+				void this.downloadExerciseDatabase();
 			}
 		});
 
 		// Add settings tab
 		this.addSettingTab(new PluginSettingTab(this.app, this));
+	}
+
+	/**
+	 * Downloads and stores the exercise database
+	 */
+	async downloadExerciseDatabase(): Promise<void> {
+		new Notice('Downloading exercise database...');
+		try {
+			const result = await this.databaseExerciseRepo.import();
+			new Notice(`Downloaded ${result.imported} exercises`);
+		} catch (error) {
+			console.error('[Fit] Failed to download exercise database:', error);
+			new Notice(`Failed to download: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
+	/**
+	 * Migrates from old file-based exercise imports to new database system
+	 * Removes exercise files that are identical to database entries
+	 */
+	async migrateExercises(): Promise<{ removed: number; kept: number }> {
+		// Need a temporary ExerciseRepository to do the migration
+		const { ExerciseRepository } = await import('./data/exercise-repository');
+		const exerciseRepo = new ExerciseRepository(this.app, this.settings.basePath);
+		exerciseRepo.setDatabaseRepository(this.databaseExerciseRepo);
+
+		new Notice('Migrating exercises...');
+		try {
+			const result = await exerciseRepo.migrateFromFileImports();
+			new Notice(`Migration complete: Removed ${result.removed} duplicates, kept ${result.kept} custom exercises`);
+			return result;
+		} catch (error) {
+			console.error('[Fit] Migration failed:', error);
+			new Notice(`Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			return { removed: 0, kept: 0 };
+		}
+	}
+
+	/**
+	 * Migrates workout files to use correct exercise reference format
+	 * Database exercises become plain text, custom exercises keep wikilinks
+	 */
+	async migrateWorkouts(): Promise<{ updated: number; skipped: number }> {
+		const { WorkoutRepository } = await import('./data/workout-repository');
+		const workoutRepo = new WorkoutRepository(this.app, this.settings.basePath);
+
+		new Notice('Migrating workouts...');
+		try {
+			const result = await workoutRepo.migrateExerciseReferences(this.databaseExerciseRepo);
+			new Notice(`Migration complete: Updated ${result.updated} workouts, ${result.skipped} already correct`);
+			return result;
+		} catch (error) {
+			console.error('[Fit] Workout migration failed:', error);
+			new Notice(`Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			return { updated: 0, skipped: 0 };
+		}
 	}
 
 	onunload() {

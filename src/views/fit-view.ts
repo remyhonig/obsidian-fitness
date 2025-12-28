@@ -74,6 +74,10 @@ export class FitView extends ItemView {
 		this.sessionRepo = new SessionRepository(this.app, plugin.settings.basePath);
 		this.programRepo = new ProgramRepository(this.app, plugin.settings.basePath);
 
+		// Connect database repository to repositories that need exercise lookups
+		this.exerciseRepo.setDatabaseRepository(plugin.databaseExerciseRepo);
+		this.workoutRepo.setDatabaseRepository(plugin.databaseExerciseRepo);
+
 		// Initialize session state
 		this.sessionState = new SessionStateManager(this.app, plugin.settings);
 	}

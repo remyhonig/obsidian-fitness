@@ -1,4 +1,4 @@
-import { Notice, setIcon } from 'obsidian';
+import { Notice, setIcon, type EventRef } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, Workout, WorkoutExercise } from '../../types';
 import { createBackButton, createButton } from '../components/button';
@@ -29,6 +29,9 @@ export class WorkoutEditorScreen implements Screen {
 	// Drag state
 	private draggedIndex: number | null = null;
 
+	// File change listener
+	private fileChangeRef: EventRef | null = null;
+
 	constructor(
 		parentEl: HTMLElement,
 		private ctx: ScreenContext,
@@ -37,6 +40,48 @@ export class WorkoutEditorScreen implements Screen {
 		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-workout-editor-screen' });
 		this.isNew = params.isNew ?? true;
 		this.workoutId = params.workoutId ?? null;
+
+		// Listen for file changes to reload when workout file is modified externally
+		if (!this.isNew && this.workoutId) {
+			this.registerFileChangeListener();
+		}
+	}
+
+	/**
+	 * Registers a listener for file modifications
+	 */
+	private registerFileChangeListener(): void {
+		this.fileChangeRef = this.ctx.plugin.app.vault.on('modify', (file) => {
+			// Check if the modified file is our workout file
+			const expectedPath = `${this.ctx.plugin.settings.basePath}/Workouts/${this.workoutId}.md`;
+			if (file.path === expectedPath) {
+				// Reload workout data and re-render
+				void this.reloadWorkout();
+			}
+		});
+	}
+
+	/**
+	 * Reloads workout data from file and re-renders
+	 */
+	private async reloadWorkout(): Promise<void> {
+		if (!this.workoutId) return;
+
+		const workout = await this.ctx.workoutRepo.get(this.workoutId);
+		if (workout) {
+			this.workout = workout;
+			this.name = workout.name;
+			this.description = workout.description ?? '';
+			this.exercises = workout.exercises.map(e => ({ ...e }));
+
+			// Update original state
+			this.originalName = workout.name;
+			this.originalDescription = workout.description ?? '';
+			this.originalExercises = workout.exercises.map(e => ({ ...e }));
+
+			// Re-render the form
+			this.renderForm();
+		}
 	}
 
 	render(): void {
@@ -254,7 +299,17 @@ export class WorkoutEditorScreen implements Screen {
 			onSelect: (selectedExercise, text) => {
 				const ex = this.exercises[index];
 				if (ex) {
-					ex.exercise = text;
+					if (selectedExercise) {
+						// Selected from dropdown - use proper name, id, and source
+						ex.exercise = selectedExercise.name;
+						ex.exerciseId = selectedExercise.id;
+						ex.source = selectedExercise.source;
+					} else {
+						// Free text entry
+						ex.exercise = text;
+						ex.exerciseId = undefined;
+						ex.source = undefined;
+					}
 				}
 				this.updateSaveButton();
 			},
@@ -443,6 +498,11 @@ export class WorkoutEditorScreen implements Screen {
 	}
 
 	destroy(): void {
+		// Clean up file change listener
+		if (this.fileChangeRef) {
+			this.ctx.plugin.app.vault.offref(this.fileChangeRef);
+			this.fileChangeRef = null;
+		}
 		this.containerEl.remove();
 	}
 }

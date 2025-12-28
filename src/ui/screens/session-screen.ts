@@ -1,4 +1,4 @@
-import { setIcon } from 'obsidian';
+import { setIcon, type EventRef } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import type { Session, Exercise } from '../../types';
 import { createBackButton, createButton, createPrimaryAction } from '../components/button';
@@ -11,12 +11,74 @@ import { toFilename } from '../../data/file-utils';
  */
 export class SessionScreen implements Screen {
 	private containerEl: HTMLElement;
+	private fileChangeRef: EventRef | null = null;
+	private initialSyncDone = false;
 
 	constructor(
 		parentEl: HTMLElement,
 		private ctx: ScreenContext
 	) {
 		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-session-screen' });
+		this.registerFileChangeListener();
+	}
+
+	/**
+	 * Registers a listener for workout file modifications
+	 */
+	private registerFileChangeListener(): void {
+		this.fileChangeRef = this.ctx.plugin.app.vault.on('modify', (file) => {
+			const session = this.ctx.sessionState.getSession();
+			if (!session?.workout) return;
+
+			// Check if the modified file is our workout file
+			const workoutId = toFilename(session.workout);
+			const expectedPath = `${this.ctx.plugin.settings.basePath}/Workouts/${workoutId}.md`;
+			if (file.path === expectedPath) {
+				// Reload workout and sync session exercises
+				void this.syncSessionWithWorkout(workoutId);
+			}
+		});
+	}
+
+	/**
+	 * Syncs session exercises with the workout file
+	 * Preserves logged sets while updating exercise definitions
+	 * @param skipRender - If true, don't call render() after syncing (used when called from render)
+	 */
+	private async syncSessionWithWorkout(workoutId: string, skipRender = false): Promise<void> {
+		const workout = await this.ctx.workoutRepo.get(workoutId);
+		if (!workout) return;
+
+		const session = this.ctx.sessionState.getSession();
+		if (!session) return;
+
+		// Build a map of existing exercises by their ID for preserving logged sets
+		const existingSets = new Map<string, typeof session.exercises[0]['sets']>();
+		for (const ex of session.exercises) {
+			const exId = toFilename(ex.exercise);
+			existingSets.set(exId, ex.sets);
+		}
+
+		// Update session exercises from workout, preserving logged sets where possible
+		const updatedExercises = workout.exercises.map(we => {
+			const exerciseId = we.exerciseId ?? toFilename(we.exercise);
+			const existingSetData = existingSets.get(exerciseId);
+
+			return {
+				exercise: we.exercise,
+				targetSets: we.targetSets,
+				targetRepsMin: we.targetRepsMin,
+				targetRepsMax: we.targetRepsMax,
+				restSeconds: we.restSeconds,
+				sets: existingSetData ?? []
+			};
+		});
+
+		// Update session state
+		this.ctx.sessionState.updateExercises(updatedExercises);
+		if (!skipRender) {
+			this.render();
+		}
 	}
 
 	render(): void {
@@ -29,6 +91,16 @@ export class SessionScreen implements Screen {
 				text: 'No active workout'
 			});
 			return;
+		}
+
+		// Sync with workout file on initial render to pick up any changes
+		// made while the session screen was not active (e.g., from workout editor)
+		if (!this.initialSyncDone && session.workout) {
+			this.initialSyncDone = true;
+			const workoutId = toFilename(session.workout);
+			// Pass skipRender=true since we're already rendering, then re-render after sync
+			void this.syncSessionWithWorkout(workoutId, true).then(() => this.render());
+			return; // Wait for sync to complete before rendering
 		}
 
 		// Header
@@ -144,7 +216,7 @@ export class SessionScreen implements Screen {
 			const sessionExercise = session.exercises[i];
 			if (!sessionExercise) continue;
 
-			// Look up the exercise to get images - try name first, then ID (slug)
+			// Look up the exercise to get name and images - try name first, then ID (slug)
 			const exerciseLower = sessionExercise.exercise.toLowerCase();
 			const exerciseSlug = exerciseLower.replace(/\s+/g, '-');
 			const exerciseDetails = exerciseByName.get(exerciseLower) ?? exerciseById.get(exerciseSlug);
@@ -152,6 +224,7 @@ export class SessionScreen implements Screen {
 			createExerciseCard(exerciseList, {
 				exercise: sessionExercise,
 				index: i,
+				displayName: exerciseDetails?.name, // Use proper name from database
 				image0: exerciseDetails?.image0,
 				image1: exerciseDetails?.image1,
 				onClick: () => this.ctx.view.navigateTo('exercise', { exerciseIndex: i }),
@@ -372,6 +445,11 @@ export class SessionScreen implements Screen {
 	}
 
 	destroy(): void {
+		// Clean up file change listener
+		if (this.fileChangeRef) {
+			this.ctx.plugin.app.vault.offref(this.fileChangeRef);
+			this.fileChangeRef = null;
+		}
 		this.containerEl.remove();
 	}
 }
