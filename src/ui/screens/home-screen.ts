@@ -10,6 +10,7 @@ import type { Workout, Session } from '../../types';
 export class HomeScreen implements Screen {
 	private containerEl: HTMLElement;
 	private unsubscribe: (() => void) | null = null;
+	private abortController: AbortController | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -19,13 +20,17 @@ export class HomeScreen implements Screen {
 	}
 
 	render(): void {
+		// Abort previous async render operations
+		this.abortController?.abort();
+		this.abortController = new AbortController();
+
 		this.containerEl.empty();
 
 		// Main content
 		const content = this.containerEl.createDiv({ cls: 'fit-content' });
 
 		// Render sections in order (must await to maintain order)
-		void this.renderSectionsInOrder(content);
+		void this.renderSectionsInOrder(content, this.abortController.signal);
 
 		// Subscribe to state changes for rest timer updates
 		this.unsubscribe = this.ctx.sessionState.subscribe(() => {
@@ -33,15 +38,16 @@ export class HomeScreen implements Screen {
 		});
 	}
 
-	private async renderSectionsInOrder(content: HTMLElement): Promise<void> {
+	private async renderSectionsInOrder(content: HTMLElement, signal: AbortSignal): Promise<void> {
 		// Show program OR quick start (not both)
-		await this.renderMainSection(content);
+		await this.renderMainSection(content, signal);
+		if (signal.aborted) return;
 
 		// Recent sessions always at the bottom
-		await this.renderRecentSessions(content);
+		await this.renderRecentSessions(content, signal);
 	}
 
-	private async renderMainSection(parent: HTMLElement): Promise<void> {
+	private async renderMainSection(parent: HTMLElement, signal: AbortSignal): Promise<void> {
 		const settings = this.ctx.settings;
 		const hasActiveProgram = settings.activeProgram != null;
 
@@ -56,10 +62,10 @@ export class HomeScreen implements Screen {
 
 		if (hasActiveProgram) {
 			// Show program section with view all workouts link
-			await this.renderActiveProgram(parent, hasActiveSession);
+			await this.renderActiveProgram(parent, hasActiveSession, signal);
 		} else {
 			// Show quick start when no program is active
-			await this.renderQuickStart(parent);
+			await this.renderQuickStart(parent, signal);
 		}
 	}
 
@@ -98,20 +104,22 @@ export class HomeScreen implements Screen {
 		});
 	}
 
-	private async renderActiveProgram(parent: HTMLElement, hasResumeCard: boolean): Promise<void> {
+	private async renderActiveProgram(parent: HTMLElement, hasResumeCard: boolean, signal: AbortSignal): Promise<void> {
 		const settings = this.ctx.settings;
 		if (!settings.activeProgram) return;
 
 		// Get the active program
 		const program = await this.ctx.programRepo.get(settings.activeProgram);
+		if (signal.aborted) return;
 		if (!program || program.workouts.length === 0) {
 			// Program not found or empty, fall back to quick start
-			await this.renderQuickStart(parent);
+			await this.renderQuickStart(parent, signal);
 			return;
 		}
 
 		// Get workouts data for display
 		const allWorkouts = await this.ctx.workoutRepo.list();
+		if (signal.aborted) return;
 		const workoutMap = new Map(allWorkouts.map(w => [w.id, w]));
 
 		const section = parent.createDiv({ cls: 'fit-section fit-program-section' });
@@ -163,9 +171,9 @@ export class HomeScreen implements Screen {
 
 	}
 
-	private async renderQuickStart(parent: HTMLElement): Promise<void> {
+	private async renderQuickStart(parent: HTMLElement, signal: AbortSignal): Promise<void> {
 		const workouts = await this.ctx.workoutRepo.list();
-		if (workouts.length === 0) return;
+		if (signal.aborted || workouts.length === 0) return;
 
 		const section = parent.createDiv({ cls: 'fit-section' });
 
@@ -191,12 +199,13 @@ export class HomeScreen implements Screen {
 		}
 	}
 
-	private async renderRecentSessions(parent: HTMLElement): Promise<void> {
+	private async renderRecentSessions(parent: HTMLElement, signal: AbortSignal): Promise<void> {
 		const sessions = await this.ctx.sessionRepo.getRecent(5);
-		if (sessions.length === 0) return;
+		if (signal.aborted || sessions.length === 0) return;
 
 		// Build workout lookup map to get actual names
 		const workouts = await this.ctx.workoutRepo.list();
+		if (signal.aborted) return;
 		const workoutById = new Map(workouts.map(w => [w.id, w]));
 
 		const section = parent.createDiv({ cls: 'fit-section' });
@@ -252,6 +261,9 @@ export class HomeScreen implements Screen {
 	}
 
 	destroy(): void {
+		// Abort any in-flight async operations
+		this.abortController?.abort();
+		this.abortController = null;
 		this.unsubscribe?.();
 		this.containerEl.remove();
 	}

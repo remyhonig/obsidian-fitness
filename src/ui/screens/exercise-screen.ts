@@ -31,6 +31,7 @@ export class ExerciseScreen implements Screen {
 	private durationIntervalId: number | null = null;
 	private historyLoaded = false;
 	private isCompletingSet = false;
+	private abortController: AbortController | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -51,14 +52,15 @@ export class ExerciseScreen implements Screen {
 
 		// If no current session set, load from history (will update weight/reps)
 		if (!lastSet) {
-			void this.loadFromHistory();
+			this.abortController = new AbortController();
+			void this.loadFromHistory(this.abortController.signal);
 		}
 	}
 
 	/**
 	 * Load weight/reps from the last session's matching exercise
 	 */
-	private async loadFromHistory(): Promise<void> {
+	private async loadFromHistory(signal: AbortSignal): Promise<void> {
 		if (this.historyLoaded) return;
 		this.historyLoaded = true;
 
@@ -67,6 +69,8 @@ export class ExerciseScreen implements Screen {
 
 		try {
 			const sessions = await this.ctx.sessionRepo.list();
+			if (signal.aborted) return;
+
 			const exerciseName = exercise.exercise.toLowerCase();
 
 			for (const session of sessions) {
@@ -78,7 +82,7 @@ export class ExerciseScreen implements Screen {
 					if (completedSets.length > 0) {
 						// Get the last completed set from previous session
 						const lastHistorySet = completedSets[completedSets.length - 1];
-						if (lastHistorySet) {
+						if (lastHistorySet && !signal.aborted) {
 							this.currentWeight = lastHistorySet.weight;
 							this.currentReps = lastHistorySet.reps;
 							// Re-render to show updated values
@@ -791,7 +795,10 @@ export class ExerciseScreen implements Screen {
 			this.currentReps = exercise?.targetRepsMin ?? 8;
 			this.historyLoaded = false; // Allow loading for new exercise
 			this.render();
-			void this.loadFromHistory();
+			// Abort previous and start new history load
+			this.abortController?.abort();
+			this.abortController = new AbortController();
+			void this.loadFromHistory(this.abortController.signal);
 		}
 	}
 
@@ -837,6 +844,9 @@ export class ExerciseScreen implements Screen {
 	}
 
 	destroy(): void {
+		// Abort any in-flight async operations
+		this.abortController?.abort();
+		this.abortController = null;
 		this.unsubscribe?.();
 		if (this.durationIntervalId) {
 			window.clearInterval(this.durationIntervalId);
