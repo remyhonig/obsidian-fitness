@@ -2,22 +2,22 @@
  * RPE (Rate of Perceived Exertion) selector component
  */
 
-export interface RpeOption {
+interface RpeOption {
 	value: number;
-	description: string;
+	label: string;
 }
 
 const RPE_OPTIONS: RpeOption[] = [
-	{ value: 10, description: 'Failure. Couldn\'t complete another rep with good form' },
-	{ value: 9.5, description: 'Near failure. Maybe 1 more rep possible' },
-	{ value: 9, description: '1 rep in reserve. Ideal for hypertrophy' },
-	{ value: 8.5, description: '1-2 reps in reserve. Great muscle stimulus' },
-	{ value: 8, description: '2 reps in reserve. Good training intensity' },
-	{ value: 7.5, description: '2-3 reps in reserve. Moderate effort' },
-	{ value: 7, description: '3 reps in reserve. Sustainable volume work' },
-	{ value: 6, description: '4 reps in reserve. Light working set' },
-	{ value: 5, description: '5+ reps in reserve. Technique practice' },
-	{ value: 4, description: 'Warmup weight. Preparing muscles and joints' }
+	{ value: 10, label: 'Max effort' },
+	{ value: 9.5, label: 'Almost failure' },
+	{ value: 9, label: '1 rep left' },
+	{ value: 8.5, label: '1-2 reps left' },
+	{ value: 8, label: '2 reps left' },
+	{ value: 7.5, label: '2-3 reps left' },
+	{ value: 7, label: '3 reps left' },
+	{ value: 6, label: '4 reps left' },
+	{ value: 5, label: 'Light effort' },
+	{ value: 4, label: 'Warmup' }
 ];
 
 export interface RpeSelectorOptions {
@@ -26,7 +26,7 @@ export interface RpeSelectorOptions {
 }
 
 /**
- * Creates a vertical RPE selector with values and explanations
+ * Creates a compact RPE selector with values in a grid
  */
 export function createRpeSelector(parent: HTMLElement, options: RpeSelectorOptions): HTMLElement {
 	const container = parent.createDiv({ cls: 'fit-rpe-selector' });
@@ -34,21 +34,21 @@ export function createRpeSelector(parent: HTMLElement, options: RpeSelectorOptio
 	// Title
 	container.createDiv({ cls: 'fit-rpe-title', text: 'Rate of Perceived Exertion' });
 
-	// Options list
-	const list = container.createDiv({ cls: 'fit-rpe-list' });
+	// Options grid (2 per row)
+	const grid = container.createDiv({ cls: 'fit-rpe-grid' });
 
 	for (const rpeOption of RPE_OPTIONS) {
 		const isSelected = options.selectedValue === rpeOption.value;
-		const item = list.createDiv({
+		const item = grid.createDiv({
 			cls: `fit-rpe-item ${isSelected ? 'fit-rpe-item-selected' : ''}`
 		});
 
 		item.createSpan({ cls: 'fit-rpe-value', text: String(rpeOption.value) });
-		item.createSpan({ cls: 'fit-rpe-description', text: rpeOption.description });
+		item.createSpan({ cls: 'fit-rpe-label', text: rpeOption.label });
 
 		item.addEventListener('click', () => {
 			// Remove selection from all items
-			list.querySelectorAll('.fit-rpe-item').forEach(el => {
+			grid.querySelectorAll('.fit-rpe-item').forEach(el => {
 				el.removeClass('fit-rpe-item-selected');
 			});
 			// Select this item

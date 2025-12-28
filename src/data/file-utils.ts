@@ -535,6 +535,7 @@ export interface SessionExerciseBlock {
 	targetRepsMax: number;
 	restSeconds: number;
 	sets: SessionSetRow[];
+	muscleEngagement?: string; // 'yes-clearly' | 'moderately' | 'not-really'
 }
 
 /**
@@ -592,13 +593,18 @@ export function parseSessionBody(body: string): SessionExerciseBlock[] {
 			}
 		}
 
+		// Parse muscle engagement question/answer after table
+		const muscleEngagementMatch = block.match(/\*\*Did you feel the correct muscle working\?\*\*\s*(.*)/i);
+		const muscleEngagement = muscleEngagementMatch?.[1]?.trim();
+
 		exercises.push({
 			exercise: exerciseName,
 			targetSets,
 			targetRepsMin,
 			targetRepsMax,
 			restSeconds,
-			sets
+			sets,
+			muscleEngagement
 		});
 	}
 
@@ -653,6 +659,18 @@ export function createSessionBody(exercises: SessionExerciseBlock[]): string {
 		} else {
 			// Empty table for exercises with no sets yet
 			exerciseLines.push(createMarkdownTable(columns, []));
+		}
+
+		// Add muscle engagement question/answer if present
+		if (exercise.muscleEngagement) {
+			const labelMap: Record<string, string> = {
+				'yes-clearly': 'Yes, clearly',
+				'moderately': 'Moderately',
+				'not-really': 'Not really'
+			};
+			const label = labelMap[exercise.muscleEngagement] ?? exercise.muscleEngagement;
+			exerciseLines.push('');
+			exerciseLines.push(`**Did you feel the correct muscle working?** ${label}`);
 		}
 
 		blocks.push(exerciseLines.join('\n'));

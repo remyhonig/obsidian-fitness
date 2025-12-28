@@ -165,6 +165,7 @@ export class SessionRepository {
 				targetRepsMin: e.targetRepsMin,
 				targetRepsMax: e.targetRepsMax,
 				restSeconds: e.restSeconds,
+				muscleEngagement: e.muscleEngagement,
 				sets: e.sets.map((s, idx) => ({
 					setNumber: idx + 1,
 					weight: s.weight,
@@ -439,6 +440,7 @@ export class SessionRepository {
 				targetRepsMin: block.targetRepsMin,
 				targetRepsMax: block.targetRepsMax,
 				restSeconds: block.restSeconds,
+				muscleEngagement: block.muscleEngagement as SessionExercise['muscleEngagement'],
 				sets: block.sets.map(s => ({
 					weight: s.weight,
 					reps: s.reps,

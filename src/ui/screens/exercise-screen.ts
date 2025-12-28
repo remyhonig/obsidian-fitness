@@ -1,11 +1,12 @@
 import { setIcon, MarkdownRenderer, Component } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
-import type { ScreenParams, SessionExercise, Session } from '../../types';
+import type { ScreenParams, SessionExercise, Session, MuscleEngagement } from '../../types';
 import { createBackButton, createPrimaryAction, createButton } from '../components/button';
 import { formatWeight } from '../components/stepper';
 import { createHorizontalRepsSelector } from '../components/reps-grid';
 import { createMiniTimer } from '../components/timer';
 import { createRpeSelector } from '../components/rpe-selector';
+import { createMuscleEngagementSelector } from '../components/muscle-engagement-selector';
 import { toFilename } from '../../data/file-utils';
 
 interface ExerciseStatus {
@@ -156,8 +157,15 @@ export class ExerciseScreen implements Screen {
 		const middleContent = this.containerEl.createDiv({ cls: 'fit-middle-content' });
 
 		if (isExerciseComplete) {
-			// Show RPE selector when exercise is complete
-			// Get RPE from the last set
+			// Show muscle engagement selector first
+			createMuscleEngagementSelector(middleContent, {
+				selectedValue: exercise.muscleEngagement,
+				onSelect: (value: MuscleEngagement) => {
+					void this.ctx.sessionState.setExerciseMuscleEngagement(this.exerciseIndex, value);
+				}
+			});
+
+			// Show RPE selector below
 			const lastSetIndex = exercise.sets.length - 1;
 			const lastSet = exercise.sets[lastSetIndex];
 			createRpeSelector(middleContent, {

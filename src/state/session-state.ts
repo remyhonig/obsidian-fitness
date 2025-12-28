@@ -6,7 +6,8 @@ import type {
 	RestTimerState,
 	StateChangeListener,
 	Workout,
-	WorkoutExercise
+	WorkoutExercise,
+	MuscleEngagement
 } from '../types';
 import type { PluginSettings } from '../settings';
 import { SessionRepository } from '../data/session-repository';
@@ -417,6 +418,29 @@ export class SessionStateManager {
 		if (!this.session) return undefined;
 		const exercise = this.session.exercises[exerciseIndex];
 		return exercise?.rpe;
+	}
+
+	/**
+	 * Sets the muscle engagement for an exercise
+	 */
+	async setExerciseMuscleEngagement(exerciseIndex: number, value: MuscleEngagement): Promise<void> {
+		if (!this.session) return;
+		const exercise = this.session.exercises[exerciseIndex];
+		if (!exercise) return;
+
+		exercise.muscleEngagement = value;
+
+		await this.saveAndWait();
+		this.notifyListeners();
+	}
+
+	/**
+	 * Gets the muscle engagement for an exercise
+	 */
+	getExerciseMuscleEngagement(exerciseIndex: number): MuscleEngagement | undefined {
+		if (!this.session) return undefined;
+		const exercise = this.session.exercises[exerciseIndex];
+		return exercise?.muscleEngagement;
 	}
 
 	// ========== Rest Timer ==========

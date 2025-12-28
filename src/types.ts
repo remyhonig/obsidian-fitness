@@ -85,6 +85,9 @@ export interface LoggedSet {
 	rpe?: number;
 }
 
+// Muscle engagement options
+export type MuscleEngagement = 'yes-clearly' | 'moderately' | 'not-really';
+
 // Exercise data within a session
 export interface SessionExercise {
 	exercise: string; // Exercise name/id
@@ -94,6 +97,7 @@ export interface SessionExercise {
 	restSeconds: number;
 	sets: LoggedSet[];
 	rpe?: number; // Rate of Perceived Exertion (7-10)
+	muscleEngagement?: MuscleEngagement; // Did the exercise work the correct muscle?
 }
 
 // Session status

@@ -2037,7 +2037,9 @@
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	padding: 8px 0;
+	padding: 16px 0 8px 0;
+	margin-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
 }
 
 .fit-rpe-title {
@@ -2049,17 +2051,19 @@
 	margin-bottom: 4px;
 }
 
-.fit-rpe-list {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
+.fit-rpe-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
 }
 
 .fit-rpe-item {
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	gap: 12px;
-	padding: 12px 16px;
+	justify-content: center;
+	gap: 2px;
+	padding: 10px 8px;
 	background: var(--background-secondary);
 	border-radius: 10px;
 	cursor: pointer;
@@ -2077,22 +2081,74 @@
 }
 
 .fit-rpe-item-selected .fit-rpe-value,
-.fit-rpe-item-selected .fit-rpe-description {
+.fit-rpe-item-selected .fit-rpe-label {
 	color: var(--text-on-accent);
 }
 
 .fit-rpe-value {
-	font-size: 24px;
+	font-size: 18px;
 	font-weight: 700;
-	min-width: 48px;
-	text-align: center;
 	color: var(--text-normal);
 }
 
-.fit-rpe-description {
-	font-size: 14px;
+.fit-rpe-label {
+	font-size: 11px;
 	color: var(--text-muted);
-	line-height: 1.3;
+	text-align: center;
+}
+
+/* ========== Muscle Engagement Selector ========== */
+.fit-muscle-engagement-selector {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 8px 0 16px 0;
+}
+
+.fit-muscle-engagement-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.fit-muscle-engagement-options {
+	display: flex;
+	gap: 8px;
+}
+
+.fit-muscle-engagement-item {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 12px 8px;
+	background: var(--background-secondary);
+	border-radius: 10px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	border: 2px solid transparent;
+	text-align: center;
+}
+
+.fit-muscle-engagement-item:active {
+	transform: scale(0.98);
+}
+
+.fit-muscle-engagement-item-selected {
+	background: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
+
+.fit-muscle-engagement-item-selected .fit-muscle-engagement-label {
+	color: var(--text-on-accent);
+}
+
+.fit-muscle-engagement-label {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-normal);
 }
 
 /* ========== Desktop Adaptations ========== */
