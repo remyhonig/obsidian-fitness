@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-plugin-template",
-	"version": "1.0.6",
-	"description": "An Obsidian plugin template",
+	"name": "obsidian-fitness",
+	"version": "1.0.7",
+	"description": "Mobile-first workout tracking with zero-typing set logging, templates, and rest timers.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
