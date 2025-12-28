@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SessionRepository } from './session-repository';
-import type { App, TFile, TFolder } from 'obsidian';
+import { TFile, TFolder } from 'obsidian';
+import type { App } from 'obsidian';
 import type { Session, SessionExercise, LoggedSet } from '../types';
 
 // Create mock vault
@@ -8,12 +9,35 @@ function createMockVault() {
 	const files = new Map<string, { content: string; file: TFile }>();
 	const folders = new Set<string>();
 
+	// Helper to get folder path from file path
+	const getFolderPath = (filePath: string) => {
+		const parts = filePath.split('/');
+		parts.pop();
+		return parts.join('/');
+	};
+
+	// Helper to get files in a folder
+	const getFilesInFolder = (folderPath: string): TFile[] => {
+		const result: TFile[] = [];
+		for (const [path, { file }] of files.entries()) {
+			if (getFolderPath(path) === folderPath) {
+				result.push(file);
+			}
+		}
+		return result;
+	};
+
+	// Helper to create a TFile instance
+	const createFile = (path: string): TFile => {
+		return new TFile(path);
+	};
+
 	const adapter = {
 		exists: vi.fn(async (path: string) => files.has(path)),
 		write: vi.fn(async (path: string, content: string) => {
-			const name = path.split('/').pop() ?? '';
-			const file = { path, name, extension: 'md' } as TFile;
+			const file = createFile(path);
 			files.set(path, { content, file });
+			folders.add(getFolderPath(path));
 		})
 	};
 
@@ -22,13 +46,15 @@ function createMockVault() {
 		getFileByPath: vi.fn((path: string) => files.get(path)?.file ?? null),
 		getFolderByPath: vi.fn((path: string) => {
 			if (folders.has(path)) {
-				return { path, children: [] } as unknown as TFolder;
+				const children = getFilesInFolder(path);
+				return new TFolder(path, children);
 			}
 			return null;
 		}),
 		create: vi.fn(async (path: string, content: string) => {
-			const file = { path, name: path.split('/').pop() ?? '', extension: 'md' } as TFile;
+			const file = createFile(path);
 			files.set(path, { content, file });
+			folders.add(getFolderPath(path));
 			return file;
 		}),
 		modify: vi.fn(async (file: TFile, content: string) => {
@@ -45,9 +71,9 @@ function createMockVault() {
 		}),
 		_getContent: (path: string) => files.get(path)?.content,
 		_setContent: (path: string, content: string) => {
-			const name = path.split('/').pop() ?? '';
-			const file = { path, name, extension: 'md' } as TFile;
+			const file = createFile(path);
 			files.set(path, { content, file });
+			folders.add(getFolderPath(path));
 		},
 		_clear: () => {
 			files.clear();
@@ -84,7 +110,7 @@ describe('SessionRepository', () => {
 	describe('saveActive', () => {
 		it('should create active session file', async () => {
 			const session: Session = {
-				id: 'active',
+				id: '2025-12-26-10-00-00-workout',
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
 				status: 'active',
@@ -94,17 +120,18 @@ describe('SessionRepository', () => {
 			await repo.saveActive(session);
 
 			expect(mockVault.create).toHaveBeenCalledWith(
-				'Fitness/Sessions/.active-session.md',
+				'Fitness/Sessions/2025-12-26-10-00-00-workout.md',
 				expect.any(String)
 			);
 		});
 
 		it('should update existing active session file', async () => {
 			// Create initial active session
-			mockVault._setContent('Fitness/Sessions/.active-session.md', '---\nstatus: active\n---');
+			const sessionId = '2025-12-26-10-00-00-workout';
+			mockVault._setContent(`Fitness/Sessions/${sessionId}.md`, '---\nstatus: active\n---');
 
 			const session: Session = {
-				id: 'active',
+				id: sessionId,
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
 				status: 'active',
@@ -126,8 +153,9 @@ describe('SessionRepository', () => {
 		});
 
 		it('should serialize session with sets correctly in body', async () => {
+			const sessionId = '2025-12-26-10-00-00-push-day';
 			const session: Session = {
-				id: 'active',
+				id: sessionId,
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
 				workout: 'Push Day',
@@ -149,9 +177,9 @@ describe('SessionRepository', () => {
 
 			await repo.saveActive(session);
 
-			const content = mockVault._getContent('Fitness/Sessions/.active-session.md');
-			// Metadata in frontmatter
-			expect(content).toContain('workout: Push Day');
+			const content = mockVault._getContent(`Fitness/Sessions/${sessionId}.md`);
+			// Metadata in frontmatter - workout is stored as an internal link
+			expect(content).toContain('workout: "[[Workouts/push-day]]"');
 			// Exercises in body as markdown blocks
 			expect(content).toContain('## Bench Press');
 			expect(content).toContain('Target: 4 × 6-8 | Rest: 180s');
@@ -161,8 +189,9 @@ describe('SessionRepository', () => {
 		});
 
 		it('should include formatted time (HH:MM:SS) in saved sessions', async () => {
+			const sessionId = '2025-12-26-14-30-45-workout';
 			const session: Session = {
-				id: 'active',
+				id: sessionId,
 				date: '2025-12-26',
 				startTime: '2025-12-26T14:30:45Z',
 				endTime: '2025-12-26T15:45:30Z',
@@ -172,7 +201,7 @@ describe('SessionRepository', () => {
 
 			await repo.saveActive(session);
 
-			const content = mockVault._getContent('Fitness/Sessions/.active-session.md');
+			const content = mockVault._getContent(`Fitness/Sessions/${sessionId}.md`);
 			// The formatted time should be in local timezone, so we check the pattern
 			expect(content).toContain('startTimeFormatted:');
 			expect(content).toContain('endTimeFormatted:');
@@ -225,9 +254,10 @@ status: completed
 	});
 
 	describe('finalizeActive', () => {
-		it('should create completed session file', async () => {
+		it('should update session status to completed', async () => {
+			const sessionId = '2025-12-26-10-00-00-push-day';
 			const session: Session = {
-				id: 'active',
+				id: sessionId,
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
 				workout: 'Push Day',
@@ -239,61 +269,37 @@ status: completed
 
 			expect(result.status).toBe('completed');
 			expect(result.endTime).toBeDefined();
-			expect(mockVault.create).toHaveBeenCalledWith(
-				expect.stringContaining('Fitness/Sessions/2025-12-26'),
-				expect.any(String)
-			);
+			expect(result.id).toBe(sessionId); // ID remains the same
 		});
 
-		it('should include time in filename (HH-MM-SS format)', async () => {
-			const startTime = '2025-12-26T14:30:45Z';
+		it('should save to the same file with updated status', async () => {
+			const sessionId = '2025-12-26-14-30-45-push-day';
+			mockVault._setContent(`Fitness/Sessions/${sessionId}.md`, '---\nstatus: active\n---');
+
 			const session: Session = {
-				id: 'active',
+				id: sessionId,
 				date: '2025-12-26',
-				startTime,
+				startTime: '2025-12-26T14:30:45Z',
 				workout: 'Push Day',
 				status: 'active',
 				exercises: []
 			};
 
-			const result = await repo.finalizeActive(session);
+			await repo.finalizeActive(session);
 
-			// The ID should include the time in HH-MM-SS format (local timezone)
-			expect(result.id).toMatch(/^2025-12-26-\d{2}-\d{2}-\d{2}-push-day$/);
+			// Should modify existing file
+			expect(mockVault.modify).toHaveBeenCalled();
+			const content = mockVault._getContent(`Fitness/Sessions/${sessionId}.md`);
+			expect(content).toContain('status: completed');
 		});
 
-		it('should generate unique filename for duplicate sessions', async () => {
-			const startTime = '2025-12-26T14:00:00Z';
-			// Calculate what the local time format would be for this startTime
-			const localTime = new Date(startTime);
-			const hours = localTime.getHours().toString().padStart(2, '0');
-			const minutes = localTime.getMinutes().toString().padStart(2, '0');
-			const seconds = localTime.getSeconds().toString().padStart(2, '0');
-			const timeStr = `${hours}-${minutes}-${seconds}`;
-			const baseFilename = `2025-12-26-${timeStr}-push-day`;
-
-			// Create existing session file with the same timestamp
-			mockVault._setContent(`Fitness/Sessions/${baseFilename}.md`, '---\nstatus: completed\n---');
-
-			const session: Session = {
-				id: 'active',
-				date: '2025-12-26',
-				startTime,
-				workout: 'Push Day',
-				status: 'active',
-				exercises: []
-			};
-
-			const result = await repo.finalizeActive(session);
-
-			expect(result.id).toBe(`${baseFilename}-1`);
-		});
-
-		it('should delete active session file after finalizing', async () => {
+		it('should delete legacy active session file after finalizing', async () => {
+			// Create legacy active session file
 			mockVault._setContent('Fitness/Sessions/.active-session.md', '---\nstatus: active\n---');
 
+			const sessionId = '2025-12-26-10-00-00-workout';
 			const session: Session = {
-				id: 'active',
+				id: sessionId,
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
 				status: 'active',
@@ -469,8 +475,9 @@ Target: 4 × 6-8 | Rest: 180s
 
 	describe('roundtrip: saveActive and getActive', () => {
 		it('should roundtrip session with exercises and sets', async () => {
+			const sessionId = '2025-12-26-10-00-00-full-body';
 			const original: Session = {
-				id: 'active',
+				id: sessionId,
 				date: '2025-12-26',
 				startTime: '2025-12-26T10:00:00Z',
 				workout: 'Full Body',

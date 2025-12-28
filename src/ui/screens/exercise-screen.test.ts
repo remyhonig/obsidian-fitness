@@ -136,7 +136,7 @@ describe('ExerciseScreen', () => {
 			expect(setChips.length).toBe(2);
 		});
 
-		it('should show "Add extra set" button when target sets completed', () => {
+		it('should show "Complete session" button when target sets completed on single exercise', () => {
 			const exercise = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetSets: 2,
@@ -150,7 +150,8 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const button = findButton(container, 'Add extra set');
+			// When all exercises in session are complete, show Complete session
+			const button = findButton(container, 'Complete session');
 			expect(button).not.toBeNull();
 		});
 	});
@@ -304,7 +305,7 @@ describe('ExerciseScreen', () => {
 			expect(completeSetBtn).not.toBeNull();
 		});
 
-		it('should show Complete exercise button when all target sets done', () => {
+		it('should show Next exercise button when current exercise is done but others remain', () => {
 			const exercise1 = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetSets: 2,
@@ -323,8 +324,8 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const completeExerciseBtn = findButton(container, 'Complete exercise');
-			expect(completeExerciseBtn).not.toBeNull();
+			const nextExerciseBtn = findButton(container, 'Next exercise');
+			expect(nextExerciseBtn).not.toBeNull();
 		});
 
 		it('should show Complete session button when all exercises done', () => {
@@ -353,7 +354,7 @@ describe('ExerciseScreen', () => {
 			expect(completeSessionBtn).not.toBeNull();
 		});
 
-		it('should show Add extra set button when exercise is complete', () => {
+		it('should show Skip RPE button when exercise is complete', () => {
 			const exercise = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetSets: 2,
@@ -367,11 +368,12 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const extraSetBtn = findButton(container, 'Add extra set');
-			expect(extraSetBtn).not.toBeNull();
+			// When exercise is complete, RPE and muscle engagement selectors are shown with Skip option
+			const skipBtn = findButton(container, 'Skip RPE');
+			expect(skipBtn).not.toBeNull();
 		});
 
-		it('should show exercise picker overlay when Complete exercise clicked', async () => {
+		it('should navigate to session when Next exercise is clicked', async () => {
 			const exercise1 = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetSets: 2,
@@ -390,40 +392,11 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const completeExerciseBtn = findButton(container, 'Complete exercise');
-			click(completeExerciseBtn!);
+			const nextExerciseBtn = findButton(container, 'Next exercise');
+			click(nextExerciseBtn!);
 			await flushPromises();
 
-			const overlay = container.querySelector('.fit-exercise-picker-overlay');
-			expect(overlay).not.toBeNull();
-		});
-
-		it('should show pending exercises in picker', async () => {
-			const exercise1 = createSampleSessionExercise({
-				exercise: 'Bench Press',
-				targetSets: 2,
-				sets: [
-					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:00:00Z' },
-					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:05:00Z' }
-				]
-			});
-			const exercise2 = createSampleSessionExercise({
-				exercise: 'Overhead Press',
-				targetSets: 2,
-				sets: []
-			});
-			const activeSession = createSampleSession({ status: 'active', exercises: [exercise1, exercise2] });
-			const ctx = createMockScreenContext({ activeSession });
-			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
-			screen.render();
-
-			const completeExerciseBtn = findButton(container, 'Complete exercise');
-			click(completeExerciseBtn!);
-			await flushPromises();
-
-			const pickerItems = container.querySelectorAll('.fit-picker-item-name');
-			const names = Array.from(pickerItems).map(el => el.textContent);
-			expect(names).toContain('Overhead Press');
+			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session');
 		});
 	});
 
@@ -442,14 +415,15 @@ describe('ExerciseScreen', () => {
 			expect(container.querySelector('.fit-exercise-screen')).toBeNull();
 		});
 
-		it('should unsubscribe from session state on destroy', () => {
+		it('should subscribe to session events on render', () => {
 			const exercise = createSampleSessionExercise({ exercise: 'Bench Press' });
 			const activeSession = createSampleSession({ status: 'active', exercises: [exercise] });
 			const ctx = createMockScreenContext({ activeSession });
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			expect(ctx.sessionState.subscribe).toHaveBeenCalled();
+			// Should subscribe to timer and set events
+			expect(ctx.sessionState.on).toHaveBeenCalled();
 
 			screen.destroy();
 		});

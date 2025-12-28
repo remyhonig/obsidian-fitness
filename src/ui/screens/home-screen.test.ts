@@ -5,8 +5,7 @@ import {
 	createSampleWorkout,
 	createSampleSession,
 	flushPromises,
-	click,
-	findButton
+	click
 } from '../../test/mocks';
 
 describe('HomeScreen', () => {
@@ -17,137 +16,45 @@ describe('HomeScreen', () => {
 		document.body.appendChild(container);
 	});
 
-	describe('rendering', () => {
-		it('should render the workout header', () => {
-			const ctx = createMockScreenContext();
-			const screen = new HomeScreen(container, ctx);
-			screen.render();
-
-			const header = container.querySelector('.fit-title');
-			expect(header).not.toBeNull();
-			expect(header?.textContent).toBe('Workout');
-		});
-
-		it('should show "Start workout" button when no active session', () => {
-			const ctx = createMockScreenContext();
-			const screen = new HomeScreen(container, ctx);
-			screen.render();
-
-			const button = findButton(container, 'Start workout');
-			expect(button).not.toBeNull();
-		});
-
-		it('should show "Continue workout" button when active session exists', () => {
-			const activeSession = createSampleSession({ status: 'active', id: 'active' });
-			const ctx = createMockScreenContext({ activeSession });
-			const screen = new HomeScreen(container, ctx);
-			screen.render();
-
-			const button = findButton(container, 'Continue workout');
-			expect(button).not.toBeNull();
-		});
-
-		it('should show active session card when session is in progress', () => {
+	describe('resume card', () => {
+		it('should show resume card when active session exists', async () => {
 			const activeSession = createSampleSession({
 				status: 'active',
-				id: 'active',
 				workout: 'Push Day'
 			});
 			const ctx = createMockScreenContext({ activeSession });
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
+			await flushPromises();
 
-			const badge = container.querySelector('.fit-active-session-badge');
-			expect(badge).not.toBeNull();
-			expect(badge?.textContent).toBe('In progress');
+			// Resume card has class fit-program-workout-current
+			const resumeCard = container.querySelector('.fit-program-workout-current');
+			expect(resumeCard).not.toBeNull();
 
-			const workoutName = container.querySelector('.fit-active-session-workout');
+			// Should show workout name
+			const workoutName = resumeCard?.querySelector('.fit-program-workout-name');
 			expect(workoutName?.textContent).toBe('Push Day');
 		});
-	});
 
-	describe('navigation', () => {
-		it('should navigate to workout-picker when "Start workout" is clicked', () => {
-			const ctx = createMockScreenContext();
-			const screen = new HomeScreen(container, ctx);
-			screen.render();
-
-			const button = findButton(container, 'Start workout');
-			expect(button).not.toBeNull();
-			click(button!);
-
-			expect(ctx.view.navigateTo).toHaveBeenCalledWith('workout-picker');
-		});
-
-		it('should navigate to session when "Continue workout" is clicked', () => {
-			const activeSession = createSampleSession({ status: 'active', id: 'active' });
-			const ctx = createMockScreenContext({ activeSession });
-			const screen = new HomeScreen(container, ctx);
-			screen.render();
-
-			const button = findButton(container, 'Continue workout');
-			expect(button).not.toBeNull();
-			click(button!);
-
-			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session');
-		});
-
-		it('should navigate to session when active session card is clicked', () => {
-			const activeSession = createSampleSession({ status: 'active', id: 'active' });
-			const ctx = createMockScreenContext({ activeSession });
-			const screen = new HomeScreen(container, ctx);
-			screen.render();
-
-			const card = container.querySelector('.fit-active-session-card') as HTMLElement;
-			expect(card).not.toBeNull();
-			click(card);
-
-			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session');
-		});
-
-		it('should navigate to history when "View history" is clicked', async () => {
-			const ctx = createMockScreenContext({
-				sessions: [createSampleSession()]
+		it('should navigate to session when resume card is clicked', async () => {
+			const activeSession = createSampleSession({
+				status: 'active',
+				workout: 'Push Day'
 			});
+			const ctx = createMockScreenContext({ activeSession });
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
 			await flushPromises();
 
-			const button = findButton(container, 'View history');
-			expect(button).not.toBeNull();
-			click(button!);
+			const resumeCard = container.querySelector('.fit-program-workout-current') as HTMLElement;
+			click(resumeCard);
 
-			expect(ctx.view.navigateTo).toHaveBeenCalledWith('history');
-		});
-
-		it('should navigate to exercise-library when "Exercises" quick link is clicked', () => {
-			const ctx = createMockScreenContext();
-			const screen = new HomeScreen(container, ctx);
-			screen.render();
-
-			const button = findButton(container, 'Exercises');
-			expect(button).not.toBeNull();
-			click(button!);
-
-			expect(ctx.view.navigateTo).toHaveBeenCalledWith('exercise-library');
-		});
-
-		it('should navigate to history when "History" quick link is clicked', () => {
-			const ctx = createMockScreenContext();
-			const screen = new HomeScreen(container, ctx);
-			screen.render();
-
-			const buttons = container.querySelectorAll('button');
-			const historyButton = Array.from(buttons).find(b => b.textContent === 'History');
-			expect(historyButton).not.toBeUndefined();
-			click(historyButton!);
-
-			expect(ctx.view.navigateTo).toHaveBeenCalledWith('history');
+			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session');
 		});
 	});
 
-	describe('workout quick start', () => {
-		it('should render recent workouts', async () => {
+	describe('quick start', () => {
+		it('should render recent workouts when no active program', async () => {
 			const workouts = [
 				createSampleWorkout({ id: 'push', name: 'Push Day' }),
 				createSampleWorkout({ id: 'pull', name: 'Pull Day' }),
@@ -177,7 +84,7 @@ describe('HomeScreen', () => {
 			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session');
 		});
 
-		it('should show "View all workouts" link when more than 3 workouts exist', async () => {
+		it('should show "view all" link when more than 3 workouts exist', async () => {
 			const workouts = [
 				createSampleWorkout({ id: 'push', name: 'Push Day' }),
 				createSampleWorkout({ id: 'pull', name: 'Pull Day' }),
@@ -189,8 +96,27 @@ describe('HomeScreen', () => {
 			screen.render();
 			await flushPromises();
 
-			const viewAllButton = findButton(container, 'View all workouts');
-			expect(viewAllButton).not.toBeNull();
+			const viewAllLink = container.querySelector('.fit-section-link');
+			expect(viewAllLink).not.toBeNull();
+			expect(viewAllLink?.textContent).toBe('view all');
+		});
+
+		it('should navigate to workout-picker when view all is clicked', async () => {
+			const workouts = [
+				createSampleWorkout({ id: 'push', name: 'Push Day' }),
+				createSampleWorkout({ id: 'pull', name: 'Pull Day' }),
+				createSampleWorkout({ id: 'legs', name: 'Leg Day' }),
+				createSampleWorkout({ id: 'upper', name: 'Upper Body' })
+			];
+			const ctx = createMockScreenContext({ workouts });
+			const screen = new HomeScreen(container, ctx);
+			screen.render();
+			await flushPromises();
+
+			const viewAllLink = container.querySelector('.fit-section-link') as HTMLElement;
+			click(viewAllLink);
+
+			expect(ctx.view.navigateTo).toHaveBeenCalledWith('workout-picker');
 		});
 	});
 
@@ -222,19 +148,45 @@ describe('HomeScreen', () => {
 
 			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session-detail', { sessionId: 'session-1' });
 		});
+
+		it('should show "view all" link in recent sessions section', async () => {
+			const sessions = [createSampleSession({ id: 'session-1' })];
+			const ctx = createMockScreenContext({ sessions });
+			const screen = new HomeScreen(container, ctx);
+			screen.render();
+			await flushPromises();
+
+			const links = container.querySelectorAll('.fit-section-link');
+			// Look for the "view all" link near Recent workouts section
+			const viewAllLinks = Array.from(links).filter(link => link.textContent === 'view all');
+			expect(viewAllLinks.length).toBeGreaterThan(0);
+		});
 	});
 
 	describe('cleanup', () => {
-		it('should remove container on destroy', () => {
+		it('should remove container on destroy', async () => {
 			const ctx = createMockScreenContext();
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
+			await flushPromises();
 
 			expect(container.querySelector('.fit-home-screen')).not.toBeNull();
 
 			screen.destroy();
 
 			expect(container.querySelector('.fit-home-screen')).toBeNull();
+		});
+
+		it('should subscribe to session events for re-render', async () => {
+			const ctx = createMockScreenContext();
+			const screen = new HomeScreen(container, ctx);
+			screen.render();
+			await flushPromises();
+
+			// Home screen uses on() to subscribe to session lifecycle events
+			expect(ctx.sessionState.on).toHaveBeenCalledWith('session.started', expect.any(Function));
+			expect(ctx.sessionState.on).toHaveBeenCalledWith('session.finished', expect.any(Function));
+			expect(ctx.sessionState.on).toHaveBeenCalledWith('session.discarded', expect.any(Function));
 		});
 	});
 });

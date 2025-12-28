@@ -1,5 +1,35 @@
 import { vi } from 'vitest';
 
+// Mock setIcon function
+export function setIcon(el: HTMLElement, iconId: string): void {
+	el.addClass('svg-icon');
+	el.dataset.icon = iconId;
+}
+
+// Mock TFile class
+export class TFile {
+	path: string;
+	name: string;
+	extension: string;
+
+	constructor(path: string) {
+		this.path = path;
+		this.name = path.split('/').pop() ?? '';
+		this.extension = this.name.split('.').pop() ?? '';
+	}
+}
+
+// Mock TFolder class
+export class TFolder {
+	path: string;
+	children: (TFile | TFolder)[];
+
+	constructor(path: string, children: (TFile | TFolder)[] = []) {
+		this.path = path;
+		this.children = children;
+	}
+}
+
 // Mock Notice class
 export class Notice {
 	message: string;
@@ -126,6 +156,9 @@ export class PluginSettingTab {
 
 // Export default for module resolution
 export default {
+	setIcon,
+	TFile,
+	TFolder,
 	Notice,
 	Modal,
 	FuzzySuggestModal,

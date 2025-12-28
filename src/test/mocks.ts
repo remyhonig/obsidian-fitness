@@ -1,7 +1,8 @@
 import { vi } from 'vitest';
 import type { ScreenContext } from '../views/fit-view';
-import type { Exercise, Workout, Session, SessionExercise } from '../types';
+import type { Exercise, Workout, Session, SessionExercise, Program } from '../types';
 import type { PluginSettings } from '../settings';
+import type { SessionEventName, SessionEventListener } from '../state/events';
 
 // Mock plugin settings
 export function createMockSettings(): PluginSettings {
@@ -90,6 +91,7 @@ export function createMockSessionRepo(sessions: Session[] = []) {
 		),
 		getByDateRange: vi.fn().mockResolvedValue(sessions),
 		getByWorkout: vi.fn().mockResolvedValue(sessions),
+		getPreviousSession: vi.fn().mockResolvedValue(null),
 		calculateVolume: vi.fn().mockImplementation((session: Session) => {
 			let total = 0;
 			for (const ex of session.exercises) {
@@ -117,6 +119,7 @@ export function createMockSessionRepo(sessions: Session[] = []) {
 export function createMockSessionState(activeSession: Session | null = null) {
 	let session = activeSession;
 	const listeners = new Set<() => void>();
+	const eventListeners = new Map<SessionEventName, Set<SessionEventListener<SessionEventName>>>();
 
 	const notifyListeners = () => {
 		// Copy listeners to avoid issues when listeners modify the Set during iteration
@@ -225,9 +228,40 @@ export function createMockSessionState(activeSession: Session | null = null) {
 			listeners.add(listener);
 			return () => listeners.delete(listener);
 		}),
+		on: vi.fn().mockImplementation(<E extends SessionEventName>(event: E, listener: SessionEventListener<E>) => {
+			let eventSet = eventListeners.get(event);
+			if (!eventSet) {
+				eventSet = new Set();
+				eventListeners.set(event, eventSet);
+			}
+			eventSet.add(listener as SessionEventListener<SessionEventName>);
+			return () => eventSet?.delete(listener as SessionEventListener<SessionEventName>);
+		}),
 		updateSettings: vi.fn(),
+		updateExercises: vi.fn(),
 		loadFromDisk: vi.fn().mockResolvedValue(false),
-		cleanup: vi.fn().mockResolvedValue(undefined)
+		cleanup: vi.fn().mockResolvedValue(undefined),
+		setExerciseRpe: vi.fn().mockResolvedValue(undefined),
+		setExerciseMuscleEngagement: vi.fn().mockResolvedValue(undefined),
+		getExerciseRpe: vi.fn().mockReturnValue(undefined),
+		getExerciseMuscleEngagement: vi.fn().mockReturnValue(undefined)
+	};
+}
+
+// Mock program repository
+export function createMockProgramRepo(programs: Program[] = []) {
+	return {
+		list: vi.fn().mockResolvedValue(programs),
+		get: vi.fn().mockImplementation((id: string) =>
+			Promise.resolve(programs.find(p => p.id === id) ?? null)
+		),
+		create: vi.fn().mockImplementation((program: Omit<Program, 'id'>) =>
+			Promise.resolve({ id: program.name.toLowerCase().replace(/\s+/g, '-'), ...program })
+		),
+		update: vi.fn().mockResolvedValue(undefined),
+		delete: vi.fn().mockResolvedValue(undefined),
+		ensureFolder: vi.fn().mockResolvedValue(undefined),
+		setBasePath: vi.fn()
 	};
 }
 
@@ -256,15 +290,30 @@ export function createMockScreenContext(options: {
 	exercises?: Exercise[];
 	workouts?: Workout[];
 	sessions?: Session[];
+	programs?: Program[];
 	activeSession?: Session | null;
+	settings?: Partial<PluginSettings>;
 } = {}): ScreenContext {
+	const settings = { ...createMockSettings(), ...options.settings };
+	const mockApp = {
+		vault: {},
+		workspace: {},
+		fileManager: {}
+	};
+
 	return {
 		view: createMockView() as unknown as ScreenContext['view'],
 		plugin: createMockPlugin() as unknown as ScreenContext['plugin'],
 		exerciseRepo: createMockExerciseRepo(options.exercises ?? []) as unknown as ScreenContext['exerciseRepo'],
 		workoutRepo: createMockWorkoutRepo(options.workouts ?? []) as unknown as ScreenContext['workoutRepo'],
 		sessionRepo: createMockSessionRepo(options.sessions ?? []) as unknown as ScreenContext['sessionRepo'],
-		sessionState: createMockSessionState(options.activeSession ?? null) as unknown as ScreenContext['sessionState']
+		programRepo: createMockProgramRepo(options.programs ?? []) as unknown as ScreenContext['programRepo'],
+		sessionState: createMockSessionState(options.activeSession ?? null) as unknown as ScreenContext['sessionState'],
+		// Facade properties
+		settings: settings as PluginSettings,
+		app: mockApp as unknown as ScreenContext['app'],
+		saveSettings: vi.fn().mockResolvedValue(undefined),
+		watchFile: vi.fn().mockReturnValue(() => {})
 	};
 }
 
