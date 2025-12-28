@@ -4,10 +4,10 @@ import type { ScreenParams, SessionExercise, Session, MuscleEngagement } from '.
 import { createBackButton, createPrimaryAction, createButton } from '../components/button';
 import { formatWeight } from '../components/stepper';
 import { createHorizontalRepsSelector } from '../components/reps-grid';
-import { createMiniTimer } from '../components/timer';
 import { createRpeSelector } from '../components/rpe-selector';
 import { createMuscleEngagementSelector } from '../components/muscle-engagement-selector';
 import { toFilename } from '../../data/file-utils';
+import { ExerciseFormState } from './exercise-form-state';
 
 interface ExerciseStatus {
 	index: number;
@@ -23,13 +23,11 @@ interface ExerciseStatus {
 export class ExerciseScreen implements Screen {
 	private containerEl: HTMLElement;
 	private exerciseIndex: number;
-	private currentWeight: number;
-	private currentReps: number;
-	private unsubscribe: (() => void) | null = null;
+	private formState: ExerciseFormState;
+	private eventUnsubscribers: (() => void)[] = [];
 	private showingExercisePicker = false;
 	private timerEl: HTMLElement | null = null;
 	private durationIntervalId: number | null = null;
-	private historyLoaded = false;
 	private isCompletingSet = false;
 	private abortController: AbortController | null = null;
 
@@ -40,18 +38,18 @@ export class ExerciseScreen implements Screen {
 	) {
 		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-exercise-screen' });
 		this.exerciseIndex = params.exerciseIndex ?? 0;
+		this.formState = new ExerciseFormState();
 
 		// Initialize values from current session's last set or defaults
 		const exercise = this.getExercise();
 		const lastSet = this.ctx.sessionState.getLastSet(this.exerciseIndex);
 
-		// Use current session's last set if available, otherwise use defaults
-		// Default weight of 20 is reasonable for most exercises until history loads
-		this.currentWeight = lastSet?.weight ?? 20;
-		this.currentReps = lastSet?.reps ?? exercise?.targetRepsMin ?? 8;
+		if (exercise) {
+			this.formState.loadFromCurrentSession(exercise, lastSet);
+		}
 
 		// If no current session set, load from history (will update weight/reps)
-		if (!lastSet) {
+		if (!lastSet && exercise) {
 			this.abortController = new AbortController();
 			void this.loadFromHistory(this.abortController.signal);
 		}
@@ -61,46 +59,23 @@ export class ExerciseScreen implements Screen {
 	 * Load weight/reps from the last session's matching exercise
 	 */
 	private async loadFromHistory(signal: AbortSignal): Promise<void> {
-		if (this.historyLoaded) return;
-		this.historyLoaded = true;
-
 		const exercise = this.getExercise();
 		if (!exercise) return;
 
-		try {
-			const sessions = await this.ctx.sessionRepo.list();
-			if (signal.aborted) return;
+		const updated = await this.formState.loadFromHistory(
+			exercise.exercise,
+			this.ctx.sessionRepo,
+			signal
+		);
 
-			const exerciseName = exercise.exercise.toLowerCase();
-
-			for (const session of sessions) {
-				const sessionEx = session.exercises.find(
-					e => e.exercise.toLowerCase() === exerciseName
-				);
-				if (sessionEx && sessionEx.sets.length > 0) {
-					const completedSets = sessionEx.sets.filter(s => s.completed);
-					if (completedSets.length > 0) {
-						// Get the last completed set from previous session
-						const lastHistorySet = completedSets[completedSets.length - 1];
-						if (lastHistorySet && !signal.aborted) {
-							this.currentWeight = lastHistorySet.weight;
-							this.currentReps = lastHistorySet.reps;
-							// Re-render to show updated values
-							this.render();
-						}
-					}
-					break; // Most recent first
-				}
-			}
-		} catch (error) {
-			console.error('Failed to load history:', error);
+		if (updated && !signal.aborted) {
+			this.render();
 		}
 	}
 
 	render(): void {
-		// Unsubscribe from previous subscription to avoid accumulating listeners
-		this.unsubscribe?.();
-		this.unsubscribe = null;
+		// Unsubscribe from previous event subscriptions
+		this.unsubscribeFromEvents();
 
 		// Clear duration interval
 		if (this.durationIntervalId) {
@@ -192,8 +167,8 @@ export class ExerciseScreen implements Screen {
 
 			// Reps card - full width (no title, just controls)
 			const repsCard = bottomInputs.createDiv({ cls: 'fit-input-card-wide' });
-			createHorizontalRepsSelector(repsCard, this.currentReps, (value) => {
-				this.currentReps = value;
+			createHorizontalRepsSelector(repsCard, this.formState.reps, (value) => {
+				this.formState.setReps(value);
 			});
 		}
 
@@ -225,17 +200,78 @@ export class ExerciseScreen implements Screen {
 			createPrimaryAction(actionArea, 'Complete set', () => this.completeSet());
 		}
 
-		// Subscribe to state changes
-		this.unsubscribe = this.ctx.sessionState.subscribe(() => {
-			// Update timer display
-			this.updateTimer();
+		// Subscribe to specific events
+		this.subscribeToEvents();
+	}
 
-			// Re-render when state changes (e.g., after completing a set)
-			// But don't re-render if showing the exercise picker or timer is active
-			if (!this.showingExercisePicker && !this.ctx.sessionState.isRestTimerActive()) {
+	private subscribeToEvents(): void {
+		// Unsubscribe from previous subscriptions
+		this.unsubscribeFromEvents();
+
+		const state = this.ctx.sessionState;
+
+		// Timer events - only update timer display, no re-render
+		this.eventUnsubscribers.push(
+			state.on('timer.tick', ({ remaining }) => {
+				this.updateTimerFromEvent(remaining);
+			})
+		);
+
+		this.eventUnsubscribers.push(
+			state.on('timer.started', () => {
+				this.updateTimer();
+			})
+		);
+
+		this.eventUnsubscribers.push(
+			state.on('timer.cancelled', () => {
+				this.updateTimer();
+				// Re-render to show updated UI (e.g., after rest period ends)
+				if (!this.showingExercisePicker) {
+					this.render();
+				}
+			})
+		);
+
+		// Set events - re-render to show updated sets
+		const reRenderIfNotPicking = () => {
+			if (!this.showingExercisePicker) {
 				this.render();
 			}
-		});
+		};
+
+		this.eventUnsubscribers.push(state.on('set.logged', reRenderIfNotPicking));
+		this.eventUnsubscribers.push(state.on('set.edited', reRenderIfNotPicking));
+		this.eventUnsubscribers.push(state.on('set.deleted', reRenderIfNotPicking));
+
+		// RPE/muscle events - re-render
+		this.eventUnsubscribers.push(state.on('rpe.changed', reRenderIfNotPicking));
+		this.eventUnsubscribers.push(state.on('muscle.changed', reRenderIfNotPicking));
+	}
+
+	private unsubscribeFromEvents(): void {
+		for (const unsub of this.eventUnsubscribers) {
+			unsub();
+		}
+		this.eventUnsubscribers = [];
+	}
+
+	/**
+	 * Lightweight timer update from tick event (no full state query)
+	 */
+	private updateTimerFromEvent(remaining: number): void {
+		if (!this.timerEl) return;
+
+		// Clear duration interval when rest timer is active
+		if (this.durationIntervalId) {
+			window.clearInterval(this.durationIntervalId);
+			this.durationIntervalId = null;
+		}
+
+		const minutes = Math.floor(remaining / 60);
+		const seconds = remaining % 60;
+		this.timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+		this.timerEl.addClass('fit-timer-active');
 	}
 
 	private updateTimer(): void {
@@ -302,7 +338,7 @@ export class ExerciseScreen implements Screen {
 		const input = inputWrapper.createEl('input', {
 			cls: 'fit-weight-input',
 			type: 'number',
-			value: String(this.currentWeight)
+			value: String(this.formState.weight)
 		});
 		input.setAttribute('step', String(smallInc));
 		input.setAttribute('min', '0');
@@ -312,13 +348,13 @@ export class ExerciseScreen implements Screen {
 		input.addEventListener('change', () => {
 			const val = parseFloat(input.value);
 			if (!isNaN(val) && val >= 0) {
-				this.currentWeight = Math.round(val * 100) / 100;
-				input.value = formatWeight(this.currentWeight);
+				this.formState.setWeight(val);
+				input.value = formatWeight(this.formState.weight);
 			}
 		});
 
 		input.addEventListener('blur', () => {
-			input.value = formatWeight(this.currentWeight);
+			input.value = formatWeight(this.formState.weight);
 		});
 
 		// Right buttons (increase)
@@ -341,12 +377,11 @@ export class ExerciseScreen implements Screen {
 		let timeoutId: number | null = null;
 
 		const updateValue = () => {
-			const newValue = Math.max(0, this.currentWeight + step);
-			this.currentWeight = Math.round(newValue * 100) / 100;
+			this.formState.setWeight(this.formState.weight + step);
 
 			const input = container.querySelector('.fit-weight-input') as HTMLInputElement;
 			if (input) {
-				input.value = formatWeight(this.currentWeight);
+				input.value = formatWeight(this.formState.weight);
 			}
 		};
 
@@ -613,7 +648,7 @@ export class ExerciseScreen implements Screen {
 		// Prevent multiple rapid clicks
 		if (this.isCompletingSet) return;
 
-		if (this.currentWeight <= 0 || this.currentReps <= 0) {
+		if (!this.formState.isValid()) {
 			return;
 		}
 
@@ -623,8 +658,8 @@ export class ExerciseScreen implements Screen {
 			// Log the set and wait for persistence
 			await this.ctx.sessionState.logSet(
 				this.exerciseIndex,
-				this.currentWeight,
-				this.currentReps
+				this.formState.weight,
+				this.formState.reps
 			);
 
 			// Explicitly re-render (subscription handler may be blocked by rest timer)
@@ -641,11 +676,8 @@ export class ExerciseScreen implements Screen {
 		const set = exercise.sets[setIndex];
 		if (!set) return;
 
-		// Load set values into current inputs
-		const setWeight = set.weight;
-		const setReps = set.reps;
-		this.currentWeight = setWeight;
-		this.currentReps = setReps;
+		// Load set values into form state
+		this.formState.loadFromSet(set);
 
 		// Delete the set so it can be re-logged
 		await this.ctx.sessionState.deleteSet(this.exerciseIndex, setIndex);
@@ -781,21 +813,18 @@ export class ExerciseScreen implements Screen {
 		this.exerciseIndex = index;
 		this.ctx.sessionState.setCurrentExerciseIndex(index);
 
-		// Reset weight/reps from the new exercise's last set
+		// Reset form state from the new exercise's last set
 		const exercise = this.getExercise();
 		const lastSet = this.ctx.sessionState.getLastSet(index);
 
-		if (lastSet) {
-			this.currentWeight = lastSet.weight;
-			this.currentReps = lastSet.reps;
-			this.render();
-		} else {
+		if (exercise) {
+			this.formState.resetForExercise(exercise, lastSet);
+		}
+
+		this.render();
+
+		if (!lastSet && exercise) {
 			// No current session set, load from history
-			this.currentWeight = 20; // Default until history loads
-			this.currentReps = exercise?.targetRepsMin ?? 8;
-			this.historyLoaded = false; // Allow loading for new exercise
-			this.render();
-			// Abort previous and start new history load
 			this.abortController?.abort();
 			this.abortController = new AbortController();
 			void this.loadFromHistory(this.abortController.signal);
@@ -847,7 +876,7 @@ export class ExerciseScreen implements Screen {
 		// Abort any in-flight async operations
 		this.abortController?.abort();
 		this.abortController = null;
-		this.unsubscribe?.();
+		this.unsubscribeFromEvents();
 		if (this.durationIntervalId) {
 			window.clearInterval(this.durationIntervalId);
 			this.durationIntervalId = null;

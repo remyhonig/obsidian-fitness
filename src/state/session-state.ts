@@ -11,6 +11,8 @@ import type {
 } from '../types';
 import type { PluginSettings } from '../settings';
 import { SessionRepository } from '../data/session-repository';
+import { PersistenceManager } from './persistence-manager';
+import type { SessionEventName, SessionEventPayload, SessionEventListener } from './events';
 
 /**
  * Manages the active workout session state
@@ -21,7 +23,9 @@ export class SessionStateManager {
 	private restTimer: RestTimerState | null = null;
 	private restTimerInterval: number | null = null;
 	private listeners: Set<StateChangeListener> = new Set();
+	private eventListeners: Map<SessionEventName, Set<SessionEventListener<SessionEventName>>> = new Map();
 	private sessionRepo: SessionRepository;
+	private persistence: PersistenceManager;
 	private persisted = false; // Track if session has been written to disk
 
 	constructor(
@@ -29,6 +33,7 @@ export class SessionStateManager {
 		private settings: PluginSettings
 	) {
 		this.sessionRepo = new SessionRepository(app, settings.basePath);
+		this.persistence = new PersistenceManager(this.sessionRepo);
 	}
 
 	/**
@@ -37,6 +42,7 @@ export class SessionStateManager {
 	updateSettings(settings: PluginSettings): void {
 		this.settings = settings;
 		this.sessionRepo.setBasePath(settings.basePath);
+		this.persistence.setRepository(this.sessionRepo);
 	}
 
 	// ========== Session Lifecycle ==========
@@ -85,6 +91,7 @@ export class SessionStateManager {
 		this.currentExerciseIndex = 0;
 		this.restTimer = null;
 		this.persisted = false; // Don't save until first set is completed
+		this.emit('session.started', undefined);
 		this.notifyListeners();
 	}
 
@@ -106,6 +113,7 @@ export class SessionStateManager {
 		this.currentExerciseIndex = 0;
 		this.restTimer = null;
 		this.persisted = false; // Don't save until first set is completed
+		this.emit('session.started', undefined);
 		this.notifyListeners();
 	}
 
@@ -120,6 +128,7 @@ export class SessionStateManager {
 				this.currentExerciseIndex = 0;
 				this.restTimer = null;
 				this.persisted = true; // Loaded from disk, so already persisted
+				this.emit('session.loaded', undefined);
 				this.notifyListeners();
 				return true;
 			}
@@ -136,11 +145,6 @@ export class SessionStateManager {
 		if (!this.session) return null;
 
 		try {
-			// Wait for any in-progress save to complete
-			if (this.savePromise) {
-				await this.savePromise;
-			}
-
 			// Store reference before clearing state
 			const sessionToFinalize = this.session;
 
@@ -150,8 +154,9 @@ export class SessionStateManager {
 			this.cancelRestTimer();
 
 			// Finalize and get the saved session
-			const finalSession = await this.sessionRepo.finalizeActive(sessionToFinalize);
+			const finalSession = await this.persistence.finalizeActive(sessionToFinalize);
 
+			this.emit('session.finished', undefined);
 			this.notifyListeners();
 			return finalSession;
 		} catch (error) {
@@ -174,16 +179,14 @@ export class SessionStateManager {
 		// Store session ID before clearing
 		const sessionId = this.session.id;
 
-		// Clear pending save flag
-		this.pendingSave = false;
-
-		// Delete active session file
-		await this.sessionRepo.deleteActive(sessionId);
+		// Delete active session file (clears pending saves internally)
+		await this.persistence.deleteActive(sessionId);
 
 		// Clear state
 		this.session = null;
 		this.currentExerciseIndex = 0;
 		this.cancelRestTimer();
+		this.emit('session.discarded', undefined);
 		this.notifyListeners();
 	}
 
@@ -222,6 +225,7 @@ export class SessionStateManager {
 				this.cancelRestTimer();
 			}
 			this.currentExerciseIndex = index;
+			this.emit('exercise.selected', { index });
 			this.notifyListeners();
 		}
 	}
@@ -258,9 +262,11 @@ export class SessionStateManager {
 		};
 
 		this.session.exercises.push(newExercise);
+		const index = this.session.exercises.length - 1;
 		if (this.persisted) {
-			this.saveImmediately();
+			this.persistence.saveQueued(this.session);
 		}
+		this.emit('exercise.added', { index });
 		this.notifyListeners();
 	}
 
@@ -279,8 +285,9 @@ export class SessionStateManager {
 		}
 
 		if (this.persisted) {
-			this.saveImmediately();
+			this.persistence.saveQueued(this.session);
 		}
+		this.emit('exercise.removed', { index });
 		this.notifyListeners();
 	}
 
@@ -307,8 +314,9 @@ export class SessionStateManager {
 		}
 
 		if (this.persisted) {
-			this.saveImmediately();
+			this.persistence.saveQueued(this.session);
 		}
+		this.emit('exercise.reordered', { fromIndex, toIndex });
 		this.notifyListeners();
 	}
 
@@ -326,8 +334,9 @@ export class SessionStateManager {
 		}
 
 		if (this.persisted) {
-			this.saveImmediately();
+			this.persistence.saveQueued(this.session);
 		}
+		this.emit('exercises.updated', undefined);
 		this.notifyListeners();
 	}
 
@@ -366,7 +375,9 @@ export class SessionStateManager {
 		}
 
 		// Persist immediately and wait for completion
-		await this.saveAndWait();
+		await this.persistence.saveAndWait(this.session);
+		const setIndex = exercise.sets.length - 1;
+		this.emit('set.logged', { exerciseIndex, setIndex });
 		this.notifyListeners();
 	}
 
@@ -388,7 +399,8 @@ export class SessionStateManager {
 		if (updates.reps !== undefined) set.reps = updates.reps;
 		if (updates.rpe !== undefined) set.rpe = updates.rpe;
 
-		await this.saveAndWait();
+		await this.persistence.saveAndWait(this.session);
+		this.emit('set.edited', { exerciseIndex, setIndex });
 		this.notifyListeners();
 	}
 
@@ -402,7 +414,8 @@ export class SessionStateManager {
 
 		exercise.sets.splice(setIndex, 1);
 
-		await this.saveAndWait();
+		await this.persistence.saveAndWait(this.session);
+		this.emit('set.deleted', { exerciseIndex, setIndex });
 		this.notifyListeners();
 	}
 
@@ -426,7 +439,8 @@ export class SessionStateManager {
 
 		exercise.rpe = rpe;
 
-		await this.saveAndWait();
+		await this.persistence.saveAndWait(this.session);
+		this.emit('rpe.changed', { exerciseIndex, rpe });
 		this.notifyListeners();
 	}
 
@@ -449,7 +463,8 @@ export class SessionStateManager {
 
 		exercise.muscleEngagement = value;
 
-		await this.saveAndWait();
+		await this.persistence.saveAndWait(this.session);
+		this.emit('muscle.changed', { exerciseIndex });
 		this.notifyListeners();
 	}
 
@@ -478,6 +493,8 @@ export class SessionStateManager {
 
 		// Update every second
 		this.restTimerInterval = window.setInterval(() => {
+			const remaining = this.getRestTimeRemaining();
+			this.emit('timer.tick', { remaining });
 			this.notifyListeners();
 
 			// Check if timer is done
@@ -486,6 +503,7 @@ export class SessionStateManager {
 			}
 		}, 1000);
 
+		this.emit('timer.started', { exerciseIndex, duration: seconds });
 		this.notifyListeners();
 	}
 
@@ -497,6 +515,7 @@ export class SessionStateManager {
 
 		this.restTimer.endTime += seconds * 1000;
 		this.restTimer.duration += seconds;
+		this.emit('timer.extended', { additionalSeconds: seconds });
 		this.notifyListeners();
 	}
 
@@ -504,11 +523,15 @@ export class SessionStateManager {
 	 * Cancels the rest timer
 	 */
 	cancelRestTimer(): void {
+		const wasActive = this.restTimerInterval !== null;
 		if (this.restTimerInterval !== null) {
 			window.clearInterval(this.restTimerInterval);
 			this.restTimerInterval = null;
 		}
 		this.restTimer = null;
+		if (wasActive) {
+			this.emit('timer.cancelled', undefined);
+		}
 		this.notifyListeners();
 	}
 
@@ -537,13 +560,44 @@ export class SessionStateManager {
 	// ========== Subscription ==========
 
 	/**
-	 * Subscribes to state changes
+	 * Subscribes to all state changes (legacy - consider using on() for specific events)
 	 */
 	subscribe(listener: StateChangeListener): () => void {
 		this.listeners.add(listener);
 		return () => {
 			this.listeners.delete(listener);
 		};
+	}
+
+	/**
+	 * Subscribes to a specific event type
+	 */
+	on<E extends SessionEventName>(event: E, listener: SessionEventListener<E>): () => void {
+		let listeners = this.eventListeners.get(event);
+		if (!listeners) {
+			listeners = new Set();
+			this.eventListeners.set(event, listeners);
+		}
+		listeners.add(listener as SessionEventListener<SessionEventName>);
+		return () => {
+			listeners?.delete(listener as SessionEventListener<SessionEventName>);
+		};
+	}
+
+	/**
+	 * Emits a specific event to topic subscribers
+	 */
+	private emit<E extends SessionEventName>(event: E, payload: SessionEventPayload<E>): void {
+		const listeners = this.eventListeners.get(event);
+		if (listeners) {
+			for (const listener of [...listeners]) {
+				try {
+					listener(payload);
+				} catch (error) {
+					console.error(`Event listener error for ${event}:`, error);
+				}
+			}
+		}
 	}
 
 	/**
@@ -561,85 +615,18 @@ export class SessionStateManager {
 		}
 	}
 
-	// ========== Persistence ==========
-
-	private savePromise: Promise<void> | null = null;
-	private pendingSave = false;
-
-	/**
-	 * Saves immediately and waits for completion
-	 * This ensures data is persisted before returning
-	 */
-	private async saveAndWait(): Promise<void> {
-		if (!this.session) return;
-
-		// If a save is in progress, wait for it and then save again
-		if (this.savePromise) {
-			await this.savePromise;
-		}
-
-		// Now do our save
-		this.savePromise = this.doSave();
-		await this.savePromise;
-	}
-
-	/**
-	 * Saves immediately (fire-and-forget)
-	 * Uses a queue to prevent concurrent saves
-	 */
-	private saveImmediately(): void {
-		if (!this.session) return;
-
-		// If a save is in progress, mark that we need another save after
-		if (this.savePromise) {
-			this.pendingSave = true;
-			return;
-		}
-
-		this.savePromise = this.doSave();
-	}
-
-	/**
-	 * Performs the actual save operation
-	 */
-	private async doSave(): Promise<void> {
-		try {
-			if (this.session) {
-				await this.sessionRepo.saveActive(this.session);
-			}
-		} catch (error) {
-			console.error('Save failed:', error);
-		} finally {
-			this.savePromise = null;
-
-			// If there's a pending save, do it now
-			if (this.pendingSave) {
-				this.pendingSave = false;
-				this.saveImmediately();
-			}
-		}
-	}
-
-	/**
-	 * Saves the current session to file (for compatibility)
-	 */
-	private async saveToFile(): Promise<void> {
-		if (!this.session) return;
-		await this.sessionRepo.saveActive(this.session);
-	}
+	// ========== Lifecycle ==========
 
 	/**
 	 * Cleanup on unload
 	 */
 	async cleanup(): Promise<void> {
 		// Wait for any in-progress save to complete
-		if (this.savePromise) {
-			await this.savePromise;
-		}
+		await this.persistence.flush();
 
 		// Final save if needed
 		if (this.session) {
-			await this.saveToFile();
+			await this.persistence.saveAndWait(this.session);
 		}
 
 		// Cancel rest timer

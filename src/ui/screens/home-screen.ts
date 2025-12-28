@@ -9,7 +9,7 @@ import type { Workout, Session } from '../../types';
  */
 export class HomeScreen implements Screen {
 	private containerEl: HTMLElement;
-	private unsubscribe: (() => void) | null = null;
+	private eventUnsubscribers: (() => void)[] = [];
 	private abortController: AbortController | null = null;
 
 	constructor(
@@ -32,10 +32,33 @@ export class HomeScreen implements Screen {
 		// Render sections in order (must await to maintain order)
 		void this.renderSectionsInOrder(content, this.abortController.signal);
 
-		// Subscribe to state changes for rest timer updates
-		this.unsubscribe = this.ctx.sessionState.subscribe(() => {
-			// Could update mini timer here if needed
-		});
+		// Subscribe to session lifecycle events to update resume card
+		this.subscribeToEvents();
+	}
+
+	private subscribeToEvents(): void {
+		// Unsubscribe from previous subscriptions
+		this.unsubscribeFromEvents();
+
+		const state = this.ctx.sessionState;
+
+		// Session lifecycle events - re-render to show/hide resume card
+		this.eventUnsubscribers.push(
+			state.on('session.started', () => this.render())
+		);
+		this.eventUnsubscribers.push(
+			state.on('session.finished', () => this.render())
+		);
+		this.eventUnsubscribers.push(
+			state.on('session.discarded', () => this.render())
+		);
+	}
+
+	private unsubscribeFromEvents(): void {
+		for (const unsub of this.eventUnsubscribers) {
+			unsub();
+		}
+		this.eventUnsubscribers = [];
 	}
 
 	private async renderSectionsInOrder(content: HTMLElement, signal: AbortSignal): Promise<void> {
@@ -264,7 +287,7 @@ export class HomeScreen implements Screen {
 		// Abort any in-flight async operations
 		this.abortController?.abort();
 		this.abortController = null;
-		this.unsubscribe?.();
+		this.unsubscribeFromEvents();
 		this.containerEl.remove();
 	}
 }

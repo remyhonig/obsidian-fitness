@@ -9,8 +9,9 @@ import { createButton } from '../components/button';
 export class RestTimerModal extends Modal {
 	private timeEl: HTMLElement | null = null;
 	private progressRing: SVGElement | null = null;
-	private unsubscribe: (() => void) | null = null;
+	private eventUnsubscribers: (() => void)[] = [];
 	private initialDuration: number;
+	private ringContainer: HTMLElement | null = null;
 
 	constructor(
 		app: App,
@@ -28,8 +29,8 @@ export class RestTimerModal extends Modal {
 		const timerContainer = contentEl.createDiv({ cls: 'fit-rest-timer-container' });
 
 		// Progress ring
-		const ringContainer = timerContainer.createDiv({ cls: 'fit-rest-timer-ring' });
-		this.updateProgressRing(ringContainer);
+		this.ringContainer = timerContainer.createDiv({ cls: 'fit-rest-timer-ring' });
+		this.updateProgressRing();
 
 		// Time display (centered in ring)
 		this.timeEl = timerContainer.createDiv({ cls: 'fit-rest-timer-time' });
@@ -58,16 +59,48 @@ export class RestTimerModal extends Modal {
 			}
 		});
 
-		// Subscribe to state changes
-		this.unsubscribe = this.sessionState.subscribe(() => {
-			this.updateTimeDisplay();
-			this.updateProgressRing(ringContainer);
+		// Subscribe to timer events
+		this.subscribeToEvents();
+	}
 
-			// Close if timer is no longer active
-			if (!this.sessionState.isRestTimerActive()) {
+	private subscribeToEvents(): void {
+		// Timer tick - update display every second
+		this.eventUnsubscribers.push(
+			this.sessionState.on('timer.tick', ({ remaining }) => {
+				this.updateTimeDisplayFromEvent(remaining);
+				this.updateProgressRing();
+			})
+		);
+
+		// Timer cancelled - close modal
+		this.eventUnsubscribers.push(
+			this.sessionState.on('timer.cancelled', () => {
 				this.close();
-			}
-		});
+			})
+		);
+
+		// Timer extended - update display (tick will handle ongoing updates)
+		this.eventUnsubscribers.push(
+			this.sessionState.on('timer.extended', () => {
+				this.updateTimeDisplay();
+				this.updateProgressRing();
+			})
+		);
+	}
+
+	private unsubscribeFromEvents(): void {
+		for (const unsub of this.eventUnsubscribers) {
+			unsub();
+		}
+		this.eventUnsubscribers = [];
+	}
+
+	/**
+	 * Lightweight time display update from tick event
+	 */
+	private updateTimeDisplayFromEvent(remaining: number): void {
+		if (!this.timeEl) return;
+		this.timeEl.textContent = formatTime(remaining);
 	}
 
 	private updateTimeDisplay(): void {
@@ -76,7 +109,9 @@ export class RestTimerModal extends Modal {
 		this.timeEl.textContent = formatTime(remaining);
 	}
 
-	private updateProgressRing(container: HTMLElement): void {
+	private updateProgressRing(): void {
+		if (!this.ringContainer) return;
+
 		// Remove existing ring
 		if (this.progressRing) {
 			this.progressRing.remove();
@@ -87,11 +122,11 @@ export class RestTimerModal extends Modal {
 		const duration = timer?.duration ?? this.initialDuration;
 		const progress = remaining / duration;
 
-		this.progressRing = createProgressRing(container, progress, 200);
+		this.progressRing = createProgressRing(this.ringContainer, progress, 200);
 	}
 
 	onClose(): void {
-		this.unsubscribe?.();
+		this.unsubscribeFromEvents();
 		const { contentEl } = this;
 		contentEl.empty();
 	}
