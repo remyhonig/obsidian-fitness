@@ -1030,6 +1030,25 @@
 	color: var(--interactive-accent);
 }
 
+.fit-set-timer {
+	color: var(--text-normal);
+}
+
+/* Clickable timer section */
+.fit-timer-section {
+	cursor: pointer;
+	border-radius: 8px;
+	transition: background-color 0.15s ease;
+}
+
+.fit-timer-section:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.fit-timer-section:active {
+	background-color: var(--background-modifier-active-hover);
+}
+
 .fit-duration-unit {
 	font-size: 0.5em;
 	color: var(--text-muted);

@@ -62,7 +62,8 @@ export class HistoryScreen implements Screen {
 		startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
 		for (const session of sessions) {
-			const sessionDate = new Date(session.date);
+			// Parse date as local time (date-only strings are parsed as UTC by default)
+			const sessionDate = new Date(session.date + 'T00:00:00');
 			let label: string;
 
 			if (sessionDate >= startOfWeek) {

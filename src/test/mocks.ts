@@ -225,6 +225,9 @@ export function createMockSessionState(activeSession: Session | null = null) {
 		isRestTimerActive: vi.fn().mockReturnValue(false),
 		getRestTimer: vi.fn().mockReturnValue(null),
 		getElapsedDuration: vi.fn().mockReturnValue(0),
+		isSetTimerActive: vi.fn().mockReturnValue(false),
+		markSetStart: vi.fn(),
+		getSetStartTime: vi.fn().mockReturnValue(null),
 		subscribe: vi.fn().mockImplementation((listener: () => void) => {
 			listeners.add(listener);
 			return () => listeners.delete(listener);

@@ -101,6 +101,7 @@ export interface LoggedSet {
 	completed: boolean;
 	timestamp: string; // ISO 8601
 	rpe?: number;
+	duration?: number; // Set duration in seconds (from start to completion)
 }
 
 // Muscle engagement options

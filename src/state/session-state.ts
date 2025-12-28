@@ -23,6 +23,7 @@ export class SessionStateManager {
 	private restTimer: RestTimerState | null = null;
 	private restTimerInterval: number | null = null;
 	private durationInterval: number | null = null;
+	private setStartTime: number | null = null; // Timestamp when current set started
 	private listeners: Set<StateChangeListener> = new Set();
 	private eventListeners: Map<SessionEventName, Set<SessionEventListener<SessionEventName>>> = new Map();
 	private sessionRepo: SessionRepository;
@@ -358,15 +359,26 @@ export class SessionStateManager {
 		const exercise: SessionExercise | undefined = this.session.exercises[exerciseIndex];
 		if (!exercise) return;
 
+		// Calculate duration if set start time was marked
+		const now = Date.now();
+		let duration: number | undefined;
+		if (this.setStartTime !== null) {
+			duration = Math.floor((now - this.setStartTime) / 1000);
+		}
+
 		const set: LoggedSet = {
 			weight,
 			reps,
 			completed: true,
-			timestamp: new Date().toISOString(),
-			rpe
+			timestamp: new Date(now).toISOString(),
+			rpe,
+			duration
 		};
 
 		exercise.sets.push(set);
+
+		// Clear set start time after logging
+		this.clearSetStartTime();
 
 		// Auto-start rest timer if enabled, but not if exercise is now complete
 		const completedSets = exercise.sets.filter(s => s.completed).length;
@@ -484,6 +496,39 @@ export class SessionStateManager {
 		return exercise?.muscleEngagement;
 	}
 
+	// ========== Set Start Time ==========
+
+	/**
+	 * Marks the start time for the current set.
+	 * Called when user explicitly starts a set or when rest timer ends.
+	 */
+	markSetStart(exerciseIndex: number): void {
+		this.setStartTime = Date.now();
+		this.emit('set.started', { exerciseIndex });
+		this.notifyListeners();
+	}
+
+	/**
+	 * Gets the current set start time (null if not started)
+	 */
+	getSetStartTime(): number | null {
+		return this.setStartTime;
+	}
+
+	/**
+	 * Checks if set timer is running (start time is set)
+	 */
+	isSetTimerActive(): boolean {
+		return this.setStartTime !== null;
+	}
+
+	/**
+	 * Clears the set start time (called after set completion)
+	 */
+	private clearSetStartTime(): void {
+		this.setStartTime = null;
+	}
+
 	// ========== Rest Timer ==========
 
 	/**
@@ -506,11 +551,33 @@ export class SessionStateManager {
 
 			// Check if timer is done
 			if (this.restTimer && Date.now() >= this.restTimer.endTime) {
-				this.cancelRestTimer();
+				this.completeRestTimer();
 			}
 		}, 1000);
 
 		this.emit('timer.started', { exerciseIndex, duration: seconds });
+		this.notifyListeners();
+	}
+
+	/**
+	 * Called when rest timer completes naturally.
+	 * Auto-marks start of next set (unless exercise is already complete).
+	 */
+	private completeRestTimer(): void {
+		const exerciseIndex = this.restTimer?.exerciseIndex ?? this.currentExerciseIndex;
+		this.stopRestTimerInterval();
+		this.restTimer = null;
+
+		// Only auto-mark set start if exercise is not complete
+		const exercise = this.session?.exercises[exerciseIndex];
+		if (exercise) {
+			const completedSets = exercise.sets.filter(s => s.completed).length;
+			if (completedSets < exercise.targetSets) {
+				this.markSetStart(exerciseIndex);
+			}
+		}
+
+		this.emit('timer.cancelled', undefined);
 		this.notifyListeners();
 	}
 
@@ -527,19 +594,26 @@ export class SessionStateManager {
 	}
 
 	/**
-	 * Cancels the rest timer
+	 * Cancels the rest timer (user-initiated)
 	 */
 	cancelRestTimer(): void {
 		const wasActive = this.restTimerInterval !== null;
-		if (this.restTimerInterval !== null) {
-			window.clearInterval(this.restTimerInterval);
-			this.restTimerInterval = null;
-		}
+		this.stopRestTimerInterval();
 		this.restTimer = null;
 		if (wasActive) {
 			this.emit('timer.cancelled', undefined);
 		}
 		this.notifyListeners();
+	}
+
+	/**
+	 * Stops the rest timer interval
+	 */
+	private stopRestTimerInterval(): void {
+		if (this.restTimerInterval !== null) {
+			window.clearInterval(this.restTimerInterval);
+			this.restTimerInterval = null;
+		}
 	}
 
 	/**

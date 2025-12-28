@@ -18,6 +18,7 @@ export interface SessionEvents {
 	'exercises.updated': void;
 
 	// Set operations
+	'set.started': { exerciseIndex: number };
 	'set.logged': { exerciseIndex: number; setIndex: number };
 	'set.edited': { exerciseIndex: number; setIndex: number };
 	'set.deleted': { exerciseIndex: number; setIndex: number };

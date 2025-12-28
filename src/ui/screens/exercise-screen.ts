@@ -26,6 +26,7 @@ export class ExerciseScreen implements Screen {
 	private formState: ExerciseFormState;
 	private eventUnsubscribers: (() => void)[] = [];
 	private showingExercisePicker = false;
+	private timerLabelEl: HTMLElement | null = null;
 	private timerEl: HTMLElement | null = null;
 	private isCompletingSet = false;
 	private abortController: AbortController | null = null;
@@ -51,6 +52,12 @@ export class ExerciseScreen implements Screen {
 		if (!lastSet && exercise) {
 			this.abortController = new AbortController();
 			void this.loadFromHistory(this.abortController.signal);
+		}
+
+		// Auto-mark set start if not already active and exercise not complete
+		const isComplete = exercise && exercise.sets.filter(s => s.completed).length >= exercise.targetSets;
+		if (!isComplete && !this.ctx.sessionState.isSetTimerActive() && !this.ctx.sessionState.isRestTimerActive()) {
+			this.ctx.sessionState.markSetStart(this.exerciseIndex);
 		}
 	}
 
@@ -97,6 +104,7 @@ export class ExerciseScreen implements Screen {
 
 		// Progress card - sets, timer, target reps
 		const completedSets = exercise.sets.filter(s => s.completed).length;
+		const isExerciseComplete = completedSets >= exercise.targetSets;
 		const progressCard = topSection.createDiv({ cls: 'fit-progress-card-wide' });
 
 		// Sets stat
@@ -104,11 +112,23 @@ export class ExerciseScreen implements Screen {
 		setsSection.createDiv({ cls: 'fit-stat-label-vertical', text: 'Sets' });
 		setsSection.createDiv({ cls: 'fit-stat-value-large', text: `${completedSets} / ${exercise.targetSets}` });
 
-		// Duration/Timer stat
+		// Duration/Timer stat (clickable to start/reset set timer when not complete)
 		const timerSection = progressCard.createDiv({ cls: 'fit-stat-wide' });
-		timerSection.createDiv({ cls: 'fit-stat-label-vertical', text: 'Duration' });
+		if (!isExerciseComplete) {
+			timerSection.addClass('fit-timer-section');
+		}
+		this.timerLabelEl = timerSection.createDiv({ cls: 'fit-stat-label-vertical' });
 		this.timerEl = timerSection.createDiv({ cls: 'fit-stat-value-large' });
 		this.updateTimer();
+
+		// Click on timer to start/reset set duration tracking (only if exercise not complete)
+		if (!isExerciseComplete) {
+			timerSection.addEventListener('click', () => {
+				if (!this.ctx.sessionState.isRestTimerActive()) {
+					this.ctx.sessionState.markSetStart(this.exerciseIndex);
+				}
+			});
+		}
 
 		// Target Reps stat
 		const targetReps = exercise.targetRepsMin === exercise.targetRepsMax
@@ -121,9 +141,6 @@ export class ExerciseScreen implements Screen {
 		// Integrated sets row (current session in accent, history in gray)
 		const setsRow = topSection.createDiv({ cls: 'fit-sets-integrated' });
 		this.renderIntegratedSets(exercise, setsRow);
-
-		// Check if exercise is complete (for conditional rendering)
-		const isExerciseComplete = completedSets >= exercise.targetSets;
 
 		// Middle content area (scrollable)
 		const middleContent = this.containerEl.createDiv({ cls: 'fit-middle-content' });
@@ -189,7 +206,7 @@ export class ExerciseScreen implements Screen {
 				onClick: () => this.ctx.view.navigateTo('session')
 			});
 		} else {
-			// Normal complete set button
+			// Complete set button
 			createPrimaryAction(actionArea, 'Complete set', () => this.completeSet());
 		}
 
@@ -226,13 +243,20 @@ export class ExerciseScreen implements Screen {
 			})
 		);
 
-		// Duration timer events - show elapsed time when no rest timer
+		// Duration timer events - update timer display (handles session/set duration)
 		this.eventUnsubscribers.push(
-			state.on('duration.tick', ({ elapsed }) => {
+			state.on('duration.tick', () => {
 				// Only update if rest timer is not active
 				if (!state.isRestTimerActive()) {
-					this.updateDurationDisplay(elapsed);
+					this.updateTimer();
 				}
+			})
+		);
+
+		// Set started event - update timer to show set duration
+		this.eventUnsubscribers.push(
+			state.on('set.started', () => {
+				this.updateTimer();
 			})
 		);
 
@@ -265,19 +289,49 @@ export class ExerciseScreen implements Screen {
 	private updateRestTimerDisplay(remaining: number): void {
 		if (!this.timerEl) return;
 
+		if (this.timerLabelEl) {
+			this.timerLabelEl.textContent = 'Rest';
+		}
+
 		const minutes = Math.floor(remaining / 60);
 		const seconds = remaining % 60;
 		this.timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 		this.timerEl.addClass('fit-timer-active');
+		this.timerEl.removeClass('fit-set-timer');
+	}
+
+	/**
+	 * Update display for set duration (time since mark start)
+	 */
+	private updateSetDurationDisplay(): void {
+		if (!this.timerEl) return;
+
+		if (this.timerLabelEl) {
+			this.timerLabelEl.textContent = 'Set';
+		}
+
+		const startTime = this.ctx.sessionState.getSetStartTime();
+		const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+		const minutes = Math.floor(elapsed / 60);
+		const seconds = elapsed % 60;
+
+		this.timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+		this.timerEl.removeClass('fit-timer-active');
+		this.timerEl.addClass('fit-set-timer');
 	}
 
 	/**
 	 * Update display for session duration
 	 */
-	private updateDurationDisplay(elapsed: number): void {
+	private updateSessionDurationDisplay(elapsed: number): void {
 		if (!this.timerEl) return;
 
+		if (this.timerLabelEl) {
+			this.timerLabelEl.textContent = 'Session';
+		}
+
 		this.timerEl.removeClass('fit-timer-active');
+		this.timerEl.removeClass('fit-set-timer');
 		const minutes = Math.floor(elapsed / 60);
 		const seconds = elapsed % 60;
 
@@ -296,11 +350,16 @@ export class ExerciseScreen implements Screen {
 		if (!this.timerEl) return;
 
 		if (this.ctx.sessionState.isRestTimerActive()) {
+			// Rest timer takes priority
 			const remaining = this.ctx.sessionState.getRestTimeRemaining();
 			this.updateRestTimerDisplay(remaining);
+		} else if (this.ctx.sessionState.isSetTimerActive()) {
+			// Set timer active - show set duration
+			this.updateSetDurationDisplay();
 		} else {
+			// Default: show session duration
 			const elapsed = this.ctx.sessionState.getElapsedDuration();
-			this.updateDurationDisplay(elapsed);
+			this.updateSessionDurationDisplay(elapsed);
 		}
 	}
 

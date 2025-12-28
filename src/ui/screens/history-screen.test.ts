@@ -7,6 +7,14 @@ import {
 	click
 } from '../../test/mocks';
 
+// Helper to format date as local YYYY-MM-DD (toISOString uses UTC which can be wrong timezone)
+function toLocalDateString(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, '0');
+	const day = String(date.getDate()).padStart(2, '0');
+	return `${year}-${month}-${day}`;
+}
+
 describe('HistoryScreen', () => {
 	let container: HTMLElement;
 
@@ -66,8 +74,8 @@ describe('HistoryScreen', () => {
 			lastWeek.setDate(lastWeek.getDate() - 7);
 
 			const sessions = [
-				createSampleSession({ id: 'session-1', date: today.toISOString().split('T')[0] }),
-				createSampleSession({ id: 'session-2', date: lastWeek.toISOString().split('T')[0] })
+				createSampleSession({ id: 'session-1', date: toLocalDateString(today) }),
+				createSampleSession({ id: 'session-2', date: toLocalDateString(lastWeek) })
 			];
 			const ctx = createMockScreenContext({ sessions });
 			const screen = new HistoryScreen(container, ctx);
@@ -81,7 +89,7 @@ describe('HistoryScreen', () => {
 		it('should display "This week" section for recent sessions', async () => {
 			const today = new Date();
 			const sessions = [
-				createSampleSession({ id: 'session-1', date: today.toISOString().split('T')[0] })
+				createSampleSession({ id: 'session-1', date: toLocalDateString(today) })
 			];
 			const ctx = createMockScreenContext({ sessions });
 			const screen = new HistoryScreen(container, ctx);
