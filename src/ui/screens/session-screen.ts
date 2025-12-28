@@ -12,7 +12,7 @@ import { toFilename } from '../../data/file-utils';
 export class SessionScreen implements Screen {
 	private containerEl: HTMLElement;
 	private fileChangeRef: EventRef | null = null;
-	private initialSyncDone = false;
+	private isSyncing = false;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -43,42 +43,73 @@ export class SessionScreen implements Screen {
 	/**
 	 * Syncs session exercises with the workout file
 	 * Preserves logged sets while updating exercise definitions
-	 * @param skipRender - If true, don't call render() after syncing (used when called from render)
 	 */
-	private async syncSessionWithWorkout(workoutId: string, skipRender = false): Promise<void> {
-		const workout = await this.ctx.workoutRepo.get(workoutId);
-		if (!workout) return;
+	private async syncSessionWithWorkout(workoutId: string): Promise<void> {
+		// Prevent re-syncing while already syncing
+		if (this.isSyncing) return;
+		this.isSyncing = true;
 
-		const session = this.ctx.sessionState.getSession();
-		if (!session) return;
+		try {
+			const workout = await this.ctx.workoutRepo.get(workoutId);
+			if (!workout) return;
 
-		// Build a map of existing exercises by their ID for preserving logged sets
-		const existingSets = new Map<string, typeof session.exercises[0]['sets']>();
-		for (const ex of session.exercises) {
-			const exId = toFilename(ex.exercise);
-			existingSets.set(exId, ex.sets);
+			const session = this.ctx.sessionState.getSession();
+			if (!session) return;
+
+			// Build a map of existing exercises by their ID for preserving logged sets
+			const existingSets = new Map<string, typeof session.exercises[0]['sets']>();
+			for (const ex of session.exercises) {
+				const exId = toFilename(ex.exercise);
+				existingSets.set(exId, ex.sets);
+			}
+
+			// Update session exercises from workout, preserving logged sets where possible
+			const updatedExercises = workout.exercises.map(we => {
+				const exerciseId = we.exerciseId ?? toFilename(we.exercise);
+				const existingSetData = existingSets.get(exerciseId);
+
+				return {
+					exercise: we.exercise,
+					targetSets: we.targetSets,
+					targetRepsMin: we.targetRepsMin,
+					targetRepsMax: we.targetRepsMax,
+					restSeconds: we.restSeconds,
+					sets: existingSetData ?? []
+				};
+			});
+
+			// Check if anything actually changed before updating
+			const hasChanges = this.exercisesChanged(session.exercises, updatedExercises);
+			if (hasChanges) {
+				// Update session state (this saves and notifies listeners)
+				this.ctx.sessionState.updateExercises(updatedExercises);
+				this.render();
+			}
+		} finally {
+			this.isSyncing = false;
 		}
+	}
 
-		// Update session exercises from workout, preserving logged sets where possible
-		const updatedExercises = workout.exercises.map(we => {
-			const exerciseId = we.exerciseId ?? toFilename(we.exercise);
-			const existingSetData = existingSets.get(exerciseId);
+	/**
+	 * Checks if exercise definitions have changed (ignoring logged sets)
+	 */
+	private exercisesChanged(
+		current: Session['exercises'],
+		updated: Session['exercises']
+	): boolean {
+		if (current.length !== updated.length) return true;
 
-			return {
-				exercise: we.exercise,
-				targetSets: we.targetSets,
-				targetRepsMin: we.targetRepsMin,
-				targetRepsMax: we.targetRepsMax,
-				restSeconds: we.restSeconds,
-				sets: existingSetData ?? []
-			};
-		});
-
-		// Update session state
-		this.ctx.sessionState.updateExercises(updatedExercises);
-		if (!skipRender) {
-			this.render();
+		for (let i = 0; i < current.length; i++) {
+			const c = current[i];
+			const u = updated[i];
+			if (!c || !u) return true;
+			if (c.exercise !== u.exercise) return true;
+			if (c.targetSets !== u.targetSets) return true;
+			if (c.targetRepsMin !== u.targetRepsMin) return true;
+			if (c.targetRepsMax !== u.targetRepsMax) return true;
+			if (c.restSeconds !== u.restSeconds) return true;
 		}
+		return false;
 	}
 
 	render(): void {
@@ -91,16 +122,6 @@ export class SessionScreen implements Screen {
 				text: 'No active workout'
 			});
 			return;
-		}
-
-		// Sync with workout file on initial render to pick up any changes
-		// made while the session screen was not active (e.g., from workout editor)
-		if (!this.initialSyncDone && session.workout) {
-			this.initialSyncDone = true;
-			const workoutId = toFilename(session.workout);
-			// Pass skipRender=true since we're already rendering, then re-render after sync
-			void this.syncSessionWithWorkout(workoutId, true).then(() => this.render());
-			return; // Wait for sync to complete before rendering
 		}
 
 		// Header

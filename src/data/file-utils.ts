@@ -669,9 +669,8 @@ export function createSessionBody(exercises: SessionExerciseBlock[]): string {
 	for (const exercise of exercises) {
 		const exerciseLines: string[] = [];
 
-		// Exercise header with wikilink
-		const exerciseSlug = toFilename(exercise.exercise);
-		exerciseLines.push(`## [[${exerciseSlug}]]`);
+		// Exercise header with human-readable name (no wikilink)
+		exerciseLines.push(`## ${exercise.exercise}`);
 
 		// Target line
 		const repsDisplay = exercise.targetRepsMin === exercise.targetRepsMax
@@ -770,9 +769,8 @@ export function createPreviousExercisesBody(
 	for (const exercise of exercises) {
 		const exerciseLines: string[] = [];
 
-		// Exercise header with wikilink
-		const exerciseSlug = toFilename(exercise.exercise);
-		exerciseLines.push(`## [[${exerciseSlug}]]`);
+		// Exercise header with human-readable name (no wikilink)
+		exerciseLines.push(`## ${exercise.exercise}`);
 
 		// Target line
 		const repsDisplay = exercise.targetRepsMin === exercise.targetRepsMax
