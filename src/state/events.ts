@@ -1,0 +1,38 @@
+/**
+ * Session state event types for topic-based notifications.
+ * Screens can subscribe to specific events rather than receiving all updates.
+ */
+
+export interface SessionEvents {
+	// Session lifecycle
+	'session.started': void;
+	'session.loaded': void;
+	'session.finished': void;
+	'session.discarded': void;
+
+	// Exercise operations
+	'exercise.added': { index: number };
+	'exercise.removed': { index: number };
+	'exercise.reordered': { fromIndex: number; toIndex: number };
+	'exercise.selected': { index: number };
+	'exercises.updated': void;
+
+	// Set operations
+	'set.logged': { exerciseIndex: number; setIndex: number };
+	'set.edited': { exerciseIndex: number; setIndex: number };
+	'set.deleted': { exerciseIndex: number; setIndex: number };
+
+	// Exercise metrics
+	'rpe.changed': { exerciseIndex: number; rpe: number };
+	'muscle.changed': { exerciseIndex: number };
+
+	// Rest timer (high frequency - screens can opt-in)
+	'timer.started': { exerciseIndex: number; duration: number };
+	'timer.tick': { remaining: number };
+	'timer.cancelled': void;
+	'timer.extended': { additionalSeconds: number };
+}
+
+export type SessionEventName = keyof SessionEvents;
+export type SessionEventPayload<E extends SessionEventName> = SessionEvents[E];
+export type SessionEventListener<E extends SessionEventName> = (payload: SessionEvents[E]) => void;
