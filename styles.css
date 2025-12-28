@@ -1936,6 +1936,12 @@
 
 .fit-program-workout-current .fit-program-workout-play {
 	opacity: 1;
+	transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.fit-program-workout-current .fit-program-workout-play.fit-pulse-tick {
+	transform: scale(1.2);
+	opacity: 0.7;
 }
 
 .fit-program-workout-info {

@@ -31,6 +31,9 @@ export interface SessionEvents {
 	'timer.tick': { remaining: number };
 	'timer.cancelled': void;
 	'timer.extended': { additionalSeconds: number };
+
+	// Duration timer (ticks every second while session is active)
+	'duration.tick': { elapsed: number };
 }
 
 export type SessionEventName = keyof SessionEvents;

@@ -27,7 +27,6 @@ export class ExerciseScreen implements Screen {
 	private eventUnsubscribers: (() => void)[] = [];
 	private showingExercisePicker = false;
 	private timerEl: HTMLElement | null = null;
-	private durationIntervalId: number | null = null;
 	private isCompletingSet = false;
 	private abortController: AbortController | null = null;
 
@@ -76,12 +75,6 @@ export class ExerciseScreen implements Screen {
 	render(): void {
 		// Unsubscribe from previous event subscriptions
 		this.unsubscribeFromEvents();
-
-		// Clear duration interval
-		if (this.durationIntervalId) {
-			window.clearInterval(this.durationIntervalId);
-			this.durationIntervalId = null;
-		}
 
 		this.containerEl.empty();
 
@@ -210,10 +203,10 @@ export class ExerciseScreen implements Screen {
 
 		const state = this.ctx.sessionState;
 
-		// Timer events - only update timer display, no re-render
+		// Rest timer events - show countdown when active
 		this.eventUnsubscribers.push(
 			state.on('timer.tick', ({ remaining }) => {
-				this.updateTimerFromEvent(remaining);
+				this.updateRestTimerDisplay(remaining);
 			})
 		);
 
@@ -229,6 +222,16 @@ export class ExerciseScreen implements Screen {
 				// Re-render to show updated UI (e.g., after rest period ends)
 				if (!this.showingExercisePicker) {
 					this.render();
+				}
+			})
+		);
+
+		// Duration timer events - show elapsed time when no rest timer
+		this.eventUnsubscribers.push(
+			state.on('duration.tick', ({ elapsed }) => {
+				// Only update if rest timer is not active
+				if (!state.isRestTimerActive()) {
+					this.updateDurationDisplay(elapsed);
 				}
 			})
 		);
@@ -257,16 +260,10 @@ export class ExerciseScreen implements Screen {
 	}
 
 	/**
-	 * Lightweight timer update from tick event (no full state query)
+	 * Update display for rest timer countdown
 	 */
-	private updateTimerFromEvent(remaining: number): void {
+	private updateRestTimerDisplay(remaining: number): void {
 		if (!this.timerEl) return;
-
-		// Clear duration interval when rest timer is active
-		if (this.durationIntervalId) {
-			window.clearInterval(this.durationIntervalId);
-			this.durationIntervalId = null;
-		}
 
 		const minutes = Math.floor(remaining / 60);
 		const seconds = remaining % 60;
@@ -274,49 +271,36 @@ export class ExerciseScreen implements Screen {
 		this.timerEl.addClass('fit-timer-active');
 	}
 
+	/**
+	 * Update display for session duration
+	 */
+	private updateDurationDisplay(elapsed: number): void {
+		if (!this.timerEl) return;
+
+		this.timerEl.removeClass('fit-timer-active');
+		const minutes = Math.floor(elapsed / 60);
+		const seconds = elapsed % 60;
+
+		// Render with styled units (m and s smaller and grayer)
+		this.timerEl.empty();
+		this.timerEl.createSpan({ text: String(minutes) });
+		this.timerEl.createSpan({ cls: 'fit-duration-unit', text: 'm' });
+		this.timerEl.createSpan({ text: seconds.toString().padStart(2, '0') });
+		this.timerEl.createSpan({ cls: 'fit-duration-unit', text: 's' });
+	}
+
+	/**
+	 * Initial timer display (called on render)
+	 */
 	private updateTimer(): void {
 		if (!this.timerEl) return;
 
 		if (this.ctx.sessionState.isRestTimerActive()) {
-			// Clear duration interval when rest timer is active
-			if (this.durationIntervalId) {
-				window.clearInterval(this.durationIntervalId);
-				this.durationIntervalId = null;
-			}
 			const remaining = this.ctx.sessionState.getRestTimeRemaining();
-			const minutes = Math.floor(remaining / 60);
-			const seconds = remaining % 60;
-			this.timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-			this.timerEl.addClass('fit-timer-active');
+			this.updateRestTimerDisplay(remaining);
 		} else {
-			this.timerEl.removeClass('fit-timer-active');
-			// Show workout duration when no timer is active
-			const session = this.ctx.sessionState.getSession();
-			if (session?.startTime) {
-				const start = new Date(session.startTime).getTime();
-
-				const renderDuration = () => {
-					if (!this.timerEl) return;
-					const now = Date.now();
-					const durationMs = now - start;
-					const minutes = Math.floor(durationMs / 60000);
-					const seconds = Math.floor((durationMs % 60000) / 1000);
-
-					// Render with styled units (m and s smaller and grayer)
-					this.timerEl.empty();
-					this.timerEl.createSpan({ text: String(minutes) });
-					this.timerEl.createSpan({ cls: 'fit-duration-unit', text: 'm' });
-					this.timerEl.createSpan({ text: seconds.toString().padStart(2, '0') });
-					this.timerEl.createSpan({ cls: 'fit-duration-unit', text: 's' });
-				};
-
-				renderDuration();
-
-				// Start interval to update duration every second
-				if (!this.durationIntervalId) {
-					this.durationIntervalId = window.setInterval(renderDuration, 1000);
-				}
-			}
+			const elapsed = this.ctx.sessionState.getElapsedDuration();
+			this.updateDurationDisplay(elapsed);
 		}
 	}
 
@@ -877,10 +861,6 @@ export class ExerciseScreen implements Screen {
 		this.abortController?.abort();
 		this.abortController = null;
 		this.unsubscribeFromEvents();
-		if (this.durationIntervalId) {
-			window.clearInterval(this.durationIntervalId);
-			this.durationIntervalId = null;
-		}
 		this.containerEl.remove();
 	}
 }

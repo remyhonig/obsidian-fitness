@@ -11,6 +11,8 @@ export class HomeScreen implements Screen {
 	private containerEl: HTMLElement;
 	private eventUnsubscribers: (() => void)[] = [];
 	private abortController: AbortController | null = null;
+	private playIconEl: HTMLElement | null = null;
+	private durationEl: HTMLElement | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -20,6 +22,10 @@ export class HomeScreen implements Screen {
 	}
 
 	render(): void {
+		// Clear element references
+		this.playIconEl = null;
+		this.durationEl = null;
+
 		// Abort previous async render operations
 		this.abortController?.abort();
 		this.abortController = new AbortController();
@@ -51,6 +57,20 @@ export class HomeScreen implements Screen {
 		);
 		this.eventUnsubscribers.push(
 			state.on('session.discarded', () => this.render())
+		);
+
+		// Duration tick - update timer display and pulse animation
+		this.eventUnsubscribers.push(
+			state.on('duration.tick', ({ elapsed }) => {
+				if (this.durationEl) {
+					const minutes = Math.floor(elapsed / 60);
+					const seconds = elapsed % 60;
+					this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+				}
+				if (this.playIconEl) {
+					this.playIconEl.classList.toggle('fit-pulse-tick');
+				}
+			})
 		);
 	}
 
@@ -101,8 +121,8 @@ export class HomeScreen implements Screen {
 		});
 
 		// Play icon
-		const playIcon = resumeCard.createDiv({ cls: 'fit-program-workout-play' });
-		setIcon(playIcon, 'play');
+		this.playIconEl = resumeCard.createDiv({ cls: 'fit-program-workout-play' });
+		setIcon(this.playIconEl, 'play');
 
 		// Workout name
 		resumeCard.createDiv({
@@ -110,17 +130,16 @@ export class HomeScreen implements Screen {
 			text: session.workout ?? 'Workout'
 		});
 
-		// Start time on the right (hh:mm, 24h format)
-		const startDate = new Date(session.startTime);
-		const timeStr = startDate.toLocaleTimeString(undefined, {
-			hour: '2-digit',
-			minute: '2-digit',
-			hour12: false
+		// Duration display (updated via duration.tick event)
+		this.durationEl = resumeCard.createDiv({
+			cls: 'fit-program-workout-time'
 		});
-		resumeCard.createDiv({
-			cls: 'fit-program-workout-time',
-			text: timeStr
-		});
+
+		// Set initial duration
+		const elapsed = this.ctx.sessionState.getElapsedDuration();
+		const minutes = Math.floor(elapsed / 60);
+		const seconds = elapsed % 60;
+		this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
 		resumeCard.addEventListener('click', () => {
 			this.ctx.view.navigateTo('session');

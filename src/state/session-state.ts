@@ -22,6 +22,7 @@ export class SessionStateManager {
 	private currentExerciseIndex = 0;
 	private restTimer: RestTimerState | null = null;
 	private restTimerInterval: number | null = null;
+	private durationInterval: number | null = null;
 	private listeners: Set<StateChangeListener> = new Set();
 	private eventListeners: Map<SessionEventName, Set<SessionEventListener<SessionEventName>>> = new Map();
 	private sessionRepo: SessionRepository;
@@ -91,6 +92,7 @@ export class SessionStateManager {
 		this.currentExerciseIndex = 0;
 		this.restTimer = null;
 		this.persisted = false; // Don't save until first set is completed
+		this.startDurationTimer();
 		this.emit('session.started', undefined);
 		this.notifyListeners();
 	}
@@ -113,6 +115,7 @@ export class SessionStateManager {
 		this.currentExerciseIndex = 0;
 		this.restTimer = null;
 		this.persisted = false; // Don't save until first set is completed
+		this.startDurationTimer();
 		this.emit('session.started', undefined);
 		this.notifyListeners();
 	}
@@ -128,6 +131,7 @@ export class SessionStateManager {
 				this.currentExerciseIndex = 0;
 				this.restTimer = null;
 				this.persisted = true; // Loaded from disk, so already persisted
+				this.startDurationTimer();
 				this.emit('session.loaded', undefined);
 				this.notifyListeners();
 				return true;
@@ -152,6 +156,7 @@ export class SessionStateManager {
 			this.session = null;
 			this.currentExerciseIndex = 0;
 			this.cancelRestTimer();
+			this.stopDurationTimer();
 
 			// Finalize and get the saved session
 			const finalSession = await this.persistence.finalizeActive(sessionToFinalize);
@@ -165,6 +170,7 @@ export class SessionStateManager {
 			this.session = null;
 			this.currentExerciseIndex = 0;
 			this.cancelRestTimer();
+			this.stopDurationTimer();
 			this.notifyListeners();
 			throw error;
 		}
@@ -186,6 +192,7 @@ export class SessionStateManager {
 		this.session = null;
 		this.currentExerciseIndex = 0;
 		this.cancelRestTimer();
+		this.stopDurationTimer();
 		this.emit('session.discarded', undefined);
 		this.notifyListeners();
 	}
@@ -557,6 +564,51 @@ export class SessionStateManager {
 		return this.restTimer;
 	}
 
+	// ========== Duration Timer ==========
+
+	/**
+	 * Starts the duration timer (ticks every second while session is active)
+	 */
+	private startDurationTimer(): void {
+		this.stopDurationTimer();
+
+		if (!this.session) return;
+
+		const startTime = new Date(this.session.startTime).getTime();
+
+		// Emit immediately
+		const elapsed = Math.floor((Date.now() - startTime) / 1000);
+		this.emit('duration.tick', { elapsed });
+
+		// Then every second
+		this.durationInterval = window.setInterval(() => {
+			if (!this.session) {
+				this.stopDurationTimer();
+				return;
+			}
+			const elapsed = Math.floor((Date.now() - startTime) / 1000);
+			this.emit('duration.tick', { elapsed });
+		}, 1000);
+	}
+
+	/**
+	 * Stops the duration timer
+	 */
+	private stopDurationTimer(): void {
+		if (this.durationInterval !== null) {
+			window.clearInterval(this.durationInterval);
+			this.durationInterval = null;
+		}
+	}
+
+	/**
+	 * Gets the elapsed duration in seconds
+	 */
+	getElapsedDuration(): number {
+		if (!this.session) return 0;
+		return Math.floor((Date.now() - new Date(this.session.startTime).getTime()) / 1000);
+	}
+
 	// ========== Subscription ==========
 
 	/**
@@ -629,7 +681,8 @@ export class SessionStateManager {
 			await this.persistence.saveAndWait(this.session);
 		}
 
-		// Cancel rest timer
+		// Cancel timers
 		this.cancelRestTimer();
+		this.stopDurationTimer();
 	}
 }
