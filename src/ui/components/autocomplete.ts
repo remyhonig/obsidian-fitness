@@ -1,5 +1,13 @@
 import type { Exercise } from '../../types';
 
+/**
+ * Normalizes a string for fuzzy matching by removing separators and converting to lowercase
+ * e.g., "pull-up" -> "pullup", "Pull Up" -> "pullup"
+ */
+function normalizeForSearch(text: string): string {
+	return text.toLowerCase().replace(/[-_\s]+/g, '');
+}
+
 export interface AutocompleteOptions {
 	placeholder?: string;
 	value?: string;
@@ -46,13 +54,19 @@ export function createExerciseAutocomplete(
 
 	const updateDropdown = () => {
 		dropdown.empty();
-		const query = input.value.toLowerCase().trim();
+		const query = input.value.trim();
 
 		if (!query) {
 			filteredItems = items.slice(0, 10); // Show first 10 when empty
 		} else {
+			// Split query into words and normalize each
+			const queryWords = query.toLowerCase().split(/[-_\s]+/).filter(w => w.length > 0);
 			filteredItems = items
-				.filter(e => e.name.toLowerCase().includes(query))
+				.filter(e => {
+					const normalizedName = normalizeForSearch(e.name);
+					// All query words must be present in the name (in any order)
+					return queryWords.every(word => normalizedName.includes(word));
+				})
 				.slice(0, 10);
 		}
 
