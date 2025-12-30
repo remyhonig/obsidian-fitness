@@ -29,7 +29,7 @@ describe('HistoryScreen', () => {
 			const screen = new HistoryScreen(container, ctx);
 			screen.render();
 
-			const title = container.querySelector('.fit-title');
+			const title = container.querySelector('.fit-program-workout-name');
 			expect(title?.textContent).toBe('History');
 		});
 
@@ -38,7 +38,7 @@ describe('HistoryScreen', () => {
 			const screen = new HistoryScreen(container, ctx);
 			screen.render();
 
-			const backButton = container.querySelector('.fit-button-back');
+			const backButton = container.querySelector('.fit-back-button');
 			expect(backButton).not.toBeNull();
 		});
 
@@ -139,7 +139,7 @@ describe('HistoryScreen', () => {
 			const screen = new HistoryScreen(container, ctx);
 			screen.render();
 
-			const backButton = container.querySelector('.fit-button-back') as HTMLElement;
+			const backButton = container.querySelector('.fit-back-button') as HTMLElement;
 			click(backButton);
 
 			expect(ctx.view.goBack).toHaveBeenCalled();

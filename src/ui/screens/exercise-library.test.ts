@@ -24,7 +24,7 @@ describe('ExerciseLibraryScreen', () => {
 			screen.render();
 			await flushPromises();
 
-			const title = container.querySelector('.fit-title');
+			const title = container.querySelector('.fit-program-workout-name');
 			expect(title?.textContent).toBe('Exercises');
 		});
 
@@ -34,7 +34,7 @@ describe('ExerciseLibraryScreen', () => {
 			screen.render();
 			await flushPromises();
 
-			const backButton = container.querySelector('.fit-button-back');
+			const backButton = container.querySelector('.fit-back-button');
 			expect(backButton).not.toBeNull();
 		});
 
@@ -221,7 +221,7 @@ describe('ExerciseLibraryScreen', () => {
 			click(button!);
 			await flushPromises();
 
-			const title = container.querySelector('.fit-title');
+			const title = container.querySelector('.fit-program-workout-name');
 			expect(title?.textContent).toBe('New exercise');
 		});
 
@@ -327,7 +327,7 @@ describe('ExerciseLibraryScreen', () => {
 			click(editButton!);
 			await flushPromises();
 
-			const title = container.querySelector('.fit-title');
+			const title = container.querySelector('.fit-program-workout-name');
 			expect(title?.textContent).toBe('Edit exercise');
 		});
 
@@ -427,7 +427,7 @@ describe('ExerciseLibraryScreen', () => {
 			screen.render();
 			await flushPromises();
 
-			const backButton = container.querySelector('.fit-button-back') as HTMLElement;
+			const backButton = container.querySelector('.fit-back-button') as HTMLElement;
 			click(backButton);
 
 			expect(ctx.view.goBack).toHaveBeenCalled();
@@ -444,13 +444,13 @@ describe('ExerciseLibraryScreen', () => {
 			click(addButton!);
 			await flushPromises();
 
-			expect(container.querySelector('.fit-title')?.textContent).toBe('New exercise');
+			expect(container.querySelector('.fit-program-workout-name')?.textContent).toBe('New exercise');
 
 			// Click back
-			const backButton = container.querySelector('.fit-button-back') as HTMLElement;
+			const backButton = container.querySelector('.fit-back-button') as HTMLElement;
 			click(backButton);
 
-			expect(container.querySelector('.fit-title')?.textContent).toBe('Exercises');
+			expect(container.querySelector('.fit-program-workout-name')?.textContent).toBe('Exercises');
 		});
 	});
 

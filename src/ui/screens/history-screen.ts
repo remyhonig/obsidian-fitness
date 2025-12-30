@@ -1,28 +1,31 @@
-import type { Screen, ScreenContext } from '../../views/fit-view';
-import { createBackButton } from '../components/button';
+import type { ScreenContext } from '../../views/fit-view';
+import { BaseScreen } from './base-screen';
+import { createScreenHeader } from '../components/screen-header';
 import { createSessionCard } from '../components/card';
 import type { Session } from '../../types';
 
 /**
  * History screen - shows past workout sessions
  */
-export class HistoryScreen implements Screen {
-	private containerEl: HTMLElement;
-
+export class HistoryScreen extends BaseScreen {
 	constructor(
 		parentEl: HTMLElement,
-		private ctx: ScreenContext
+		ctx: ScreenContext
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-history-screen' });
+		super(parentEl, ctx, 'fit-history-screen');
 	}
 
 	render(): void {
-		this.containerEl.empty();
+		this.prepareRender();
 
-		// Header
-		const header = this.containerEl.createDiv({ cls: 'fit-header' });
-		createBackButton(header, () => this.ctx.view.goBack());
-		header.createEl('h1', { text: 'History', cls: 'fit-title' });
+		// Header with consistent screen-header component
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'back',
+			fallbackWorkoutName: 'History',
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onBack: () => this.ctx.view.goBack()
+		});
 
 		// Load sessions and render
 		void this.ctx.sessionRepo.list().then(sessions => {
@@ -102,6 +105,6 @@ export class HistoryScreen implements Screen {
 	}
 
 	destroy(): void {
-		this.containerEl.remove();
+		super.destroy();
 	}
 }

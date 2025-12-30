@@ -23,11 +23,9 @@ describe('FinishScreen', () => {
 			const screen = new FinishScreen(container, ctx, { sessionId: 'test-session' });
 			screen.render();
 
-			const icon = container.querySelector('.fit-finish-icon');
-			expect(icon?.textContent).toBe('🎉');
-
-			const title = container.querySelector('.fit-finish-title');
-			expect(title?.textContent).toBe('Workout complete!');
+			// The header now uses the screen-header component with workout name showing the celebration
+			const workoutName = container.querySelector('.fit-program-workout-name');
+			expect(workoutName?.textContent).toBe('🎉 Workout complete!');
 		});
 
 		it('should render "Done" button', () => {

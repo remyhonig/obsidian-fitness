@@ -1,14 +1,15 @@
 import { Notice, setIcon } from 'obsidian';
-import type { Screen, ScreenContext } from '../../views/fit-view';
+import type { ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, Workout, WorkoutExercise } from '../../types';
-import { createBackButton, createButton } from '../components/button';
+import { BaseScreen } from './base-screen';
+import { createScreenHeader } from '../components/screen-header';
+import { createButton } from '../components/button';
 import { createExerciseAutocomplete } from '../components/autocomplete';
 
 /**
  * Workout editor screen - create/edit workouts
  */
-export class WorkoutEditorScreen implements Screen {
-	private containerEl: HTMLElement;
+export class WorkoutEditorScreen extends BaseScreen {
 	private isNew: boolean;
 	private workoutId: string | null;
 	private workout: Workout | null = null;
@@ -34,10 +35,10 @@ export class WorkoutEditorScreen implements Screen {
 
 	constructor(
 		parentEl: HTMLElement,
-		private ctx: ScreenContext,
+		ctx: ScreenContext,
 		params: ScreenParams
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-workout-editor-screen' });
+		super(parentEl, ctx, 'fit-workout-editor-screen');
 		this.isNew = params.isNew ?? true;
 		this.workoutId = params.workoutId ?? null;
 
@@ -74,7 +75,7 @@ export class WorkoutEditorScreen implements Screen {
 	}
 
 	render(): void {
-		this.containerEl.empty();
+		this.prepareRender();
 
 		// Load existing workout if editing
 		if (!this.isNew && this.workoutId) {
@@ -119,12 +120,13 @@ export class WorkoutEditorScreen implements Screen {
 		existingActions?.remove();
 
 		// Header (only render if not already present)
-		if (!this.containerEl.querySelector('.fit-header')) {
-			const header = this.containerEl.createDiv({ cls: 'fit-header' });
-			createBackButton(header, () => this.ctx.view.goBack());
-			header.createEl('h1', {
-				text: this.isNew ? 'New workout' : 'Edit workout',
-				cls: 'fit-title'
+		if (!this.containerEl.querySelector('.fit-section')) {
+			this.headerRefs = createScreenHeader(this.containerEl, {
+				leftElement: 'back',
+				fallbackWorkoutName: this.isNew ? 'New workout' : 'Edit workout',
+				view: this.ctx.view,
+				sessionState: this.ctx.sessionState,
+				onBack: () => this.ctx.view.goBack()
 			});
 		}
 
@@ -491,6 +493,6 @@ export class WorkoutEditorScreen implements Screen {
 		// Clean up file watcher
 		this.unsubscribeFileWatch?.();
 		this.unsubscribeFileWatch = null;
-		this.containerEl.remove();
+		super.destroy();
 	}
 }

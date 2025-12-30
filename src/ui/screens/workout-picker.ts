@@ -1,31 +1,36 @@
-import type { Screen, ScreenContext } from '../../views/fit-view';
-import { createBackButton, createButton } from '../components/button';
+import type { ScreenContext } from '../../views/fit-view';
+import { BaseScreen } from './base-screen';
+import { createScreenHeader } from '../components/screen-header';
+import { createButton } from '../components/button';
 import { createWorkoutCard } from '../components/card';
 import type { Workout } from '../../types';
 
 /**
  * Workout picker screen for starting a workout
  */
-export class WorkoutPickerScreen implements Screen {
-	private containerEl: HTMLElement;
+export class WorkoutPickerScreen extends BaseScreen {
 	private workouts: Workout[] = [];
 	private searchQuery = '';
 	private resultsEl: HTMLElement | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
-		private ctx: ScreenContext
+		ctx: ScreenContext
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-workout-picker-screen' });
+		super(parentEl, ctx, 'fit-workout-picker-screen');
 	}
 
 	render(): void {
-		this.containerEl.empty();
+		this.prepareRender();
 
-		// Header
-		const header = this.containerEl.createDiv({ cls: 'fit-header' });
-		createBackButton(header, () => this.ctx.view.goBack());
-		header.createEl('h1', { text: 'Start workout', cls: 'fit-title' });
+		// Header with consistent screen-header component
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'back',
+			fallbackWorkoutName: 'Start workout',
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onBack: () => this.ctx.view.goBack()
+		});
 
 		// Search bar
 		const searchContainer = this.containerEl.createDiv({ cls: 'fit-search-container' });
@@ -155,6 +160,6 @@ export class WorkoutPickerScreen implements Screen {
 	}
 
 	destroy(): void {
-		this.containerEl.remove();
+		super.destroy();
 	}
 }

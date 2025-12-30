@@ -36,7 +36,7 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const title = container.querySelector('.fit-title');
+			const title = container.querySelector('.fit-exercise-title');
 			expect(title?.textContent).toBe('Bench Press');
 		});
 
@@ -164,7 +164,7 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const backButton = container.querySelector('.fit-button-back') as HTMLElement;
+			const backButton = container.querySelector('.fit-back-button') as HTMLElement;
 			expect(backButton).not.toBeNull();
 			click(backButton);
 
@@ -354,7 +354,7 @@ describe('ExerciseScreen', () => {
 			expect(completeSessionBtn).not.toBeNull();
 		});
 
-		it('should show Skip RPE button when exercise is complete', () => {
+		it('should show muscle engagement and RPE selectors when exercise is complete', () => {
 			const exercise = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetSets: 2,
@@ -368,18 +368,21 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			// When exercise is complete, RPE and muscle engagement selectors are shown with Skip option
-			const skipBtn = findButton(container, 'Skip RPE');
-			expect(skipBtn).not.toBeNull();
+			// When exercise is complete, muscle engagement and RPE selectors are shown
+			const muscleSelector = container.querySelector('.fit-muscle-engagement-selector');
+			const rpeSelector = container.querySelector('.fit-rpe-selector');
+			expect(muscleSelector).not.toBeNull();
+			expect(rpeSelector).not.toBeNull();
 		});
 
-		it('should navigate to session when Next exercise is clicked', async () => {
+		it('should navigate to session when Next exercise is clicked after filling questionnaire', async () => {
 			const exercise1 = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetSets: 2,
+				muscleEngagement: 'good', // Pre-filled muscle engagement
 				sets: [
-					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:00:00Z' },
-					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:05:00Z' }
+					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:00:00Z', rpe: 7 },
+					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:05:00Z', rpe: 8 } // Pre-filled RPE
 				]
 			});
 			const exercise2 = createSampleSessionExercise({
@@ -393,6 +396,8 @@ describe('ExerciseScreen', () => {
 			screen.render();
 
 			const nextExerciseBtn = findButton(container, 'Next exercise');
+			expect(nextExerciseBtn).not.toBeNull();
+			expect(nextExerciseBtn?.disabled).toBe(false);
 			click(nextExerciseBtn!);
 			await flushPromises();
 

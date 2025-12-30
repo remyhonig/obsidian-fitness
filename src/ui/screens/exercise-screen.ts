@@ -1,11 +1,13 @@
 import { setIcon, MarkdownRenderer, Component } from 'obsidian';
-import type { Screen, ScreenContext } from '../../views/fit-view';
+import type { ScreenContext } from '../../views/fit-view';
+import { BaseScreen } from './base-screen';
 import type { ScreenParams, SessionExercise, Session, MuscleEngagement } from '../../types';
 import { createPrimaryAction, createButton } from '../components/button';
 import { formatWeight, formatWeightNumeric } from '../components/stepper';
 import { createHorizontalRepsSelector } from '../components/reps-grid';
 import { createRpeSelector } from '../components/rpe-selector';
 import { createMuscleEngagementSelector } from '../components/muscle-engagement-selector';
+import { createScreenHeader } from '../components/screen-header';
 import { toFilename } from '../../data/file-utils';
 import { ExerciseFormState } from './exercise-form-state';
 
@@ -20,25 +22,20 @@ interface ExerciseStatus {
 /**
  * Exercise screen - fullscreen set logging for an exercise
  */
-export class ExerciseScreen implements Screen {
-	private containerEl: HTMLElement;
+export class ExerciseScreen extends BaseScreen {
 	private exerciseIndex: number;
 	private formState: ExerciseFormState;
-	private eventUnsubscribers: (() => void)[] = [];
 	private showingExercisePicker = false;
 	private timerLabelEl: HTMLElement | null = null;
 	private timerEl: HTMLElement | null = null;
 	private isCompletingSet = false;
-	private abortController: AbortController | null = null;
-	private headerPlayIconEl: HTMLElement | null = null;
-	private headerDurationEl: HTMLElement | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
-		private ctx: ScreenContext,
+		ctx: ScreenContext,
 		params: ScreenParams
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-exercise-screen' });
+		super(parentEl, ctx, 'fit-exercise-screen');
 		this.exerciseIndex = params.exerciseIndex ?? 0;
 		this.formState = new ExerciseFormState();
 
@@ -91,14 +88,7 @@ export class ExerciseScreen implements Screen {
 	}
 
 	render(): void {
-		// Unsubscribe from previous event subscriptions
-		this.unsubscribeFromEvents();
-
-		// Clear element references
-		this.headerPlayIconEl = null;
-		this.headerDurationEl = null;
-
-		this.containerEl.empty();
+		this.prepareRender();
 
 		const exercise = this.getExercise();
 		if (!exercise) {
@@ -109,78 +99,13 @@ export class ExerciseScreen implements Screen {
 			return;
 		}
 
-		const session = this.ctx.sessionState.getSession();
-
-		// Header section with resume-style card (like session screen)
-		const headerSection = this.containerEl.createDiv({ cls: 'fit-section' });
-		const row = headerSection.createDiv({ cls: 'fit-resume-row' });
-
-		// Back button - goes to workout overview
-		const backBtn = row.createEl('button', {
-			cls: 'fit-back-button',
-			attr: { 'aria-label': 'Back to workout' }
+		// Header with resume-style card
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'back',
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onBack: () => this.ctx.view.navigateTo('session')
 		});
-		setIcon(backBtn, 'arrow-left');
-		backBtn.addEventListener('click', () => this.ctx.view.navigateTo('session'));
-
-		// Resume-style card with workout name and timer
-		const resumeCard = row.createDiv({
-			cls: 'fit-program-workout-card fit-program-workout-current'
-		});
-
-		// Play icon
-		this.headerPlayIconEl = resumeCard.createDiv({ cls: 'fit-program-workout-play' });
-		setIcon(this.headerPlayIconEl, 'play');
-
-		// Workout name (not exercise name)
-		resumeCard.createDiv({
-			cls: 'fit-program-workout-name',
-			text: session?.workout ?? 'Workout'
-		});
-
-		// Duration display (updated via duration.tick event)
-		this.headerDurationEl = resumeCard.createDiv({
-			cls: 'fit-program-workout-time'
-		});
-
-		// Set initial display - rest time if resting, otherwise session duration
-		if (this.ctx.sessionState.isRestTimerActive()) {
-			const remaining = this.ctx.sessionState.getRestTimeRemaining();
-			const minutes = Math.floor(remaining / 60);
-			const seconds = remaining % 60;
-			this.headerDurationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-			this.headerDurationEl.addClass('fit-timer-rest');
-		} else {
-			const elapsed = this.ctx.sessionState.getElapsedDuration();
-			const minutes = Math.floor(elapsed / 60);
-			const seconds = elapsed % 60;
-			this.headerDurationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-		}
-
-		// Fullscreen toggle button
-		if (this.ctx.view.isInFullscreen()) {
-			// Exit fullscreen button
-			const exitBtn = row.createEl('button', {
-				cls: 'fit-fullscreen-exit',
-				attr: { 'aria-label': 'Exit fullscreen' }
-			});
-			exitBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`;
-			exitBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				this.ctx.view.exitFullscreen();
-			});
-		} else {
-			// Enter fullscreen button
-			const enterBtn = row.createEl('button', {
-				cls: 'fit-fullscreen-enter',
-				attr: { 'aria-label': 'Enter fullscreen' }
-			});
-			enterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`;
-			enterBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				this.ctx.view.enterFullscreen();
-			});
-		}
 
 		// Top section: Progress stats + Sets history (integrated)
 		const topSection = this.containerEl.createDiv({ cls: 'fit-exercise-top' });
@@ -301,25 +226,22 @@ export class ExerciseScreen implements Screen {
 	}
 
 	private subscribeToEvents(): void {
-		// Unsubscribe from previous subscriptions
-		this.unsubscribeFromEvents();
-
 		const state = this.ctx.sessionState;
 
-		// Rest timer events - show countdown when active
-		this.eventUnsubscribers.push(
+		// Rest timer events - update progress card timer
+		this.subscribe(
 			state.on('timer.tick', ({ remaining }) => {
 				this.updateRestTimerDisplay(remaining);
 			})
 		);
 
-		this.eventUnsubscribers.push(
+		this.subscribe(
 			state.on('timer.started', () => {
 				this.updateTimer();
 			})
 		);
 
-		this.eventUnsubscribers.push(
+		this.subscribe(
 			state.on('timer.cancelled', () => {
 				this.updateTimer();
 				// Re-render to show updated UI (e.g., after rest period ends)
@@ -329,49 +251,17 @@ export class ExerciseScreen implements Screen {
 			})
 		);
 
-		// Duration timer events - update timer display (handles session/set duration)
-		this.eventUnsubscribers.push(
-			state.on('duration.tick', ({ elapsed }) => {
-				// Update header timer (only when not resting)
-				if (this.headerDurationEl && !state.isRestTimerActive()) {
-					const minutes = Math.floor(elapsed / 60);
-					const seconds = elapsed % 60;
-					this.headerDurationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-					this.headerDurationEl.removeClass('fit-timer-rest');
-				}
-				if (this.headerPlayIconEl) {
-					this.headerPlayIconEl.classList.toggle('fit-pulse-tick');
-				}
-				// Update progress card timer (only if rest timer is not active)
+		// Duration timer events - update progress card timer (only if rest timer is not active)
+		this.subscribe(
+			state.on('duration.tick', () => {
 				if (!state.isRestTimerActive()) {
 					this.updateTimer();
 				}
 			})
 		);
 
-		// Rest timer tick - update header timer with rest countdown
-		this.eventUnsubscribers.push(
-			state.on('timer.tick', ({ remaining }) => {
-				if (this.headerDurationEl && state.isRestTimerActive()) {
-					const minutes = Math.floor(remaining / 60);
-					const seconds = remaining % 60;
-					this.headerDurationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-					this.headerDurationEl.addClass('fit-timer-rest');
-				}
-			})
-		);
-
-		// Rest timer cancelled - reset header timer styling
-		this.eventUnsubscribers.push(
-			state.on('timer.cancelled', () => {
-				if (this.headerDurationEl) {
-					this.headerDurationEl.removeClass('fit-timer-rest');
-				}
-			})
-		);
-
 		// Set started event - update timer to show set duration
-		this.eventUnsubscribers.push(
+		this.subscribe(
 			state.on('set.started', () => {
 				this.updateTimer();
 			})
@@ -384,20 +274,13 @@ export class ExerciseScreen implements Screen {
 			}
 		};
 
-		this.eventUnsubscribers.push(state.on('set.logged', reRenderIfNotPicking));
-		this.eventUnsubscribers.push(state.on('set.edited', reRenderIfNotPicking));
-		this.eventUnsubscribers.push(state.on('set.deleted', reRenderIfNotPicking));
+		this.subscribe(state.on('set.logged', reRenderIfNotPicking));
+		this.subscribe(state.on('set.edited', reRenderIfNotPicking));
+		this.subscribe(state.on('set.deleted', reRenderIfNotPicking));
 
 		// RPE/muscle events - re-render
-		this.eventUnsubscribers.push(state.on('rpe.changed', reRenderIfNotPicking));
-		this.eventUnsubscribers.push(state.on('muscle.changed', reRenderIfNotPicking));
-	}
-
-	private unsubscribeFromEvents(): void {
-		for (const unsub of this.eventUnsubscribers) {
-			unsub();
-		}
-		this.eventUnsubscribers = [];
+		this.subscribe(state.on('rpe.changed', reRenderIfNotPicking));
+		this.subscribe(state.on('muscle.changed', reRenderIfNotPicking));
 	}
 
 	/**
@@ -1038,10 +921,6 @@ export class ExerciseScreen implements Screen {
 	}
 
 	destroy(): void {
-		// Abort any in-flight async operations
-		this.abortController?.abort();
-		this.abortController = null;
-		this.unsubscribeFromEvents();
-		this.containerEl.remove();
+		super.destroy();
 	}
 }

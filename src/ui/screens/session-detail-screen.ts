@@ -1,29 +1,29 @@
 import { Notice, setIcon } from 'obsidian';
-import type { Screen, ScreenContext } from '../../views/fit-view';
+import type { ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, Session, Program } from '../../types';
-import { createBackButton } from '../components/button';
+import { BaseScreen } from './base-screen';
+import { createScreenHeader } from '../components/screen-header';
 import { formatDuration } from '../components/timer';
 import { toFilename } from '../../data/file-utils';
 
 /**
  * Session detail screen - shows full details of a completed session
  */
-export class SessionDetailScreen implements Screen {
-	private containerEl: HTMLElement;
+export class SessionDetailScreen extends BaseScreen {
 	private sessionId: string;
 	private textArea: HTMLTextAreaElement | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
-		private ctx: ScreenContext,
+		ctx: ScreenContext,
 		params: ScreenParams
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-session-detail-screen' });
+		super(parentEl, ctx, 'fit-session-detail-screen');
 		this.sessionId = params.sessionId ?? '';
 	}
 
 	render(): void {
-		this.containerEl.empty();
+		this.prepareRender();
 
 		// Load session and render
 		void this.loadAndRender();
@@ -44,22 +44,23 @@ export class SessionDetailScreen implements Screen {
 	}
 
 	private renderContent(session: Session): void {
-		// Header
-		const header = this.containerEl.createDiv({ cls: 'fit-header' });
-		createBackButton(header, () => this.ctx.view.goBack());
-
-		const titleContainer = header.createDiv({ cls: 'fit-header-title' });
-		titleContainer.createEl('h1', {
-			text: session.workout ?? 'Workout',
-			cls: 'fit-title'
+		// Header with consistent screen-header component
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'back',
+			fallbackWorkoutName: session.workout ?? 'Workout',
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onBack: () => this.ctx.view.goBack()
 		});
 
-		// Copy button in header
-		const copyBtn = header.createEl('button', {
-			cls: 'fit-header-action',
+		// Copy button below header
+		const copySection = this.containerEl.createDiv({ cls: 'fit-session-detail-actions' });
+		const copyBtn = copySection.createEl('button', {
+			cls: 'fit-button fit-button-ghost',
 			attr: { 'aria-label': 'Copy for AI' }
 		});
 		setIcon(copyBtn, 'copy');
+		copyBtn.createSpan({ text: ' Copy for AI' });
 		copyBtn.addEventListener('click', () => { void this.copySession(session); });
 
 		// Session info
@@ -181,6 +182,6 @@ export class SessionDetailScreen implements Screen {
 	}
 
 	destroy(): void {
-		this.containerEl.remove();
+		super.destroy();
 	}
 }

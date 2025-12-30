@@ -1,13 +1,14 @@
 import { Notice } from 'obsidian';
-import type { Screen, ScreenContext } from '../../views/fit-view';
+import type { ScreenContext } from '../../views/fit-view';
 import type { Exercise } from '../../types';
-import { createBackButton, createButton, createPrimaryAction } from '../components/button';
+import { BaseScreen } from './base-screen';
+import { createScreenHeader } from '../components/screen-header';
+import { createButton, createPrimaryAction } from '../components/button';
 
 /**
  * Exercise library screen - manage exercises
  */
-export class ExerciseLibraryScreen implements Screen {
-	private containerEl: HTMLElement;
+export class ExerciseLibraryScreen extends BaseScreen {
 	private exercises: Exercise[] = [];
 	private searchQuery = '';
 	private resultsEl: HTMLElement | null = null;
@@ -16,28 +17,32 @@ export class ExerciseLibraryScreen implements Screen {
 
 	constructor(
 		parentEl: HTMLElement,
-		private ctx: ScreenContext
+		ctx: ScreenContext
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-exercise-library-screen' });
+		super(parentEl, ctx, 'fit-exercise-library-screen');
 	}
 
 	render(): void {
-		this.containerEl.empty();
+		this.prepareRender();
 
-		// Header
-		const header = this.containerEl.createDiv({ cls: 'fit-header' });
-		createBackButton(header, () => {
-			if (this.isEditing) {
-				this.isEditing = false;
-				this.editingExercise = null;
-				this.render();
-			} else {
-				this.ctx.view.goBack();
+		// Header with consistent screen-header component
+		const title = this.isEditing
+			? (this.editingExercise ? 'Edit exercise' : 'New exercise')
+			: 'Exercises';
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'back',
+			fallbackWorkoutName: title,
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onBack: () => {
+				if (this.isEditing) {
+					this.isEditing = false;
+					this.editingExercise = null;
+					this.render();
+				} else {
+					this.ctx.view.goBack();
+				}
 			}
-		});
-		header.createEl('h1', {
-			text: this.isEditing ? (this.editingExercise ? 'Edit exercise' : 'New exercise') : 'Exercises',
-			cls: 'fit-title'
 		});
 
 		if (this.isEditing) {
@@ -338,6 +343,6 @@ export class ExerciseLibraryScreen implements Screen {
 	}
 
 	destroy(): void {
-		this.containerEl.remove();
+		super.destroy();
 	}
 }

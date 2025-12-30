@@ -1,31 +1,35 @@
-import type { Screen, ScreenContext } from '../../views/fit-view';
+import type { ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, Session } from '../../types';
+import { BaseScreen } from './base-screen';
+import { createScreenHeader } from '../components/screen-header';
 import { createPrimaryAction } from '../components/button';
 import { formatDuration } from '../components/timer';
 
 /**
  * Finish screen - workout summary after completing a session
  */
-export class FinishScreen implements Screen {
-	private containerEl: HTMLElement;
+export class FinishScreen extends BaseScreen {
 	private sessionId: string;
 
 	constructor(
 		parentEl: HTMLElement,
-		private ctx: ScreenContext,
+		ctx: ScreenContext,
 		params: ScreenParams
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-finish-screen' });
+		super(parentEl, ctx, 'fit-finish-screen');
 		this.sessionId = params.sessionId ?? '';
 	}
 
 	render(): void {
-		this.containerEl.empty();
+		this.prepareRender();
 
-		// Header
-		const header = this.containerEl.createDiv({ cls: 'fit-finish-header' });
-		header.createDiv({ cls: 'fit-finish-icon', text: '🎉' });
-		header.createEl('h1', { text: 'Workout complete!', cls: 'fit-finish-title' });
+		// Header with consistent screen-header component
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'none',
+			fallbackWorkoutName: '🎉 Workout complete!',
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState
+		});
 
 		// Load session data and render
 		void this.ctx.sessionRepo.get(this.sessionId).then(session => {
@@ -99,6 +103,6 @@ export class FinishScreen implements Screen {
 	}
 
 	destroy(): void {
-		this.containerEl.remove();
+		super.destroy();
 	}
 }

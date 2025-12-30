@@ -1,5 +1,7 @@
-import type { Screen, ScreenContext } from '../../views/fit-view';
+import type { ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, Question, QuestionAnswer, SessionReview } from '../../types';
+import { BaseScreen } from './base-screen';
+import { createScreenHeader } from '../components/screen-header';
 import { createButton, createPrimaryAction } from '../components/button';
 import { createQuestionCard } from '../components/question-card';
 
@@ -11,8 +13,7 @@ interface AnswerState {
 /**
  * Questionnaire screen - post-workout review questions
  */
-export class QuestionnaireScreen implements Screen {
-	private containerEl: HTMLElement;
+export class QuestionnaireScreen extends BaseScreen {
 	private sessionId: string;
 	private programId: string;
 	private questions: Question[];
@@ -21,17 +22,17 @@ export class QuestionnaireScreen implements Screen {
 
 	constructor(
 		parentEl: HTMLElement,
-		private ctx: ScreenContext,
+		ctx: ScreenContext,
 		params: ScreenParams
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-questionnaire-screen' });
+		super(parentEl, ctx, 'fit-questionnaire-screen');
 		this.sessionId = params.sessionId ?? '';
 		this.programId = params.programId ?? '';
 		this.questions = params.questions ?? [];
 	}
 
 	render(): void {
-		this.containerEl.empty();
+		this.prepareRender();
 
 		// If no questions, skip to finish
 		if (this.questions.length === 0) {
@@ -43,9 +44,13 @@ export class QuestionnaireScreen implements Screen {
 	}
 
 	private renderContent(): void {
-		// Header
-		const header = this.containerEl.createDiv({ cls: 'fit-questionnaire-header' });
-		header.createEl('h1', { text: 'Training review', cls: 'fit-questionnaire-title' });
+		// Header with consistent screen-header component (no back button on questionnaire)
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'none',
+			fallbackWorkoutName: 'Training review',
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState
+		});
 
 		// Questions
 		const questionsContainer = this.containerEl.createDiv({ cls: 'fit-questionnaire-questions' });
@@ -137,6 +142,6 @@ export class QuestionnaireScreen implements Screen {
 	}
 
 	destroy(): void {
-		this.containerEl.remove();
+		super.destroy();
 	}
 }

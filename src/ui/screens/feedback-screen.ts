@@ -1,13 +1,14 @@
 import { Notice } from 'obsidian';
-import type { Screen, ScreenContext } from '../../views/fit-view';
+import type { ScreenContext } from '../../views/fit-view';
 import type { ScreenParams } from '../../types';
-import { createBackButton, createButton, createPrimaryAction } from '../components/button';
+import { BaseScreen } from './base-screen';
+import { createScreenHeader } from '../components/screen-header';
+import { createButton, createPrimaryAction } from '../components/button';
 
 /**
  * Feedback screen - full-page coach feedback form
  */
-export class FeedbackScreen implements Screen {
-	private containerEl: HTMLElement;
+export class FeedbackScreen extends BaseScreen {
 	private sessionId: string;
 	private workoutName: string;
 	private existingFeedback: string;
@@ -15,26 +16,25 @@ export class FeedbackScreen implements Screen {
 
 	constructor(
 		parentEl: HTMLElement,
-		private ctx: ScreenContext,
+		ctx: ScreenContext,
 		params: ScreenParams
 	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-feedback-screen' });
+		super(parentEl, ctx, 'fit-feedback-screen');
 		this.sessionId = params.sessionId ?? '';
 		this.workoutName = params.workoutName ?? 'Workout';
 		this.existingFeedback = params.existingFeedback ?? '';
 	}
 
 	render(): void {
-		this.containerEl.empty();
+		this.prepareRender();
 
-		// Header
-		const header = this.containerEl.createDiv({ cls: 'fit-header' });
-		createBackButton(header, () => this.ctx.view.goBack());
-
-		const titleContainer = header.createDiv({ cls: 'fit-header-title' });
-		titleContainer.createEl('h1', {
-			text: `Feedback for ${this.workoutName}`,
-			cls: 'fit-title'
+		// Header with consistent screen-header component
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'back',
+			fallbackWorkoutName: `Feedback: ${this.workoutName}`,
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onBack: () => this.ctx.view.goBack()
 		});
 
 		// Content
@@ -90,6 +90,6 @@ export class FeedbackScreen implements Screen {
 	}
 
 	destroy(): void {
-		this.containerEl.remove();
+		super.destroy();
 	}
 }

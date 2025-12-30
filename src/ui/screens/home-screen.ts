@@ -1,106 +1,35 @@
 import { setIcon } from 'obsidian';
-import type { Screen, ScreenContext } from '../../views/fit-view';
+import type { ScreenContext } from '../../views/fit-view';
+import { BaseScreen } from './base-screen';
 import { createWorkoutCard, createSessionCard } from '../components/card';
+import { createScreenHeader } from '../components/screen-header';
 import { toFilename } from '../../data/file-utils';
 import type { Workout, Session } from '../../types';
 
 /**
  * Home screen - entry point for the workout tracker
  */
-export class HomeScreen implements Screen {
-	private containerEl: HTMLElement;
-	private eventUnsubscribers: (() => void)[] = [];
-	private abortController: AbortController | null = null;
-	private playIconEl: HTMLElement | null = null;
-	private durationEl: HTMLElement | null = null;
-
-	constructor(
-		parentEl: HTMLElement,
-		private ctx: ScreenContext
-	) {
-		this.containerEl = parentEl.createDiv({ cls: 'fit-screen fit-home-screen' });
+export class HomeScreen extends BaseScreen {
+	constructor(parentEl: HTMLElement, ctx: ScreenContext) {
+		super(parentEl, ctx, 'fit-home-screen');
 	}
 
 	render(): void {
-		// Clear element references
-		this.playIconEl = null;
-		this.durationEl = null;
-
-		// Abort previous async render operations
-		this.abortController?.abort();
-		this.abortController = new AbortController();
-
-		this.containerEl.empty();
+		this.prepareRender();
+		const signal = this.resetAbortController();
 
 		// Main content
 		const content = this.containerEl.createDiv({ cls: 'fit-content' });
 
 		// Render sections in order (must await to maintain order)
-		void this.renderSectionsInOrder(content, this.abortController.signal);
+		void this.renderSectionsInOrder(content, signal);
 
 		// Subscribe to session lifecycle events to update resume card
-		this.subscribeToEvents();
-	}
-
-	private subscribeToEvents(): void {
-		// Unsubscribe from previous subscriptions
-		this.unsubscribeFromEvents();
-
+		// Note: Timer events are handled by the header component
 		const state = this.ctx.sessionState;
-
-		// Session lifecycle events - re-render to show/hide resume card
-		this.eventUnsubscribers.push(
-			state.on('session.started', () => this.render())
-		);
-		this.eventUnsubscribers.push(
-			state.on('session.finished', () => this.render())
-		);
-		this.eventUnsubscribers.push(
-			state.on('session.discarded', () => this.render())
-		);
-
-		// Rest timer tick - show rest countdown when active
-		this.eventUnsubscribers.push(
-			state.on('timer.tick', ({ remaining }) => {
-				if (this.durationEl && state.isRestTimerActive()) {
-					const minutes = Math.floor(remaining / 60);
-					const seconds = remaining % 60;
-					this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-					this.durationEl.addClass('fit-timer-rest');
-				}
-			})
-		);
-
-		// Rest timer cancelled - switch back to session duration
-		this.eventUnsubscribers.push(
-			state.on('timer.cancelled', () => {
-				if (this.durationEl) {
-					this.durationEl.removeClass('fit-timer-rest');
-				}
-			})
-		);
-
-		// Duration tick - update timer display and pulse animation (only when not resting)
-		this.eventUnsubscribers.push(
-			state.on('duration.tick', ({ elapsed }) => {
-				if (this.durationEl && !state.isRestTimerActive()) {
-					const minutes = Math.floor(elapsed / 60);
-					const seconds = elapsed % 60;
-					this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-					this.durationEl.removeClass('fit-timer-rest');
-				}
-				if (this.playIconEl) {
-					this.playIconEl.classList.toggle('fit-pulse-tick');
-				}
-			})
-		);
-	}
-
-	private unsubscribeFromEvents(): void {
-		for (const unsub of this.eventUnsubscribers) {
-			unsub();
-		}
-		this.eventUnsubscribers = [];
+		this.subscribe(state.on('session.started', () => this.render()));
+		this.subscribe(state.on('session.finished', () => this.render()));
+		this.subscribe(state.on('session.discarded', () => this.render()));
 	}
 
 	private async renderSectionsInOrder(content: HTMLElement, signal: AbortSignal): Promise<void> {
@@ -138,79 +67,19 @@ export class HomeScreen implements Screen {
 	}
 
 	private renderResumeCard(parent: HTMLElement, session: Session): void {
-		const section = parent.createDiv({ cls: 'fit-section' });
-		const row = section.createDiv({ cls: 'fit-resume-row' });
-
-		// Barbell emoji placeholder (maintains layout consistency with other screens)
-		row.createDiv({ cls: 'fit-home-icon', text: '🏋️' });
-
-		const resumeCard = row.createDiv({
-			cls: 'fit-program-workout-card fit-program-workout-current'
-		});
-
-		// Play icon
-		this.playIconEl = resumeCard.createDiv({ cls: 'fit-program-workout-play' });
-		setIcon(this.playIconEl, 'play');
-
-		// Workout name
-		resumeCard.createDiv({
-			cls: 'fit-program-workout-name',
-			text: session.workout ?? 'Workout'
-		});
-
-		// Duration display (updated via duration.tick event)
-		this.durationEl = resumeCard.createDiv({
-			cls: 'fit-program-workout-time'
-		});
-
-		// Set initial display - rest time if resting, otherwise session duration
-		if (this.ctx.sessionState.isRestTimerActive()) {
-			const remaining = this.ctx.sessionState.getRestTimeRemaining();
-			const minutes = Math.floor(remaining / 60);
-			const seconds = remaining % 60;
-			this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-			this.durationEl.addClass('fit-timer-rest');
-		} else {
-			const elapsed = this.ctx.sessionState.getElapsedDuration();
-			const minutes = Math.floor(elapsed / 60);
-			const seconds = elapsed % 60;
-			this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-		}
-
-		// Click navigates to first unfinished exercise, or session overview if all complete
-		resumeCard.addEventListener('click', () => {
-			const firstUnfinishedIndex = this.findFirstUnfinishedExerciseIndex(session);
-			if (firstUnfinishedIndex >= 0) {
-				this.ctx.view.navigateTo('exercise', { exerciseIndex: firstUnfinishedIndex });
-			} else {
-				this.ctx.view.navigateTo('session');
+		this.headerRefs = createScreenHeader(parent, {
+			leftElement: 'barbell',
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onCardClick: () => {
+				const firstUnfinishedIndex = this.findFirstUnfinishedExerciseIndex(session);
+				if (firstUnfinishedIndex >= 0) {
+					this.ctx.view.navigateTo('exercise', { exerciseIndex: firstUnfinishedIndex });
+				} else {
+					this.ctx.view.navigateTo('session');
+				}
 			}
 		});
-
-		// Fullscreen toggle button
-		if (this.ctx.view.isInFullscreen()) {
-			// Exit fullscreen button
-			const exitBtn = row.createEl('button', {
-				cls: 'fit-fullscreen-exit',
-				attr: { 'aria-label': 'Exit fullscreen' }
-			});
-			exitBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`;
-			exitBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				this.ctx.view.exitFullscreen();
-			});
-		} else {
-			// Enter fullscreen button
-			const enterBtn = row.createEl('button', {
-				cls: 'fit-fullscreen-enter',
-				attr: { 'aria-label': 'Enter fullscreen' }
-			});
-			enterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`;
-			enterBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				this.ctx.view.enterFullscreen();
-			});
-		}
 	}
 
 	private async renderActiveProgram(parent: HTMLElement, hasResumeCard: boolean, signal: AbortSignal): Promise<void> {
@@ -231,6 +100,15 @@ export class HomeScreen implements Screen {
 		if (signal.aborted) return;
 		const workoutMap = new Map(allWorkouts.map(w => [w.id, w]));
 
+		const currentIndex = settings.programWorkoutIndex % program.workouts.length;
+		const nextWorkoutId = program.workouts[currentIndex];
+		const nextWorkout = nextWorkoutId ? workoutMap.get(nextWorkoutId) : undefined;
+
+		// Show next workout header if no resume card
+		if (!hasResumeCard && nextWorkout) {
+			this.renderNextWorkoutHeader(parent, nextWorkout);
+		}
+
 		const section = parent.createDiv({ cls: 'fit-section fit-program-section' });
 
 		// Section header with program name
@@ -239,20 +117,16 @@ export class HomeScreen implements Screen {
 
 		const grid = section.createDiv({ cls: 'fit-program-grid' });
 
-		// Show next workouts (not accented if there's a resume card above)
-		const currentIndex = settings.programWorkoutIndex % program.workouts.length;
-
+		// Show next workouts (not accented since header shows the next one)
 		for (let i = 0; i < 4 && i < program.workouts.length; i++) {
 			const workoutIndex = (currentIndex + i) % program.workouts.length;
 			const workoutId = program.workouts[workoutIndex];
 			if (!workoutId) continue;
 
 			const workout = workoutMap.get(workoutId);
-			// Only accent first card if no resume card
-			const isAccented = i === 0 && !hasResumeCard;
 
 			const card = grid.createDiv({
-				cls: `fit-program-workout-card ${isAccented ? 'fit-program-workout-current' : ''}`
+				cls: 'fit-program-workout-card'
 			});
 
 			// Play icon indicator
@@ -279,6 +153,18 @@ export class HomeScreen implements Screen {
 		// View all link at bottom
 		const viewAllLink = section.createEl('a', { cls: 'fit-section-footer-link', text: 'View all workouts' });
 		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
+	}
+
+	private renderNextWorkoutHeader(parent: HTMLElement, workout: Workout): void {
+		this.headerRefs = createScreenHeader(parent, {
+			leftElement: 'barbell',
+			fallbackWorkoutName: workout.name,
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onCardClick: () => {
+				void this.startFromWorkout(workout);
+			}
+		});
 	}
 
 	private async renderQuickStart(parent: HTMLElement, signal: AbortSignal): Promise<void> {
@@ -390,11 +276,4 @@ export class HomeScreen implements Screen {
 		this.ctx.view.navigateTo('session');
 	}
 
-	destroy(): void {
-		// Abort any in-flight async operations
-		this.abortController?.abort();
-		this.abortController = null;
-		this.unsubscribeFromEvents();
-		this.containerEl.remove();
-	}
 }
