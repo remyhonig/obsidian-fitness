@@ -4,7 +4,7 @@ import type { ScreenParams, Session, Program } from '../../types';
 import { BaseScreen } from './base-screen';
 import { createScreenHeader } from '../components/screen-header';
 import { formatDuration } from '../components/timer';
-import { toFilename } from '../../data/file-utils';
+import { toFilename, resolveTransclusions, parseDescriptionSection, parseFrontmatter } from '../../data/file-utils';
 
 /**
  * Session detail screen - shows full details of a completed session
@@ -285,19 +285,30 @@ export class SessionDetailScreen extends BaseScreen {
 
 	private async copySession(session: Session): Promise<void> {
 		const settings = this.ctx.settings;
-		const path = `${settings.basePath}/Sessions/${session.id}.md`;
-		const file = this.ctx.view.app.vault.getFileByPath(path);
-		if (!file) return;
+		const sessionPath = `${settings.basePath}/Sessions/${session.id}.md`;
+		const sessionFile = this.ctx.view.app.vault.getFileByPath(sessionPath);
+		if (!sessionFile) return;
 
-		const sessionContent = await this.ctx.view.app.vault.read(file);
+		const sessionContent = await this.ctx.view.app.vault.read(sessionFile);
 
 		// Build the full content with program description
 		const parts: string[] = [];
 
-		// 1. Program description if session belongs to a program
+		// 1. Program description if session belongs to a program (with resolved transclusions)
 		const program = await this.findProgramForSession(session);
-		if (program?.description) {
-			parts.push(`## Program: ${program.name}\n\n${program.description}`);
+		if (program) {
+			const programPath = `${settings.basePath}/Programs/${program.id}.md`;
+			const programFile = this.ctx.view.app.vault.getFileByPath(programPath);
+			if (programFile) {
+				// Resolve transclusions using Obsidian's metadata cache
+				const resolvedContent = await resolveTransclusions(this.ctx.app, programFile);
+				// Separate frontmatter from body, then parse description from body
+				const { body } = parseFrontmatter(resolvedContent);
+				const description = parseDescriptionSection(body);
+				if (description) {
+					parts.push(`## Program: ${program.name}\n\n${description}`);
+				}
+			}
 		}
 
 		// 2. Session data

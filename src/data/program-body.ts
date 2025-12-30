@@ -4,15 +4,46 @@
 
 /**
  * Parses the ## Description section from program body
- * Returns the content between ## Description and the next ## heading (or end of section)
+ * Returns the content between ## Description and the next ## heading outside code blocks
  */
 export function parseDescriptionSection(body: string): string | undefined {
-	// Match ## Description section, stopping at the next ## heading or ## Review
-	const descMatch = body.match(/## Description\s*([\s\S]*?)(?=## |$)/i);
-	if (!descMatch) return undefined;
+	// Find where ## Description starts
+	const descMatch = body.match(/## Description\s*/i);
+	if (!descMatch || descMatch.index === undefined) return undefined;
 
-	const content = descMatch[1]?.trim();
-	return content || undefined;
+	const contentStart = descMatch.index + descMatch[0].length;
+	const content = body.slice(contentStart);
+
+	// Find the next ## heading that's outside a code block
+	const endIndex = findNextH2OutsideCodeBlock(content);
+	const description = endIndex === -1 ? content : content.slice(0, endIndex);
+
+	return description.trim() || undefined;
+}
+
+/**
+ * Finds the index of the next ## heading that's outside a code block
+ * Returns -1 if no such heading is found
+ */
+function findNextH2OutsideCodeBlock(text: string): number {
+	const lines = text.split('\n');
+	let inCodeBlock = false;
+	let currentIndex = 0;
+
+	for (const line of lines) {
+		// Check for code fence (``` or ~~~)
+		if (line.trimStart().startsWith('```') || line.trimStart().startsWith('~~~')) {
+			inCodeBlock = !inCodeBlock;
+		}
+		// Check for ## heading outside code block
+		else if (!inCodeBlock && line.startsWith('## ')) {
+			return currentIndex;
+		}
+
+		currentIndex += line.length + 1; // +1 for the newline
+	}
+
+	return -1;
 }
 
 /**
