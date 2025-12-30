@@ -1,4 +1,9 @@
+/**
+ * Question card component for questionnaire screens
+ */
+
 import type { Question } from '../../types';
+import { createSelectableGrid, type SelectableGridOption, type SelectableGridRefs } from './selectable-grid';
 
 export interface QuestionCardOptions {
 	question: Question;
@@ -8,51 +13,58 @@ export interface QuestionCardOptions {
 	onFreeTextChange?: (text: string) => void;
 }
 
+export interface QuestionCardRefs {
+	container: HTMLElement;
+	setSelected: (optionId: string | undefined) => void;
+	destroy: () => void;
+}
+
 /**
  * Creates a question card with multiple choice options
- * Similar to RPE selector but for questionnaire questions
  */
-export function createQuestionCard(parent: HTMLElement, options: QuestionCardOptions): HTMLElement {
+export function createQuestionCard(parent: HTMLElement, options: QuestionCardOptions): QuestionCardRefs {
 	const container = parent.createDiv({ cls: 'fit-question-card' });
+	const cleanup: (() => void)[] = [];
 
 	// Question text
 	container.createDiv({ cls: 'fit-question-text', text: options.question.text });
 
-	// Options list
-	const list = container.createDiv({ cls: 'fit-question-options' });
+	// Build options for selectable grid
+	const gridOptions: SelectableGridOption<string>[] = options.question.options.map(opt => ({
+		value: opt.id,
+		label: opt.label
+	}));
 
-	for (const opt of options.question.options) {
-		const isSelected = options.selectedOptionId === opt.id;
-		const item = list.createDiv({
-			cls: `fit-question-option ${isSelected ? 'fit-question-option-selected' : ''}`
-		});
+	// Track free text container for show/hide logic
+	let freeTextContainer: HTMLElement | null = null;
 
-		item.createSpan({ cls: 'fit-question-option-label', text: opt.label });
+	// Handle selection with free text toggle
+	const handleSelect = (optionId: string) => {
+		options.onSelect(optionId);
 
-		item.addEventListener('click', () => {
-			// Remove selection from all items
-			list.querySelectorAll('.fit-question-option').forEach(el => {
-				el.removeClass('fit-question-option-selected');
-			});
-			// Select this item
-			item.addClass('fit-question-option-selected');
-			options.onSelect(opt.id);
-
-			// Show/hide free text input if this option triggers it
-			const freeTextContainer = container.querySelector('.fit-question-freetext');
-			if (freeTextContainer instanceof HTMLElement) {
-				if (options.question.freeTextTrigger === opt.id) {
-					freeTextContainer.toggleClass('is-hidden', false);
-				} else {
-					freeTextContainer.toggleClass('is-hidden', true);
-				}
+		// Show/hide free text input if this option triggers it
+		if (freeTextContainer) {
+			if (options.question.freeTextTrigger === optionId) {
+				freeTextContainer.removeClass('is-hidden');
+			} else {
+				freeTextContainer.addClass('is-hidden');
 			}
-		});
-	}
+		}
+	};
+
+	// Use generic selectable grid
+	const gridRefs: SelectableGridRefs<string> = createSelectableGrid(container, {
+		classPrefix: 'fit-question',
+		options: gridOptions,
+		selectedValue: options.selectedOptionId,
+		onSelect: handleSelect,
+		layout: 'row'
+	});
+	cleanup.push(gridRefs.destroy);
 
 	// Free text input (hidden by default unless triggered option is selected)
 	if (options.question.allowFreeText && options.question.freeTextTrigger) {
-		const freeTextContainer = container.createDiv({ cls: 'fit-question-freetext' });
+		freeTextContainer = container.createDiv({ cls: 'fit-question-freetext' });
 
 		// Initially hide unless the trigger option is already selected
 		if (options.selectedOptionId !== options.question.freeTextTrigger) {
@@ -72,10 +84,16 @@ export function createQuestionCard(parent: HTMLElement, options: QuestionCardOpt
 			textarea.value = options.freeText;
 		}
 
-		textarea.addEventListener('input', () => {
+		const inputHandler = () => {
 			options.onFreeTextChange?.(textarea.value);
-		});
+		};
+		textarea.addEventListener('input', inputHandler);
+		cleanup.push(() => textarea.removeEventListener('input', inputHandler));
 	}
 
-	return container;
+	return {
+		container,
+		setSelected: gridRefs.setSelected,
+		destroy: () => cleanup.forEach(fn => fn())
+	};
 }

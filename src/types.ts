@@ -177,6 +177,7 @@ export interface ScreenParams {
 	isNew?: boolean;
 	workoutName?: string; // For feedback screen title
 	existingFeedback?: string; // For pre-populating feedback textarea
+	fromScreen?: ScreenType; // Origin screen for context-aware back navigation
 }
 
 // Event listener types

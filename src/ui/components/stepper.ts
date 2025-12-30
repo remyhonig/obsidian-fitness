@@ -9,11 +9,17 @@ export interface StepperOptions {
 	onChange: (value: number) => void;
 }
 
+export interface StepperRefs {
+	container: HTMLElement;
+	destroy: () => void;
+}
+
 /**
  * Creates a stepper component with multiple increment buttons
  */
-export function createStepper(parent: HTMLElement, options: StepperOptions): HTMLElement {
+export function createStepper(parent: HTMLElement, options: StepperOptions): StepperRefs {
 	const container = parent.createDiv({ cls: 'fit-stepper' });
+	const cleanup: (() => void)[] = [];
 
 	// Shared state object so all buttons reference the same value
 	const state = { currentValue: options.value };
@@ -33,20 +39,26 @@ export function createStepper(parent: HTMLElement, options: StepperOptions): HTM
 	const sortedIncrements = [...options.increments].sort((a, b) => b - a);
 
 	for (const inc of sortedIncrements) {
-		createStepButton(decrementRow, -inc, options, valueDisplay, state);
+		const btnCleanup = createStepButton(decrementRow, -inc, options, valueDisplay, state);
+		cleanup.push(btnCleanup);
 	}
 
 	// Increment buttons
 	const incrementRow = container.createDiv({ cls: 'fit-stepper-row fit-stepper-increment' });
 	for (const inc of sortedIncrements.reverse()) {
-		createStepButton(incrementRow, inc, options, valueDisplay, state);
+		const btnCleanup = createStepButton(incrementRow, inc, options, valueDisplay, state);
+		cleanup.push(btnCleanup);
 	}
 
-	return container;
+	return {
+		container,
+		destroy: () => cleanup.forEach(fn => fn())
+	};
 }
 
 /**
  * Creates a single step button with long-press support
+ * Returns a cleanup function
  */
 function createStepButton(
 	parent: HTMLElement,
@@ -54,7 +66,7 @@ function createStepButton(
 	options: StepperOptions,
 	valueDisplay: HTMLElement,
 	state: { currentValue: number }
-): HTMLButtonElement {
+): () => void {
 	const isPositive = step > 0;
 	const absStep = Math.abs(step);
 	const text = `${isPositive ? '+' : '-'}${formatIncrement(absStep)}`;
@@ -107,30 +119,41 @@ function createStepButton(
 	};
 
 	// Click handler
-	btn.addEventListener('click', (e) => {
+	const clickHandler = (e: Event) => {
 		e.preventDefault();
 		updateValue(step);
-	});
+	};
+	btn.addEventListener('click', clickHandler);
 
 	// Touch events for long-press rapid increment
-	btn.addEventListener('touchstart', (e) => {
+	const touchStartHandler = (e: TouchEvent) => {
 		e.preventDefault();
 		updateValue(step);
 		timeoutId = window.setTimeout(startRapid, 500);
-	}, { passive: false });
-
+	};
+	btn.addEventListener('touchstart', touchStartHandler, { passive: false });
 	btn.addEventListener('touchend', stopRapid);
 	btn.addEventListener('touchcancel', stopRapid);
 
 	// Mouse events for long-press (desktop)
-	btn.addEventListener('mousedown', () => {
+	const mouseDownHandler = () => {
 		timeoutId = window.setTimeout(startRapid, 500);
-	});
-
+	};
+	btn.addEventListener('mousedown', mouseDownHandler);
 	btn.addEventListener('mouseup', stopRapid);
 	btn.addEventListener('mouseleave', stopRapid);
 
-	return btn;
+	// Return cleanup function
+	return () => {
+		stopRapid(); // Clear any running timers
+		btn.removeEventListener('click', clickHandler);
+		btn.removeEventListener('touchstart', touchStartHandler);
+		btn.removeEventListener('touchend', stopRapid);
+		btn.removeEventListener('touchcancel', stopRapid);
+		btn.removeEventListener('mousedown', mouseDownHandler);
+		btn.removeEventListener('mouseup', stopRapid);
+		btn.removeEventListener('mouseleave', stopRapid);
+	};
 }
 
 /**
@@ -160,6 +183,11 @@ function roundToDecimals(value: number, decimals: number): number {
 	return Math.round(value * factor) / factor;
 }
 
+export interface SimpleStepperRefs {
+	container: HTMLElement;
+	destroy: () => void;
+}
+
 /**
  * Creates a simple +/- stepper for reps
  */
@@ -169,8 +197,9 @@ export function createSimpleStepper(
 	min: number,
 	max: number,
 	onChange: (value: number) => void
-): HTMLElement {
+): SimpleStepperRefs {
 	const container = parent.createDiv({ cls: 'fit-simple-stepper' });
+	const cleanup: (() => void)[] = [];
 
 	let currentValue = value;
 
@@ -198,10 +227,21 @@ export function createSimpleStepper(
 		}
 	};
 
-	minusBtn.addEventListener('click', () => update(-1));
-	plusBtn.addEventListener('click', () => update(1));
+	const minusHandler = () => update(-1);
+	const plusHandler = () => update(1);
 
-	return container;
+	minusBtn.addEventListener('click', minusHandler);
+	plusBtn.addEventListener('click', plusHandler);
+
+	cleanup.push(() => {
+		minusBtn.removeEventListener('click', minusHandler);
+		plusBtn.removeEventListener('click', plusHandler);
+	});
+
+	return {
+		container,
+		destroy: () => cleanup.forEach(fn => fn())
+	};
 }
 
 /**
@@ -237,20 +277,26 @@ export interface CompactWeightStepperOptions {
 	onChange: (value: number) => void;
 }
 
+export interface CompactWeightStepperRefs {
+	container: HTMLElement;
+	destroy: () => void;
+}
+
 /**
  * Creates a compact horizontal weight stepper with large display
  */
-export function createCompactWeightStepper(parent: HTMLElement, options: CompactWeightStepperOptions): HTMLElement {
+export function createCompactWeightStepper(parent: HTMLElement, options: CompactWeightStepperOptions): CompactWeightStepperRefs {
 	const container = parent.createDiv({ cls: 'fit-compact-weight' });
 	const state = { currentValue: options.value };
+	const cleanup: (() => void)[] = [];
 
 	// Main row with buttons and display
 	const row = container.createDiv({ cls: 'fit-compact-weight-row' });
 
 	// Left buttons (decrease)
 	const leftBtns = row.createDiv({ cls: 'fit-compact-weight-btns' });
-	createCompactWeightBtn(leftBtns, -options.largeIncrement, state, options, container);
-	createCompactWeightBtn(leftBtns, -options.smallIncrement, state, options, container);
+	cleanup.push(createCompactWeightBtn(leftBtns, -options.largeIncrement, state, options, container));
+	cleanup.push(createCompactWeightBtn(leftBtns, -options.smallIncrement, state, options, container));
 
 	// Center display
 	const display = row.createDiv({ cls: 'fit-compact-weight-display' });
@@ -259,10 +305,13 @@ export function createCompactWeightStepper(parent: HTMLElement, options: Compact
 
 	// Right buttons (increase)
 	const rightBtns = row.createDiv({ cls: 'fit-compact-weight-btns' });
-	createCompactWeightBtn(rightBtns, options.smallIncrement, state, options, container);
-	createCompactWeightBtn(rightBtns, options.largeIncrement, state, options, container);
+	cleanup.push(createCompactWeightBtn(rightBtns, options.smallIncrement, state, options, container));
+	cleanup.push(createCompactWeightBtn(rightBtns, options.largeIncrement, state, options, container));
 
-	return container;
+	return {
+		container,
+		destroy: () => cleanup.forEach(fn => fn())
+	};
 }
 
 function createCompactWeightBtn(
@@ -271,7 +320,7 @@ function createCompactWeightBtn(
 	state: { currentValue: number },
 	options: CompactWeightStepperOptions,
 	container: HTMLElement
-): void {
+): () => void {
 	const isPositive = step > 0;
 	const absStep = Math.abs(step);
 	const text = `${isPositive ? '+' : '−'}${formatWeight(absStep)}`;
@@ -304,11 +353,26 @@ function createCompactWeightBtn(
 		if (intervalId) { window.clearInterval(intervalId); intervalId = null; }
 	};
 
-	btn.addEventListener('click', (e) => { e.preventDefault(); updateValue(); });
-	btn.addEventListener('touchstart', (e) => { e.preventDefault(); updateValue(); timeoutId = window.setTimeout(startRapid, 400); }, { passive: false });
+	const clickHandler = (e: Event) => { e.preventDefault(); updateValue(); };
+	const touchStartHandler = (e: TouchEvent) => { e.preventDefault(); updateValue(); timeoutId = window.setTimeout(startRapid, 400); };
+	const mouseDownHandler = () => { timeoutId = window.setTimeout(startRapid, 400); };
+
+	btn.addEventListener('click', clickHandler);
+	btn.addEventListener('touchstart', touchStartHandler, { passive: false });
 	btn.addEventListener('touchend', stopRapid);
 	btn.addEventListener('touchcancel', stopRapid);
-	btn.addEventListener('mousedown', () => { timeoutId = window.setTimeout(startRapid, 400); });
+	btn.addEventListener('mousedown', mouseDownHandler);
 	btn.addEventListener('mouseup', stopRapid);
 	btn.addEventListener('mouseleave', stopRapid);
+
+	return () => {
+		stopRapid();
+		btn.removeEventListener('click', clickHandler);
+		btn.removeEventListener('touchstart', touchStartHandler);
+		btn.removeEventListener('touchend', stopRapid);
+		btn.removeEventListener('touchcancel', stopRapid);
+		btn.removeEventListener('mousedown', mouseDownHandler);
+		btn.removeEventListener('mouseup', stopRapid);
+		btn.removeEventListener('mouseleave', stopRapid);
+	};
 }

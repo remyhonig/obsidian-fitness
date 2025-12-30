@@ -1,15 +1,23 @@
-import { setIcon, MarkdownRenderer, Component } from 'obsidian';
+import { MarkdownRenderer, Component } from 'obsidian';
 import type { ScreenContext } from '../../views/fit-view';
 import { BaseScreen } from './base-screen';
 import type { ScreenParams, SessionExercise, Session, MuscleEngagement } from '../../types';
 import { createPrimaryAction, createButton } from '../components/button';
-import { formatWeight, formatWeightNumeric } from '../components/stepper';
 import { createHorizontalRepsSelector } from '../components/reps-grid';
 import { createRpeSelector } from '../components/rpe-selector';
 import { createMuscleEngagementSelector } from '../components/muscle-engagement-selector';
 import { createScreenHeader } from '../components/screen-header';
 import { toFilename } from '../../data/file-utils';
 import { ExerciseFormState } from './exercise-form-state';
+import {
+	TimerDisplayRefs,
+	updateTimerDisplay,
+	updateRestTimerDisplay,
+	createProgressCard,
+	createWeightInput,
+	renderIntegratedSets,
+	WeightInputRefs
+} from './exercise';
 
 interface ExerciseStatus {
 	index: number;
@@ -26,8 +34,8 @@ export class ExerciseScreen extends BaseScreen {
 	private exerciseIndex: number;
 	private formState: ExerciseFormState;
 	private showingExercisePicker = false;
-	private timerLabelEl: HTMLElement | null = null;
-	private timerEl: HTMLElement | null = null;
+	private timerRefs: TimerDisplayRefs | null = null;
+	private weightInputRefs: WeightInputRefs | null = null;
 	private isCompletingSet = false;
 
 	constructor(
@@ -114,46 +122,22 @@ export class ExerciseScreen extends BaseScreen {
 		topSection.createEl('h2', { text: exercise.exercise, cls: 'fit-exercise-title' });
 
 		// Progress card - sets, timer, target reps
-		const completedSets = exercise.sets.filter(s => s.completed).length;
-		const isExerciseComplete = completedSets >= exercise.targetSets;
-		const progressCard = topSection.createDiv({ cls: 'fit-progress-card-wide' });
-
-		// Sets stat
-		const setsSection = progressCard.createDiv({ cls: 'fit-stat-wide' });
-		setsSection.createDiv({ cls: 'fit-stat-label-vertical', text: 'Sets' });
-		setsSection.createDiv({ cls: 'fit-stat-value-large', text: `${completedSets} / ${exercise.targetSets}` });
-
-		// Duration/Timer stat (clickable to start/reset set timer when not complete)
-		const timerSection = progressCard.createDiv({ cls: 'fit-stat-wide' });
-		if (!isExerciseComplete) {
-			timerSection.addClass('fit-timer-section');
-		}
-		this.timerLabelEl = timerSection.createDiv({ cls: 'fit-stat-label-vertical' });
-		this.timerEl = timerSection.createDiv({ cls: 'fit-stat-value-large' });
-		this.updateTimer();
-
-		// Click on timer to skip rest or start/reset set duration tracking (only if exercise not complete)
-		if (!isExerciseComplete) {
-			timerSection.addEventListener('click', () => {
-				if (this.ctx.sessionState.isRestTimerActive()) {
-					// Skip rest and start set timer
-					this.ctx.sessionState.cancelRestTimer();
-				}
-				this.ctx.sessionState.markSetStart(this.exerciseIndex);
-			});
-		}
-
-		// Target Reps stat
-		const targetReps = exercise.targetRepsMin === exercise.targetRepsMax
-			? `${exercise.targetRepsMin}`
-			: `${exercise.targetRepsMin}-${exercise.targetRepsMax}`;
-		const targetSection = progressCard.createDiv({ cls: 'fit-stat-wide' });
-		targetSection.createDiv({ cls: 'fit-stat-label-vertical', text: 'Target' });
-		targetSection.createDiv({ cls: 'fit-stat-value-large', text: targetReps });
+		const progressCardRefs = createProgressCard(topSection, {
+			exercise,
+			sessionState: this.ctx.sessionState,
+			exerciseIndex: this.exerciseIndex
+		});
+		this.timerRefs = progressCardRefs.timerRefs;
+		const isExerciseComplete = progressCardRefs.isComplete;
 
 		// Integrated sets row (current session in accent, history in gray)
 		const setsRow = topSection.createDiv({ cls: 'fit-sets-integrated' });
-		this.renderIntegratedSets(exercise, setsRow);
+		renderIntegratedSets(setsRow, {
+			exercise,
+			weightUnit: this.ctx.settings.weightUnit,
+			sessionRepo: this.ctx.sessionRepo,
+			onDeleteSet: (setIndex) => this.deleteSet(setIndex)
+		});
 
 		// Middle content area (scrollable)
 		const middleContent = this.containerEl.createDiv({ cls: 'fit-middle-content' });
@@ -186,7 +170,11 @@ export class ExerciseScreen extends BaseScreen {
 
 			// Weight card - full width (no title, just controls)
 			const weightCard = bottomInputs.createDiv({ cls: 'fit-input-card-wide' });
-			this.renderWeightInput(weightCard);
+			this.weightInputRefs = createWeightInput(weightCard, {
+				settings: this.ctx.settings,
+				initialWeight: this.formState.weight,
+				onWeightChange: (weight) => this.formState.setWeight(weight)
+			});
 
 			// Reps card - full width (no title, just controls)
 			const repsCard = bottomInputs.createDiv({ cls: 'fit-input-card-wide' });
@@ -231,7 +219,7 @@ export class ExerciseScreen extends BaseScreen {
 		// Rest timer events - update progress card timer
 		this.subscribe(
 			state.on('timer.tick', ({ remaining }) => {
-				this.updateRestTimerDisplay(remaining);
+				updateRestTimerDisplay(this.timerRefs, remaining);
 			})
 		);
 
@@ -284,360 +272,10 @@ export class ExerciseScreen extends BaseScreen {
 	}
 
 	/**
-	 * Update display for rest timer countdown
-	 */
-	private updateRestTimerDisplay(remaining: number): void {
-		if (!this.timerEl) return;
-
-		if (this.timerLabelEl) {
-			// eslint-disable-next-line obsidianmd/ui/sentence-case
-			this.timerLabelEl.textContent = 'rest';
-		}
-
-		const minutes = Math.floor(remaining / 60);
-		const seconds = remaining % 60;
-		this.timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-		this.timerEl.addClass('fit-timer-active');
-		this.timerEl.removeClass('fit-set-timer');
-	}
-
-	/**
-	 * Update display for set duration (time since mark start)
-	 */
-	private updateSetDurationDisplay(): void {
-		if (!this.timerEl) return;
-
-		if (this.timerLabelEl) {
-			this.timerLabelEl.textContent = 'Set';
-		}
-
-		const startTime = this.ctx.sessionState.getSetStartTime();
-		const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-		const minutes = Math.floor(elapsed / 60);
-		const seconds = elapsed % 60;
-
-		this.timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-		this.timerEl.removeClass('fit-timer-active');
-		this.timerEl.addClass('fit-set-timer');
-	}
-
-	/**
-	 * Update display for session duration
-	 */
-	private updateSessionDurationDisplay(elapsed: number): void {
-		if (!this.timerEl) return;
-
-		if (this.timerLabelEl) {
-			this.timerLabelEl.textContent = 'Session';
-		}
-
-		this.timerEl.removeClass('fit-timer-active');
-		this.timerEl.removeClass('fit-set-timer');
-		const minutes = Math.floor(elapsed / 60);
-		const seconds = elapsed % 60;
-
-		// Render with styled units (m and s smaller and grayer)
-		this.timerEl.empty();
-		this.timerEl.createSpan({ text: String(minutes) });
-		this.timerEl.createSpan({ cls: 'fit-duration-unit', text: 'm' });
-		this.timerEl.createSpan({ text: seconds.toString().padStart(2, '0') });
-		this.timerEl.createSpan({ cls: 'fit-duration-unit', text: 's' });
-	}
-
-	/**
-	 * Initial timer display (called on render)
+	 * Update timer display
 	 */
 	private updateTimer(): void {
-		if (!this.timerEl) return;
-
-		if (this.ctx.sessionState.isRestTimerActive()) {
-			// Rest timer takes priority
-			const remaining = this.ctx.sessionState.getRestTimeRemaining();
-			this.updateRestTimerDisplay(remaining);
-		} else if (this.ctx.sessionState.isSetTimerActive()) {
-			// Set timer active - show set duration
-			this.updateSetDurationDisplay();
-		} else {
-			// Default: show session duration
-			const elapsed = this.ctx.sessionState.getElapsedDuration();
-			this.updateSessionDurationDisplay(elapsed);
-		}
-	}
-
-	private renderWeightInput(parent: HTMLElement): void {
-		const settings = this.ctx.settings;
-		const unit = settings.weightUnit;
-		const smallInc = unit === 'kg' ? 0.5 : 1.25;
-		const largeInc = unit === 'kg' ? 2.5 : 5;
-
-		const container = parent.createDiv({ cls: 'fit-weight-input-container' });
-
-		// Left buttons (decrease)
-		const leftBtns = container.createDiv({ cls: 'fit-weight-btns' });
-		this.createWeightBtn(leftBtns, -largeInc, container);
-		this.createWeightBtn(leftBtns, -smallInc, container);
-
-		// Center input with unit
-		const inputWrapper = container.createDiv({ cls: 'fit-weight-input-wrapper' });
-		const input = inputWrapper.createEl('input', {
-			cls: 'fit-weight-input',
-			type: 'number',
-			value: String(this.formState.weight)
-		});
-		input.setAttribute('step', String(smallInc));
-		input.setAttribute('min', '0');
-
-		inputWrapper.createSpan({ cls: 'fit-weight-unit', text: unit });
-
-		input.addEventListener('change', () => {
-			const val = parseFloat(input.value);
-			if (!isNaN(val) && val >= 0) {
-				this.formState.setWeight(val);
-				input.value = formatWeightNumeric(this.formState.weight);
-			}
-		});
-
-		input.addEventListener('blur', () => {
-			input.value = formatWeightNumeric(this.formState.weight);
-		});
-
-		// Right buttons (increase)
-		const rightBtns = container.createDiv({ cls: 'fit-weight-btns' });
-		this.createWeightBtn(rightBtns, smallInc, container);
-		this.createWeightBtn(rightBtns, largeInc, container);
-	}
-
-	private createWeightBtn(parent: HTMLElement, step: number, container: HTMLElement): void {
-		const isPositive = step > 0;
-		const absStep = Math.abs(step);
-		const text = `${isPositive ? '+' : '−'}${formatWeight(absStep)}`;
-
-		const btn = parent.createEl('button', {
-			cls: `fit-weight-btn ${isPositive ? 'fit-plus' : 'fit-minus'}`,
-			text
-		});
-
-		let intervalId: number | null = null;
-		let timeoutId: number | null = null;
-
-		const updateValue = () => {
-			this.formState.setWeight(this.formState.weight + step);
-
-			const input = container.querySelector('.fit-weight-input') as HTMLInputElement;
-			if (input) {
-				input.value = formatWeightNumeric(this.formState.weight);
-			}
-		};
-
-		const startRapid = () => {
-			intervalId = window.setInterval(updateValue, 100);
-		};
-
-		const stopRapid = () => {
-			if (timeoutId) { window.clearTimeout(timeoutId); timeoutId = null; }
-			if (intervalId) { window.clearInterval(intervalId); intervalId = null; }
-		};
-
-		btn.addEventListener('click', (e) => { e.preventDefault(); updateValue(); });
-		btn.addEventListener('touchstart', (e) => { e.preventDefault(); updateValue(); timeoutId = window.setTimeout(startRapid, 400); }, { passive: false });
-		btn.addEventListener('touchend', stopRapid);
-		btn.addEventListener('touchcancel', stopRapid);
-		btn.addEventListener('mousedown', () => { timeoutId = window.setTimeout(startRapid, 400); });
-		btn.addEventListener('mouseup', stopRapid);
-		btn.addEventListener('mouseleave', stopRapid);
-	}
-
-	/**
-	 * Render integrated sets row - interweaved: history1, current1, history2, current2...
-	 */
-	private renderIntegratedSets(exercise: SessionExercise, parent: HTMLElement): void {
-		const unit = this.ctx.settings.weightUnit;
-		const currentSets = exercise.sets;
-
-		// Create placeholder containers for each set pair (history + current)
-		// This allows us to interweave properly when history loads
-		const setContainers: HTMLElement[] = [];
-		const maxCurrentSets = currentSets.length;
-
-		// Pre-create containers and render current sets synchronously
-		for (let i = 0; i < maxCurrentSets; i++) {
-			// Container for this pair
-			const pairContainer = parent.createDiv({ cls: 'fit-set-pair' });
-			setContainers.push(pairContainer);
-
-			// Placeholder for history (will be filled async)
-			pairContainer.createDiv({ cls: 'fit-set-history-placeholder', attr: { 'data-index': String(i) } });
-
-			// Current set (rendered now)
-			const currSet = currentSets[i];
-			if (currSet) {
-				const chip = pairContainer.createDiv({ cls: 'fit-set-chip fit-set-chip-current' });
-				const weightDisplay = formatWeight(currSet.weight);
-				chip.createSpan({
-					cls: 'fit-set-chip-text',
-					text: `${currSet.reps}×${weightDisplay}${currSet.weight === 0 ? '' : unit}`
-				});
-
-				const deleteBtn = chip.createEl('button', { cls: 'fit-set-chip-delete' });
-				try { setIcon(deleteBtn, 'x'); } catch { deleteBtn.textContent = 'X'; }
-				const setIndex = i;
-				deleteBtn.addEventListener('click', (e) => {
-					e.stopPropagation();
-					void this.deleteSet(setIndex);
-				});
-			}
-		}
-
-		// Load history async and insert into placeholders
-		void this.ctx.sessionRepo.list().then(sessions => {
-			const exerciseName = exercise.exercise.toLowerCase();
-			let historySets: Array<{ weight: number; reps: number }> = [];
-
-			// Find most recent completed session with this exercise
-			for (const session of sessions) {
-				const sessionEx = session.exercises.find(
-					e => e.exercise.toLowerCase() === exerciseName
-				);
-				if (sessionEx && sessionEx.sets.length > 0) {
-					historySets = sessionEx.sets.filter(s => s.completed).map(s => ({
-						weight: s.weight,
-						reps: s.reps
-					}));
-					break;
-				}
-			}
-
-			// Fill in history chips at their placeholders
-			for (let i = 0; i < historySets.length; i++) {
-				const histSet = historySets[i];
-				if (!histSet) continue;
-
-				// Find or create container for this index
-				let container: HTMLElement;
-				if (i < setContainers.length) {
-					container = setContainers[i]!;
-				} else {
-					// More history than current - create new container
-					container = parent.createDiv({ cls: 'fit-set-pair' });
-					setContainers.push(container);
-				}
-
-				// Find placeholder and replace with actual chip
-				const placeholder = container.querySelector('.fit-set-history-placeholder');
-				const chip = document.createElement('div');
-				chip.className = 'fit-set-chip fit-set-chip-history';
-				const textSpan = document.createElement('span');
-				textSpan.className = 'fit-set-chip-text';
-				const histWeightDisplay = formatWeight(histSet.weight);
-				textSpan.textContent = `${histSet.reps}×${histWeightDisplay}${histSet.weight === 0 ? '' : unit}`;
-				chip.appendChild(textSpan);
-
-				if (placeholder) {
-					placeholder.replaceWith(chip);
-				} else {
-					// Insert at beginning of container
-					container.insertBefore(chip, container.firstChild);
-				}
-			}
-
-			// Remove any remaining empty placeholders
-			parent.querySelectorAll('.fit-set-history-placeholder').forEach(p => p.remove());
-		});
-	}
-
-	private renderCurrentSets(exercise: SessionExercise, parent: HTMLElement): void {
-		if (exercise.sets.length === 0) return;
-
-		const section = parent.createDiv({ cls: 'fit-sets-logged' });
-		section.createDiv({ cls: 'fit-card-title', text: 'This Session' });
-
-		// Horizontal scrollable row of compact set chips
-		const row = section.createDiv({ cls: 'fit-sets-chips' });
-		const unit = this.ctx.settings.weightUnit;
-
-		for (let i = 0; i < exercise.sets.length; i++) {
-			const set = exercise.sets[i];
-			if (!set) continue;
-
-			// Compact chip with notation: "8×40kg" (reps×weight) or "8×BW" for body weight
-			const chip = row.createDiv({ cls: 'fit-set-chip' });
-			const setWeightDisplay = formatWeight(set.weight);
-			chip.createSpan({
-				cls: 'fit-set-chip-text',
-				text: `${set.reps}×${setWeightDisplay}${set.weight === 0 ? '' : unit}`
-			});
-
-			const deleteBtn = chip.createEl('button', { cls: 'fit-set-chip-delete' });
-			try { setIcon(deleteBtn, 'x'); } catch { deleteBtn.textContent = 'X'; }
-			deleteBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				void this.deleteSet(i);
-			});
-		}
-	}
-
-	private renderHistorySets(exercise: SessionExercise, parent: HTMLElement): void {
-		// Find previous sessions with this exercise (async)
-		void this.ctx.sessionRepo.list().then(sessions => {
-			// Find most recent completed session with this exercise
-			const exerciseName = exercise.exercise.toLowerCase();
-			let lastSession: { date: string; sets: Array<{ weight: number; reps: number }> } | null = null;
-
-			for (const session of sessions) {
-				const sessionEx = session.exercises.find(
-					e => e.exercise.toLowerCase() === exerciseName
-				);
-				if (sessionEx && sessionEx.sets.length > 0) {
-					lastSession = {
-						date: session.startTime,
-						sets: sessionEx.sets.filter(s => s.completed).map(s => ({
-							weight: s.weight,
-							reps: s.reps
-						}))
-					};
-					break; // Most recent first
-				}
-			}
-
-			if (!lastSession || lastSession.sets.length === 0) return;
-
-			// Calculate relative time
-			const sessionDate = new Date(lastSession.date);
-			const now = new Date();
-			const diffMs = now.getTime() - sessionDate.getTime();
-			const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-			let relativeTime: string;
-			if (diffDays === 0) {
-				relativeTime = 'today';
-			} else if (diffDays === 1) {
-				relativeTime = 'yesterday';
-			} else if (diffDays < 7) {
-				relativeTime = `${diffDays}d ago`;
-			} else if (diffDays < 30) {
-				const weeks = Math.floor(diffDays / 7);
-				relativeTime = weeks === 1 ? '1w ago' : `${weeks}w ago`;
-			} else {
-				const months = Math.floor(diffDays / 30);
-				relativeTime = months === 1 ? '1mo ago' : `${months}mo ago`;
-			}
-
-			const section = parent.createDiv({ cls: 'fit-sets-history' });
-			section.createDiv({ cls: 'fit-card-title', text: `Last: ${relativeTime}` });
-
-			// Horizontal row of history chips (not deletable)
-			const row = section.createDiv({ cls: 'fit-sets-chips' });
-			const unit = this.ctx.settings.weightUnit;
-
-			for (const set of lastSession.sets) {
-				const chip = row.createDiv({ cls: 'fit-set-chip fit-set-chip-history' });
-				const historyWeightDisplay = formatWeight(set.weight);
-				chip.createSpan({
-					cls: 'fit-set-chip-text',
-					text: `${set.reps}×${historyWeightDisplay}${set.weight === 0 ? '' : unit}`
-				});
-			}
-		});
+		updateTimerDisplay(this.timerRefs, this.ctx.sessionState);
 	}
 
 	private renderExerciseDetails(sessionExercise: SessionExercise, parent: HTMLElement): void {
@@ -921,6 +559,7 @@ export class ExerciseScreen extends BaseScreen {
 	}
 
 	destroy(): void {
+		this.weightInputRefs?.destroy();
 		super.destroy();
 	}
 }

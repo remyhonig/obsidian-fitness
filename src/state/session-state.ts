@@ -13,6 +13,9 @@ import type { PluginSettings } from '../settings';
 import { SessionRepository } from '../data/session-repository';
 import { PersistenceManager } from './persistence-manager';
 import type { SessionEventName, SessionEventPayload, SessionEventListener } from './events';
+import { RestTimerManager } from './rest-timer-manager';
+import { SetTimerManager } from './set-timer-manager';
+import { DurationTimerManager } from './duration-timer-manager';
 
 /**
  * Manages the active workout session state
@@ -20,15 +23,16 @@ import type { SessionEventName, SessionEventPayload, SessionEventListener } from
 export class SessionStateManager {
 	private session: Session | null = null;
 	private currentExerciseIndex = 0;
-	private restTimer: RestTimerState | null = null;
-	private restTimerInterval: number | null = null;
-	private durationInterval: number | null = null;
-	private setStartTime: number | null = null; // Timestamp when current set started
 	private listeners: Set<StateChangeListener> = new Set();
 	private eventListeners: Map<SessionEventName, Set<SessionEventListener<SessionEventName>>> = new Map();
 	private sessionRepo: SessionRepository;
 	private persistence: PersistenceManager;
 	private persisted = false; // Track if session has been written to disk
+
+	// Timer managers
+	private restTimerManager: RestTimerManager;
+	private setTimerManager: SetTimerManager;
+	private durationTimerManager: DurationTimerManager;
 
 	constructor(
 		private app: App,
@@ -36,6 +40,38 @@ export class SessionStateManager {
 	) {
 		this.sessionRepo = new SessionRepository(app, settings.basePath);
 		this.persistence = new PersistenceManager(this.sessionRepo);
+
+		// Initialize timer managers with callbacks
+		this.restTimerManager = new RestTimerManager({
+			emit: (event, payload) => this.emit(event, payload as SessionEventPayload<typeof event>),
+			onComplete: (exerciseIndex) => this.onRestTimerComplete(exerciseIndex),
+			notifyListeners: () => this.notifyListeners()
+		});
+
+		this.setTimerManager = new SetTimerManager({
+			emit: (event, payload) => this.emit(event, payload),
+			notifyListeners: () => this.notifyListeners()
+		});
+
+		this.durationTimerManager = new DurationTimerManager({
+			emit: (event, payload) => this.emit(event, payload),
+			getSessionStartTime: () => this.session?.startTime ?? null,
+			isPersisted: () => this.persisted
+		});
+	}
+
+	/**
+	 * Called when rest timer completes naturally.
+	 * Auto-marks start of next set (unless exercise is already complete).
+	 */
+	private onRestTimerComplete(exerciseIndex: number): void {
+		const exercise = this.session?.exercises[exerciseIndex];
+		if (exercise) {
+			const completedSets = exercise.sets.filter(s => s.completed).length;
+			if (completedSets < exercise.targetSets) {
+				this.setTimerManager.markStart(exerciseIndex);
+			}
+		}
 	}
 
 	/**
@@ -91,9 +127,8 @@ export class SessionStateManager {
 		};
 
 		this.currentExerciseIndex = 0;
-		this.restTimer = null;
 		this.persisted = false; // Don't save until first set is completed
-		this.startDurationTimer();
+		this.durationTimerManager.start();
 		this.emit('session.started', undefined);
 		this.notifyListeners();
 	}
@@ -114,9 +149,8 @@ export class SessionStateManager {
 		};
 
 		this.currentExerciseIndex = 0;
-		this.restTimer = null;
 		this.persisted = false; // Don't save until first set is completed
-		this.startDurationTimer();
+		this.durationTimerManager.start();
 		this.emit('session.started', undefined);
 		this.notifyListeners();
 	}
@@ -130,9 +164,8 @@ export class SessionStateManager {
 			if (session) {
 				this.session = session;
 				this.currentExerciseIndex = 0;
-				this.restTimer = null;
 				this.persisted = true; // Loaded from disk, so already persisted
-				this.startDurationTimer();
+				this.durationTimerManager.start();
 				this.emit('session.loaded', undefined);
 				this.notifyListeners();
 				return true;
@@ -156,8 +189,8 @@ export class SessionStateManager {
 			// Clear state
 			this.session = null;
 			this.currentExerciseIndex = 0;
-			this.cancelRestTimer();
-			this.stopDurationTimer();
+			this.restTimerManager.cancel();
+			this.durationTimerManager.stop();
 
 			// Finalize and get the saved session
 			const finalSession = await this.persistence.finalizeActive(sessionToFinalize);
@@ -170,8 +203,8 @@ export class SessionStateManager {
 			// Clear state even on error to prevent stale "in progress" state
 			this.session = null;
 			this.currentExerciseIndex = 0;
-			this.cancelRestTimer();
-			this.stopDurationTimer();
+			this.restTimerManager.cancel();
+			this.durationTimerManager.stop();
 			this.notifyListeners();
 			throw error;
 		}
@@ -192,8 +225,8 @@ export class SessionStateManager {
 		// Clear state
 		this.session = null;
 		this.currentExerciseIndex = 0;
-		this.cancelRestTimer();
-		this.stopDurationTimer();
+		this.restTimerManager.cancel();
+		this.durationTimerManager.stop();
 		this.emit('session.discarded', undefined);
 		this.notifyListeners();
 	}
@@ -230,7 +263,7 @@ export class SessionStateManager {
 		if (index >= 0 && index < this.session.exercises.length) {
 			// Cancel rest timer when switching exercises (timer is only for between sets)
 			if (index !== this.currentExerciseIndex) {
-				this.cancelRestTimer();
+				this.restTimerManager.cancel();
 			}
 			this.currentExerciseIndex = index;
 			this.emit('exercise.selected', { index });
@@ -360,17 +393,13 @@ export class SessionStateManager {
 		if (!exercise) return;
 
 		// Calculate duration if set start time was marked
-		const now = Date.now();
-		let duration: number | undefined;
-		if (this.setStartTime !== null) {
-			duration = Math.floor((now - this.setStartTime) / 1000);
-		}
+		const duration = this.setTimerManager.getDuration();
 
 		const set: LoggedSet = {
 			weight,
 			reps,
 			completed: true,
-			timestamp: new Date(now).toISOString(),
+			timestamp: new Date().toISOString(),
 			rpe,
 			duration
 		};
@@ -378,14 +407,14 @@ export class SessionStateManager {
 		exercise.sets.push(set);
 
 		// Clear set start time after logging
-		this.clearSetStartTime();
+		this.setTimerManager.clear();
 
 		// Auto-start rest timer if enabled, but not if exercise is now complete
 		const completedSets = exercise.sets.filter(s => s.completed).length;
 		const isExerciseComplete = completedSets >= exercise.targetSets;
 
 		if (this.settings.autoStartRestTimer && !isExerciseComplete) {
-			this.startRestTimer(exercise.restSeconds, exerciseIndex);
+			this.restTimerManager.start(exercise.restSeconds, exerciseIndex);
 		}
 
 		// First completed set triggers persistence and resets startTime
@@ -498,197 +527,80 @@ export class SessionStateManager {
 		return exercise?.muscleEngagement;
 	}
 
-	// ========== Set Start Time ==========
+	// ========== Set Timer (delegated) ==========
 
 	/**
 	 * Marks the start time for the current set.
-	 * Called when user explicitly starts a set or when rest timer ends.
 	 */
 	markSetStart(exerciseIndex: number): void {
-		this.setStartTime = Date.now();
-		this.emit('set.started', { exerciseIndex });
-		this.notifyListeners();
+		this.setTimerManager.markStart(exerciseIndex);
 	}
 
 	/**
 	 * Gets the current set start time (null if not started)
 	 */
 	getSetStartTime(): number | null {
-		return this.setStartTime;
+		return this.setTimerManager.getStartTime();
 	}
 
 	/**
 	 * Checks if set timer is running (start time is set)
 	 */
 	isSetTimerActive(): boolean {
-		return this.setStartTime !== null;
+		return this.setTimerManager.isActive();
 	}
 
-	/**
-	 * Clears the set start time (called after set completion)
-	 */
-	private clearSetStartTime(): void {
-		this.setStartTime = null;
-	}
-
-	// ========== Rest Timer ==========
+	// ========== Rest Timer (delegated) ==========
 
 	/**
 	 * Starts the rest timer
 	 */
 	startRestTimer(seconds: number, exerciseIndex: number): void {
-		this.cancelRestTimer();
-
-		this.restTimer = {
-			endTime: Date.now() + seconds * 1000,
-			duration: seconds,
-			exerciseIndex
-		};
-
-		// Update every second
-		this.restTimerInterval = window.setInterval(() => {
-			const remaining = this.getRestTimeRemaining();
-			this.emit('timer.tick', { remaining });
-			this.notifyListeners();
-
-			// Check if timer is done
-			if (this.restTimer && Date.now() >= this.restTimer.endTime) {
-				this.completeRestTimer();
-			}
-		}, 1000);
-
-		this.emit('timer.started', { exerciseIndex, duration: seconds });
-		this.notifyListeners();
-	}
-
-	/**
-	 * Called when rest timer completes naturally.
-	 * Auto-marks start of next set (unless exercise is already complete).
-	 */
-	private completeRestTimer(): void {
-		const exerciseIndex = this.restTimer?.exerciseIndex ?? this.currentExerciseIndex;
-		this.stopRestTimerInterval();
-		this.restTimer = null;
-
-		// Only auto-mark set start if exercise is not complete
-		const exercise = this.session?.exercises[exerciseIndex];
-		if (exercise) {
-			const completedSets = exercise.sets.filter(s => s.completed).length;
-			if (completedSets < exercise.targetSets) {
-				this.markSetStart(exerciseIndex);
-			}
-		}
-
-		this.emit('timer.cancelled', undefined);
-		this.notifyListeners();
+		this.restTimerManager.start(seconds, exerciseIndex);
 	}
 
 	/**
 	 * Adds time to the rest timer
 	 */
 	addRestTime(seconds: number): void {
-		if (!this.restTimer) return;
-
-		this.restTimer.endTime += seconds * 1000;
-		this.restTimer.duration += seconds;
-		this.emit('timer.extended', { additionalSeconds: seconds });
-		this.notifyListeners();
+		this.restTimerManager.addTime(seconds);
 	}
 
 	/**
 	 * Cancels the rest timer (user-initiated)
 	 */
 	cancelRestTimer(): void {
-		const wasActive = this.restTimerInterval !== null;
-		this.stopRestTimerInterval();
-		this.restTimer = null;
-		if (wasActive) {
-			this.emit('timer.cancelled', undefined);
-		}
-		this.notifyListeners();
-	}
-
-	/**
-	 * Stops the rest timer interval
-	 */
-	private stopRestTimerInterval(): void {
-		if (this.restTimerInterval !== null) {
-			window.clearInterval(this.restTimerInterval);
-			this.restTimerInterval = null;
-		}
+		this.restTimerManager.cancel();
 	}
 
 	/**
 	 * Gets the remaining rest time in seconds
 	 */
 	getRestTimeRemaining(): number {
-		if (!this.restTimer) return 0;
-		return Math.max(0, Math.ceil((this.restTimer.endTime - Date.now()) / 1000));
+		return this.restTimerManager.getRemaining();
 	}
 
 	/**
 	 * Returns whether the rest timer is active
 	 */
 	isRestTimerActive(): boolean {
-		return this.restTimer !== null && Date.now() < this.restTimer.endTime;
+		return this.restTimerManager.isActive();
 	}
 
 	/**
 	 * Gets the rest timer state
 	 */
 	getRestTimer(): RestTimerState | null {
-		return this.restTimer;
+		return this.restTimerManager.getState();
 	}
 
-	// ========== Duration Timer ==========
-
-	/**
-	 * Starts the duration timer (ticks every second while session is active)
-	 * Timer shows 0:00 until the first set is completed (persisted)
-	 */
-	private startDurationTimer(): void {
-		this.stopDurationTimer();
-
-		if (!this.session) return;
-
-		// Emit immediately (0 if not persisted)
-		const elapsed = this.persisted
-			? Math.floor((Date.now() - new Date(this.session.startTime).getTime()) / 1000)
-			: 0;
-		this.emit('duration.tick', { elapsed });
-
-		// Then every second
-		this.durationInterval = window.setInterval(() => {
-			if (!this.session) {
-				this.stopDurationTimer();
-				return;
-			}
-			// Show 0 until first set is completed, then show actual elapsed time
-			const elapsed = this.persisted
-				? Math.floor((Date.now() - new Date(this.session.startTime).getTime()) / 1000)
-				: 0;
-			this.emit('duration.tick', { elapsed });
-		}, 1000);
-	}
-
-	/**
-	 * Stops the duration timer
-	 */
-	private stopDurationTimer(): void {
-		if (this.durationInterval !== null) {
-			window.clearInterval(this.durationInterval);
-			this.durationInterval = null;
-		}
-	}
+	// ========== Duration Timer (delegated) ==========
 
 	/**
 	 * Gets the elapsed duration in seconds
-	 * Returns 0 until first set is completed (persisted)
 	 */
 	getElapsedDuration(): number {
-		if (!this.session) return 0;
-		if (!this.persisted) return 0;
-		return Math.floor((Date.now() - new Date(this.session.startTime).getTime()) / 1000);
+		return this.durationTimerManager.getElapsed();
 	}
 
 	// ========== Subscription ==========
@@ -763,8 +675,9 @@ export class SessionStateManager {
 			await this.persistence.saveAndWait(this.session);
 		}
 
-		// Cancel timers
-		this.cancelRestTimer();
-		this.stopDurationTimer();
+		// Cleanup timer managers
+		this.restTimerManager.destroy();
+		this.setTimerManager.destroy();
+		this.durationTimerManager.destroy();
 	}
 }

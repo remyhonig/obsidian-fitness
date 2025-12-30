@@ -377,10 +377,20 @@ export class FitView extends ItemView {
 		};
 	}
 
+	// Screens that support context-aware back navigation (return to origin)
+	private static readonly MODAL_LIKE_SCREENS: ScreenType[] = [
+		'exercise', 'session-detail', 'workout-editor'
+	];
+
 	/**
 	 * Navigates to a screen
 	 */
 	navigateTo(screenType: ScreenType, params: ScreenParams = {}): void {
+		// Auto-track origin for modal-like screens (unless already set)
+		if (FitView.MODAL_LIKE_SCREENS.includes(screenType) && !params.fromScreen && this.currentScreenType) {
+			params.fromScreen = this.currentScreenType;
+		}
+
 		// Destroy current screen
 		this.currentScreen?.destroy();
 
@@ -439,22 +449,27 @@ export class FitView extends ItemView {
 	}
 
 	/**
-	 * Goes back to the previous logical screen
+	 * Goes back to the previous logical screen.
+	 * Modal-like screens (exercise, session-detail, workout-editor) return to their origin.
+	 * Other screens follow hub-and-spoke pattern to home.
 	 */
 	goBack(): void {
+		const fromScreen = this.screenParams.fromScreen;
+
+		// Modal-like screens return to their origin if tracked
+		if (fromScreen && FitView.MODAL_LIKE_SCREENS.includes(this.currentScreenType!)) {
+			this.navigateTo(fromScreen);
+			return;
+		}
+
+		// Hub-and-spoke navigation for other screens
 		switch (this.currentScreenType) {
 			case 'exercise':
+				// Fallback if no fromScreen tracked
 				this.navigateTo('session');
 				break;
 			case 'session':
-				// If workout is active, stay on session
-				// Otherwise go home
-				if (this.sessionState.hasActiveSession()) {
-					// Show confirm before leaving?
-					this.navigateTo('home');
-				} else {
-					this.navigateTo('home');
-				}
+				this.navigateTo('home');
 				break;
 			case 'workout-picker':
 			case 'history':
@@ -466,7 +481,7 @@ export class FitView extends ItemView {
 				this.navigateTo('home');
 				break;
 			case 'workout-editor':
-				// Go back to session if there's an active session, otherwise home
+				// Fallback: session if active, otherwise home
 				if (this.sessionState.hasActiveSession()) {
 					this.navigateTo('session');
 				} else {

@@ -5,13 +5,19 @@ export interface RepsGridOptions {
 	onChange: (value: number) => void;
 }
 
+export interface RepsGridRefs {
+	container: HTMLElement;
+	destroy: () => void;
+}
+
 /**
  * Creates a grid of buttons for selecting rep count (1-15 by default)
  */
-export function createRepsGrid(parent: HTMLElement, options: RepsGridOptions): HTMLElement {
+export function createRepsGrid(parent: HTMLElement, options: RepsGridOptions): RepsGridRefs {
 	const min = options.min ?? 1;
 	const max = options.max ?? 15;
 	let currentValue = options.value;
+	const cleanup: (() => void)[] = [];
 
 	const container = parent.createDiv({ cls: 'fit-reps-grid' });
 
@@ -35,7 +41,8 @@ export function createRepsGrid(parent: HTMLElement, options: RepsGridOptions): H
 			btn.addClass('fit-reps-button-active');
 		}
 
-		btn.addEventListener('click', (e) => {
+		const value = i;
+		const clickHandler = (e: Event) => {
 			e.preventDefault();
 
 			// Update active state
@@ -43,15 +50,17 @@ export function createRepsGrid(parent: HTMLElement, options: RepsGridOptions): H
 			btn.addClass('fit-reps-button-active');
 
 			// Update value
-			currentValue = i;
+			currentValue = value;
 			const valueEl = display.querySelector('.fit-reps-value');
 			if (valueEl) {
 				valueEl.textContent = String(currentValue);
 			}
 
 			options.onChange(currentValue);
-		});
+		};
 
+		btn.addEventListener('click', clickHandler);
+		cleanup.push(() => btn.removeEventListener('click', clickHandler));
 		buttons.push(btn);
 	}
 
@@ -92,10 +101,26 @@ export function createRepsGrid(parent: HTMLElement, options: RepsGridOptions): H
 		}
 	};
 
-	minusBtn.addEventListener('click', () => updateFromFineTune(-1));
-	plusBtn.addEventListener('click', () => updateFromFineTune(1));
+	const minusHandler = () => updateFromFineTune(-1);
+	const plusHandler = () => updateFromFineTune(1);
 
-	return container;
+	minusBtn.addEventListener('click', minusHandler);
+	plusBtn.addEventListener('click', plusHandler);
+
+	cleanup.push(() => {
+		minusBtn.removeEventListener('click', minusHandler);
+		plusBtn.removeEventListener('click', plusHandler);
+	});
+
+	return {
+		container,
+		destroy: () => cleanup.forEach(fn => fn())
+	};
+}
+
+export interface CompactRepsGridRefs {
+	container: HTMLElement;
+	destroy: () => void;
 }
 
 /**
@@ -105,50 +130,54 @@ export function createCompactRepsGrid(
 	parent: HTMLElement,
 	value: number,
 	onChange: (value: number) => void
-): HTMLElement {
+): CompactRepsGridRefs {
 	const container = parent.createDiv({ cls: 'fit-reps-grid-compact' });
 	let currentValue = value;
 	const buttons: HTMLButtonElement[] = [];
+	const cleanup: (() => void)[] = [];
+
+	const handleChange = (v: number, btn: HTMLButtonElement) => {
+		currentValue = v;
+		updateActive(buttons, currentValue);
+		onChange(v);
+	};
 
 	// Row 1: 1-5
 	const row1 = container.createDiv({ cls: 'fit-reps-row' });
 	for (let i = 1; i <= 5; i++) {
-		buttons.push(createRepButton(row1, i, currentValue, (v) => {
-			currentValue = v;
-			updateActive(buttons, currentValue);
-			onChange(v);
-		}));
+		const { btn, cleanup: btnCleanup } = createRepButton(row1, i, currentValue, handleChange);
+		buttons.push(btn);
+		cleanup.push(btnCleanup);
 	}
 
 	// Row 2: 6-10
 	const row2 = container.createDiv({ cls: 'fit-reps-row' });
 	for (let i = 6; i <= 10; i++) {
-		buttons.push(createRepButton(row2, i, currentValue, (v) => {
-			currentValue = v;
-			updateActive(buttons, currentValue);
-			onChange(v);
-		}));
+		const { btn, cleanup: btnCleanup } = createRepButton(row2, i, currentValue, handleChange);
+		buttons.push(btn);
+		cleanup.push(btnCleanup);
 	}
 
 	// Row 3: 11-15
 	const row3 = container.createDiv({ cls: 'fit-reps-row' });
 	for (let i = 11; i <= 15; i++) {
-		buttons.push(createRepButton(row3, i, currentValue, (v) => {
-			currentValue = v;
-			updateActive(buttons, currentValue);
-			onChange(v);
-		}));
+		const { btn, cleanup: btnCleanup } = createRepButton(row3, i, currentValue, handleChange);
+		buttons.push(btn);
+		cleanup.push(btnCleanup);
 	}
 
-	return container;
+	return {
+		container,
+		destroy: () => cleanup.forEach(fn => fn())
+	};
 }
 
 function createRepButton(
 	parent: HTMLElement,
 	value: number,
 	currentValue: number,
-	onChange: (value: number) => void
-): HTMLButtonElement {
+	onChange: (value: number, btn: HTMLButtonElement) => void
+): { btn: HTMLButtonElement; cleanup: () => void } {
 	const btn = parent.createEl('button', {
 		cls: 'fit-reps-button',
 		text: String(value)
@@ -159,25 +188,35 @@ function createRepButton(
 	}
 
 	// Store value on button for later lookup
-	(btn as HTMLButtonElement & { repValue: number }).repValue = value;
+	(btn as unknown as { repValue: number }).repValue = value;
 
-	btn.addEventListener('click', (e) => {
+	const clickHandler = (e: Event) => {
 		e.preventDefault();
-		onChange(value);
-	});
+		onChange(value, btn);
+	};
 
-	return btn;
+	btn.addEventListener('click', clickHandler);
+
+	return {
+		btn,
+		cleanup: () => btn.removeEventListener('click', clickHandler)
+	};
 }
 
 function updateActive(buttons: HTMLButtonElement[], currentValue: number): void {
 	for (const btn of buttons) {
-		const repValue = (btn as HTMLButtonElement & { repValue: number }).repValue;
+		const repValue = (btn as unknown as { repValue: number }).repValue;
 		if (repValue === currentValue) {
 			btn.addClass('fit-reps-button-active');
 		} else {
 			btn.removeClass('fit-reps-button-active');
 		}
 	}
+}
+
+export interface HorizontalRepsSelectorRefs {
+	container: HTMLElement;
+	destroy: () => void;
 }
 
 /**
@@ -187,10 +226,11 @@ export function createHorizontalRepsSelector(
 	parent: HTMLElement,
 	value: number,
 	onChange: (value: number) => void
-): HTMLElement {
+): HorizontalRepsSelectorRefs {
 	const container = parent.createDiv({ cls: 'fit-reps-horizontal' });
 	let currentValue = value;
 	const buttons: HTMLButtonElement[] = [];
+	const cleanup: (() => void)[] = [];
 
 	// Left scroll indicator
 	const leftIndicator = container.createDiv({ cls: 'fit-reps-scroll-indicator fit-reps-scroll-left' });
@@ -214,28 +254,39 @@ export function createHorizontalRepsSelector(
 			btn.addClass('fit-reps-pill-active');
 		}
 
-		(btn as HTMLButtonElement & { repValue: number }).repValue = i;
+		(btn as unknown as { repValue: number }).repValue = i;
 
-		btn.addEventListener('click', (e) => {
+		const value = i;
+		const clickHandler = (e: Event) => {
 			e.preventDefault();
-			currentValue = i;
+			currentValue = value;
 			buttons.forEach(b => b.removeClass('fit-reps-pill-active'));
 			btn.addClass('fit-reps-pill-active');
-			onChange(i);
-		});
+			onChange(value);
+		};
 
+		btn.addEventListener('click', clickHandler);
+		cleanup.push(() => btn.removeEventListener('click', clickHandler));
 		buttons.push(btn);
 	}
 
 	// Scroll by page when indicators clicked
 	const scrollAmount = 200; // Approximate width of 4 buttons
 
-	leftIndicator.addEventListener('click', () => {
+	const leftClickHandler = () => {
 		scroll.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-	});
+	};
 
-	rightIndicator.addEventListener('click', () => {
+	const rightClickHandler = () => {
 		scroll.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+	};
+
+	leftIndicator.addEventListener('click', leftClickHandler);
+	rightIndicator.addEventListener('click', rightClickHandler);
+
+	cleanup.push(() => {
+		leftIndicator.removeEventListener('click', leftClickHandler);
+		rightIndicator.removeEventListener('click', rightClickHandler);
 	});
 
 	// Update indicator visibility based on scroll position
@@ -248,6 +299,7 @@ export function createHorizontalRepsSelector(
 	};
 
 	scroll.addEventListener('scroll', updateIndicators);
+	cleanup.push(() => scroll.removeEventListener('scroll', updateIndicators));
 
 	// Scroll to show the current value centered
 	setTimeout(() => {
@@ -263,5 +315,8 @@ export function createHorizontalRepsSelector(
 		updateIndicators();
 	}, 0);
 
-	return container;
+	return {
+		container,
+		destroy: () => cleanup.forEach(fn => fn())
+	};
 }
