@@ -1,7 +1,7 @@
 import { setIcon } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import type { Session, Exercise } from '../../types';
-import { createBackButton, createButton, createPrimaryAction } from '../components/button';
+import { createButton, createPrimaryAction } from '../components/button';
 import { createExerciseCard } from '../components/card';
 import { createExerciseAutocomplete } from '../components/autocomplete';
 import { toFilename } from '../../data/file-utils';
@@ -13,6 +13,9 @@ export class SessionScreen implements Screen {
 	private containerEl: HTMLElement;
 	private unsubscribeFileWatch: (() => void) | null = null;
 	private abortController: AbortController | null = null;
+	private eventUnsubscribers: (() => void)[] = [];
+	private playIconEl: HTMLElement | null = null;
+	private durationEl: HTMLElement | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -101,6 +104,10 @@ export class SessionScreen implements Screen {
 	}
 
 	render(): void {
+		// Clear element references
+		this.playIconEl = null;
+		this.durationEl = null;
+
 		this.containerEl.empty();
 
 		const session = this.ctx.sessionState.getSession();
@@ -112,28 +119,93 @@ export class SessionScreen implements Screen {
 			return;
 		}
 
-		// Header
-		const header = this.containerEl.createDiv({ cls: 'fit-header' });
-		createBackButton(header, () => this.confirmExit());
+		// Check if any sets have been completed (for accent styling)
+		const hasCompletedSets = session.exercises.some(ex =>
+			ex.sets.some(s => s.completed)
+		);
 
-		const titleContainer = header.createDiv({ cls: 'fit-header-title' });
-		titleContainer.createEl('h1', {
-			text: session.workout ?? 'Workout',
-			cls: 'fit-title'
+		// Header section with resume-style card (like home screen)
+		const section = this.containerEl.createDiv({ cls: 'fit-section' });
+		const row = section.createDiv({ cls: 'fit-resume-row' });
+
+		// Back button
+		const backBtn = row.createEl('button', {
+			cls: 'fit-back-button',
+			attr: { 'aria-label': 'Back' }
+		});
+		setIcon(backBtn, 'arrow-left');
+		backBtn.addEventListener('click', () => this.confirmExit());
+
+		// Resume-style card with workout name and timer
+		// Only accent if at least one set has been completed
+		const resumeCard = row.createDiv({
+			cls: `fit-program-workout-card ${hasCompletedSets ? 'fit-program-workout-current' : ''}`
 		});
 
-		// Edit workout button (if workout has a name/ID)
-		if (session.workout) {
-			const editBtn = header.createEl('button', {
-				cls: 'fit-button fit-button-ghost fit-button-icon-only',
-				attr: { 'aria-label': 'Edit workout' }
+		// Play icon
+		this.playIconEl = resumeCard.createDiv({ cls: 'fit-program-workout-play' });
+		setIcon(this.playIconEl, 'play');
+
+		// Workout name
+		resumeCard.createDiv({
+			cls: 'fit-program-workout-name',
+			text: session.workout ?? 'Workout'
+		});
+
+		// Duration display (updated via duration.tick event)
+		this.durationEl = resumeCard.createDiv({
+			cls: 'fit-program-workout-time'
+		});
+
+		// Set initial display - rest time if resting, otherwise session duration
+		if (this.ctx.sessionState.isRestTimerActive()) {
+			const remaining = this.ctx.sessionState.getRestTimeRemaining();
+			const minutes = Math.floor(remaining / 60);
+			const seconds = remaining % 60;
+			this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+			this.durationEl.addClass('fit-timer-rest');
+		} else {
+			const elapsed = this.ctx.sessionState.getElapsedDuration();
+			const minutes = Math.floor(elapsed / 60);
+			const seconds = elapsed % 60;
+			this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+		}
+
+		// Click navigates to first unfinished exercise
+		resumeCard.addEventListener('click', () => {
+			const firstUnfinishedIndex = this.findFirstUnfinishedExerciseIndex(session);
+			if (firstUnfinishedIndex >= 0) {
+				this.ctx.view.navigateTo('exercise', { exerciseIndex: firstUnfinishedIndex });
+			}
+		});
+
+		// Fullscreen toggle button
+		if (this.ctx.view.isInFullscreen()) {
+			// Exit fullscreen button
+			const exitBtn = row.createEl('button', {
+				cls: 'fit-fullscreen-exit',
+				attr: { 'aria-label': 'Exit fullscreen' }
 			});
-			setIcon(editBtn, 'pencil');
-			editBtn.addEventListener('click', () => {
-				// Pass workout name - editor will look it up
-				this.ctx.view.navigateTo('workout-editor', { workoutId: session.workout, isNew: false });
+			exitBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`;
+			exitBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.ctx.view.exitFullscreen();
+			});
+		} else {
+			// Enter fullscreen button
+			const enterBtn = row.createEl('button', {
+				cls: 'fit-fullscreen-enter',
+				attr: { 'aria-label': 'Enter fullscreen' }
+			});
+			enterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`;
+			enterBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.ctx.view.enterFullscreen();
 			});
 		}
+
+		// Subscribe to duration tick events
+		this.subscribeToEvents();
 
 		// Show coach feedback notice from previous session if available
 		if (session.workout) {
@@ -162,6 +234,17 @@ export class SessionScreen implements Screen {
 			onClick: () => { this.showExercisePicker(); }
 		});
 
+		// Edit workout button (if workout has a name/ID)
+		if (session.workout) {
+			createButton(actions, {
+				text: 'Edit workout',
+				variant: 'ghost',
+				onClick: () => {
+					this.ctx.view.navigateTo('workout-editor', { workoutId: session.workout, isNew: false });
+				}
+			});
+		}
+
 		// Show Cancel if no sets logged, Finish workout if there are sets
 		const totalSets = this.getTotalCompletedSets(session);
 		if (totalSets > 0) {
@@ -189,13 +272,13 @@ export class SessionScreen implements Screen {
 
 		if (!previousSession?.coachFeedback) return;
 
-		// Create feedback notice (insert after header)
-		const header = this.containerEl.querySelector('.fit-header');
-		if (!header) return;
+		// Create feedback notice (insert after header section)
+		const headerSection = this.containerEl.querySelector('.fit-section');
+		if (!headerSection) return;
 
 		// Create a temporary container to use Obsidian's createDiv
 		const tempContainer = this.containerEl.createDiv({ cls: 'fit-feedback-notice' });
-		header.insertAdjacentElement('afterend', tempContainer);
+		headerSection.insertAdjacentElement('afterend', tempContainer);
 
 		const closeBtn = tempContainer.createEl('button', {
 			cls: 'fit-feedback-notice-close',
@@ -452,6 +535,72 @@ export class SessionScreen implements Screen {
 		}
 	}
 
+	private subscribeToEvents(): void {
+		// Unsubscribe from previous subscriptions
+		this.unsubscribeFromEvents();
+
+		const state = this.ctx.sessionState;
+
+		// Rest timer tick - show rest countdown when active
+		this.eventUnsubscribers.push(
+			state.on('timer.tick', ({ remaining }) => {
+				if (this.durationEl && state.isRestTimerActive()) {
+					const minutes = Math.floor(remaining / 60);
+					const seconds = remaining % 60;
+					this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+					this.durationEl.addClass('fit-timer-rest');
+				}
+			})
+		);
+
+		// Rest timer cancelled - switch back to session duration
+		this.eventUnsubscribers.push(
+			state.on('timer.cancelled', () => {
+				if (this.durationEl) {
+					this.durationEl.removeClass('fit-timer-rest');
+				}
+			})
+		);
+
+		// Duration tick - update timer display and pulse animation (only when not resting)
+		this.eventUnsubscribers.push(
+			state.on('duration.tick', ({ elapsed }) => {
+				if (this.durationEl && !state.isRestTimerActive()) {
+					const minutes = Math.floor(elapsed / 60);
+					const seconds = elapsed % 60;
+					this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+					this.durationEl.removeClass('fit-timer-rest');
+				}
+				if (this.playIconEl) {
+					this.playIconEl.classList.toggle('fit-pulse-tick');
+				}
+			})
+		);
+	}
+
+	/**
+	 * Finds the index of the first exercise that hasn't completed all target sets
+	 * Returns -1 if all exercises are complete
+	 */
+	private findFirstUnfinishedExerciseIndex(session: Session): number {
+		for (let i = 0; i < session.exercises.length; i++) {
+			const exercise = session.exercises[i];
+			if (!exercise) continue;
+			const completedSets = exercise.sets.filter(s => s.completed).length;
+			if (completedSets < exercise.targetSets) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	private unsubscribeFromEvents(): void {
+		for (const unsub of this.eventUnsubscribers) {
+			unsub();
+		}
+		this.eventUnsubscribers = [];
+	}
+
 	destroy(): void {
 		// Abort any in-flight async operations
 		this.abortController?.abort();
@@ -459,6 +608,8 @@ export class SessionScreen implements Screen {
 		// Clean up file watcher
 		this.unsubscribeFileWatch?.();
 		this.unsubscribeFileWatch = null;
+		// Clean up event subscriptions
+		this.unsubscribeFromEvents();
 		this.containerEl.remove();
 	}
 }

@@ -133,7 +133,7 @@ export function createExerciseAutocomplete(
 		const query = (overlayInput?.value || input.value).trim();
 
 		if (!query) {
-			filteredItems = items.slice(0, 10); // Show first 10 when empty
+			filteredItems = items.slice(0, 50); // Show first 50 when empty
 		} else {
 			// Split query into words and normalize each
 			const queryWords = query.toLowerCase().split(/[-_\s]+/).filter(w => w.length > 0);
@@ -143,7 +143,7 @@ export function createExerciseAutocomplete(
 					// All query words must be present in the name (in any order)
 					return queryWords.every(word => normalizedName.includes(word));
 				})
-				.slice(0, 10);
+				.slice(0, 50);
 		}
 
 		if (filteredItems.length === 0) {

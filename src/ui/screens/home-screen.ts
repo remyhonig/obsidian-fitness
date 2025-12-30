@@ -59,13 +59,35 @@ export class HomeScreen implements Screen {
 			state.on('session.discarded', () => this.render())
 		);
 
-		// Duration tick - update timer display and pulse animation
+		// Rest timer tick - show rest countdown when active
+		this.eventUnsubscribers.push(
+			state.on('timer.tick', ({ remaining }) => {
+				if (this.durationEl && state.isRestTimerActive()) {
+					const minutes = Math.floor(remaining / 60);
+					const seconds = remaining % 60;
+					this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+					this.durationEl.addClass('fit-timer-rest');
+				}
+			})
+		);
+
+		// Rest timer cancelled - switch back to session duration
+		this.eventUnsubscribers.push(
+			state.on('timer.cancelled', () => {
+				if (this.durationEl) {
+					this.durationEl.removeClass('fit-timer-rest');
+				}
+			})
+		);
+
+		// Duration tick - update timer display and pulse animation (only when not resting)
 		this.eventUnsubscribers.push(
 			state.on('duration.tick', ({ elapsed }) => {
-				if (this.durationEl) {
+				if (this.durationEl && !state.isRestTimerActive()) {
 					const minutes = Math.floor(elapsed / 60);
 					const seconds = elapsed % 60;
 					this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+					this.durationEl.removeClass('fit-timer-rest');
 				}
 				if (this.playIconEl) {
 					this.playIconEl.classList.toggle('fit-pulse-tick');
@@ -94,18 +116,21 @@ export class HomeScreen implements Screen {
 		const settings = this.ctx.settings;
 		const hasActiveProgram = settings.activeProgram != null;
 
-		// Check for active session to resume
+		// Check for active session with completed sets to resume
 		const hasActiveSession = this.ctx.sessionState.hasActiveSession();
 		const activeSession = this.ctx.sessionState.getSession();
+		const hasCompletedSets = activeSession?.exercises.some(ex =>
+			ex.sets.some(s => s.completed)
+		) ?? false;
 
-		// Show resume card if there's an active session
-		if (hasActiveSession && activeSession) {
+		// Show resume card only if session has completed at least one set
+		if (hasActiveSession && activeSession && hasCompletedSets) {
 			this.renderResumeCard(parent, activeSession);
 		}
 
 		if (hasActiveProgram) {
 			// Show program section with view all workouts link
-			await this.renderActiveProgram(parent, hasActiveSession, signal);
+			await this.renderActiveProgram(parent, hasCompletedSets, signal);
 		} else {
 			// Show quick start when no program is active
 			await this.renderQuickStart(parent, signal);
@@ -115,6 +140,9 @@ export class HomeScreen implements Screen {
 	private renderResumeCard(parent: HTMLElement, session: Session): void {
 		const section = parent.createDiv({ cls: 'fit-section' });
 		const row = section.createDiv({ cls: 'fit-resume-row' });
+
+		// Barbell emoji placeholder (maintains layout consistency with other screens)
+		row.createDiv({ cls: 'fit-home-icon', text: '🏋️' });
 
 		const resumeCard = row.createDiv({
 			cls: 'fit-program-workout-card fit-program-workout-current'
@@ -135,14 +163,28 @@ export class HomeScreen implements Screen {
 			cls: 'fit-program-workout-time'
 		});
 
-		// Set initial duration
-		const elapsed = this.ctx.sessionState.getElapsedDuration();
-		const minutes = Math.floor(elapsed / 60);
-		const seconds = elapsed % 60;
-		this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+		// Set initial display - rest time if resting, otherwise session duration
+		if (this.ctx.sessionState.isRestTimerActive()) {
+			const remaining = this.ctx.sessionState.getRestTimeRemaining();
+			const minutes = Math.floor(remaining / 60);
+			const seconds = remaining % 60;
+			this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+			this.durationEl.addClass('fit-timer-rest');
+		} else {
+			const elapsed = this.ctx.sessionState.getElapsedDuration();
+			const minutes = Math.floor(elapsed / 60);
+			const seconds = elapsed % 60;
+			this.durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+		}
 
+		// Click navigates to first unfinished exercise, or session overview if all complete
 		resumeCard.addEventListener('click', () => {
-			this.ctx.view.navigateTo('session');
+			const firstUnfinishedIndex = this.findFirstUnfinishedExerciseIndex(session);
+			if (firstUnfinishedIndex >= 0) {
+				this.ctx.view.navigateTo('exercise', { exerciseIndex: firstUnfinishedIndex });
+			} else {
+				this.ctx.view.navigateTo('session');
+			}
 		});
 
 		// Fullscreen toggle button
@@ -307,6 +349,22 @@ export class HomeScreen implements Screen {
 		// View all link at bottom
 		const viewAllLink = section.createEl('a', { cls: 'fit-section-footer-link', text: 'View all history' });
 		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('history'));
+	}
+
+	/**
+	 * Finds the index of the first exercise that hasn't completed all target sets
+	 * Returns -1 if all exercises are complete
+	 */
+	private findFirstUnfinishedExerciseIndex(session: Session): number {
+		for (let i = 0; i < session.exercises.length; i++) {
+			const exercise = session.exercises[i];
+			if (!exercise) continue;
+			const completedSets = exercise.sets.filter(s => s.completed).length;
+			if (completedSets < exercise.targetSets) {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	private async startFromWorkout(workout: Workout): Promise<void> {

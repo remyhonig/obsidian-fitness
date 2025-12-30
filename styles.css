@@ -977,7 +977,9 @@
 .fit-exercise-screen {
 	display: flex;
 	flex-direction: column;
-	padding: 8px 12px 0 12px;
+	padding: 8px 12px;
+	padding-top: calc(8px + var(--fit-top-padding, 0px));
+	padding-bottom: var(--fit-bottom-padding, 100px);
 	overflow: hidden;
 }
 
@@ -1347,6 +1349,13 @@
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+}
+
+.fit-exercise-title {
+	font-size: 1.25rem;
+	font-weight: 600;
+	margin: 0;
+	color: var(--text-normal);
 }
 
 /* Integrated sets row */
@@ -1760,6 +1769,7 @@
 	align-items: center;
 	gap: 12px;
 	padding: 12px;
+	padding-top: calc(12px + var(--fit-top-padding, 0px));
 	border-bottom: 1px solid var(--background-modifier-border);
 	flex-shrink: 0;
 }
@@ -1796,6 +1806,7 @@
 	flex: 1;
 	overflow-y: auto;
 	-webkit-overflow-scrolling: touch;
+	padding-bottom: var(--fit-bottom-padding, 100px);
 }
 
 /* ========== Full-screen View Overlay ========== */
@@ -1972,6 +1983,7 @@
 	max-height: 80vh;
 	overflow-y: auto;
 	padding: 20px;
+	padding-bottom: var(--fit-bottom-padding, 100px);
 	animation: slideUp 0.2s ease-out;
 }
 
@@ -2094,8 +2106,42 @@
 	flex: 1;
 }
 
-.fit-resume-row .fit-fullscreen-enter {
+.fit-resume-row .fit-fullscreen-enter,
+.fit-resume-row .fit-fullscreen-exit {
 	flex-shrink: 0;
+}
+
+.fit-resume-row .fit-back-button {
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 8px;
+	flex-shrink: 0;
+}
+
+.fit-home-icon {
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 24px;
+	flex-shrink: 0;
+}
+
+.fit-resume-row .fit-back-button:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.fit-resume-row .fit-back-button:active {
+	transform: scale(0.95);
 }
 
 .fit-program-grid {
@@ -2169,6 +2215,11 @@
 	font-weight: 500;
 	white-space: nowrap;
 	flex-shrink: 0;
+	color: black;
+}
+
+.fit-program-workout-time.fit-timer-rest {
+	color: white;
 }
 
 .fit-program-workout-meta {

@@ -388,9 +388,11 @@ export class SessionStateManager {
 			this.startRestTimer(exercise.restSeconds, exerciseIndex);
 		}
 
-		// First completed set triggers persistence
+		// First completed set triggers persistence and resets startTime
 		if (!this.persisted) {
 			this.persisted = true;
+			// Reset startTime so timer counts from first completed set
+			this.session.startTime = new Date().toISOString();
 		}
 
 		// Persist immediately and wait for completion
@@ -642,16 +644,17 @@ export class SessionStateManager {
 
 	/**
 	 * Starts the duration timer (ticks every second while session is active)
+	 * Timer shows 0:00 until the first set is completed (persisted)
 	 */
 	private startDurationTimer(): void {
 		this.stopDurationTimer();
 
 		if (!this.session) return;
 
-		const startTime = new Date(this.session.startTime).getTime();
-
-		// Emit immediately
-		const elapsed = Math.floor((Date.now() - startTime) / 1000);
+		// Emit immediately (0 if not persisted)
+		const elapsed = this.persisted
+			? Math.floor((Date.now() - new Date(this.session.startTime).getTime()) / 1000)
+			: 0;
 		this.emit('duration.tick', { elapsed });
 
 		// Then every second
@@ -660,7 +663,10 @@ export class SessionStateManager {
 				this.stopDurationTimer();
 				return;
 			}
-			const elapsed = Math.floor((Date.now() - startTime) / 1000);
+			// Show 0 until first set is completed, then show actual elapsed time
+			const elapsed = this.persisted
+				? Math.floor((Date.now() - new Date(this.session.startTime).getTime()) / 1000)
+				: 0;
 			this.emit('duration.tick', { elapsed });
 		}, 1000);
 	}
@@ -677,9 +683,11 @@ export class SessionStateManager {
 
 	/**
 	 * Gets the elapsed duration in seconds
+	 * Returns 0 until first set is completed (persisted)
 	 */
 	getElapsedDuration(): number {
 		if (!this.session) return 0;
+		if (!this.persisted) return 0;
 		return Math.floor((Date.now() - new Date(this.session.startTime).getTime()) / 1000);
 	}
 

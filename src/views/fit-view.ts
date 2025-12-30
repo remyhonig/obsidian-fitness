@@ -252,12 +252,17 @@ export class FitView extends ItemView {
 	}
 
 	/**
-	 * Applies padding CSS variables from settings (top padding only in fullscreen)
+	 * Applies padding CSS variables from settings
+	 * Sets variables on both the view container and document.body for overlays
 	 */
 	private applyPadding(): void {
 		const container = this.containerEl.children[1] as HTMLElement;
-		container.style.setProperty('--fit-top-padding', '0px'); // Top padding only in fullscreen
+		container.style.setProperty('--fit-top-padding', `${this.plugin.settings.topPadding}px`);
 		container.style.setProperty('--fit-bottom-padding', `${this.plugin.settings.bottomPadding}px`);
+
+		// Also set on document.body for overlays (autocomplete, modals) that are appended there
+		document.body.style.setProperty('--fit-top-padding', `${this.plugin.settings.topPadding}px`);
+		document.body.style.setProperty('--fit-bottom-padding', `${this.plugin.settings.bottomPadding}px`);
 	}
 
 	/**
