@@ -182,10 +182,12 @@ export class SessionDetailScreen extends BaseScreen {
 		}
 
 		// Navigate to questionnaire with existing answers (or empty for new)
+		// Pass fromScreen so questionnaire knows to return here
 		this.ctx.view.navigateTo('questionnaire', {
 			sessionId: session.id,
 			programId: program.id,
-			questions: program.questions
+			questions: program.questions,
+			fromScreen: 'session-detail'
 		});
 	}
 

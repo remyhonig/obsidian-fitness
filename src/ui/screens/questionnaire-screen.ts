@@ -20,6 +20,7 @@ export class QuestionnaireScreen extends BaseScreen {
 	private answers: Map<string, AnswerState> = new Map();
 	private completeBtn: HTMLButtonElement | null = null;
 	private isEditing = false;
+	private fromSessionDetail = false;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -30,6 +31,7 @@ export class QuestionnaireScreen extends BaseScreen {
 		this.sessionId = params.sessionId ?? '';
 		this.programId = params.programId ?? '';
 		this.questions = params.questions ?? [];
+		this.fromSessionDetail = params.fromScreen === 'session-detail';
 	}
 
 	render(): void {
@@ -62,12 +64,15 @@ export class QuestionnaireScreen extends BaseScreen {
 	}
 
 	private renderContent(): void {
-		// Header with consistent screen-header component (no back button on questionnaire)
+		// Header - show back button when editing from session-detail
 		this.headerRefs = createScreenHeader(this.containerEl, {
-			leftElement: 'none',
+			leftElement: this.fromSessionDetail ? 'back' : 'none',
 			fallbackWorkoutName: 'Training review',
 			view: this.ctx.view,
-			sessionState: this.ctx.sessionState
+			sessionState: this.ctx.sessionState,
+			onBack: this.fromSessionDetail ? () => {
+				this.ctx.view.navigateTo('session-detail', { sessionId: this.sessionId });
+			} : undefined
 		});
 
 		// Questions
@@ -94,8 +99,8 @@ export class QuestionnaireScreen extends BaseScreen {
 		// Actions - both buttons same size in a row
 		const actions = this.containerEl.createDiv({ cls: 'fit-bottom-actions fit-questionnaire-actions' });
 
-		if (this.isEditing) {
-			// Editing mode: Cancel just goes back without changes
+		if (this.fromSessionDetail) {
+			// From session detail: Cancel just goes back without changes
 			createButton(actions, {
 				text: 'Cancel',
 				variant: 'secondary',
@@ -104,7 +109,7 @@ export class QuestionnaireScreen extends BaseScreen {
 				}
 			});
 		} else {
-			// New review: Skip saves as skipped
+			// From workout completion: Skip saves as skipped
 			createButton(actions, {
 				text: 'Overslaan',
 				variant: 'secondary',
@@ -170,8 +175,8 @@ export class QuestionnaireScreen extends BaseScreen {
 			console.error('Failed to save review:', error);
 		}
 
-		// Navigate back: to session-detail if editing, to finish if new
-		if (this.isEditing) {
+		// Navigate back: to session-detail if came from there, to finish if from workout completion
+		if (this.fromSessionDetail) {
 			this.ctx.view.navigateTo('session-detail', { sessionId: this.sessionId });
 		} else {
 			this.ctx.view.navigateTo('finish', { sessionId: this.sessionId });
