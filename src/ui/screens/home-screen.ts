@@ -169,7 +169,7 @@ export class HomeScreen implements Screen {
 		// Section header with program name and view all link
 		const header = section.createDiv({ cls: 'fit-section-header' });
 		header.createEl('h2', { text: program.name, cls: 'fit-section-title' });
-		const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'view all' });
+		const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'View all' });
 		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
 
 		const grid = section.createDiv({ cls: 'fit-program-grid' });
@@ -223,7 +223,7 @@ export class HomeScreen implements Screen {
 		const header = section.createDiv({ cls: 'fit-section-header' });
 		header.createEl('h2', { text: 'Quick start', cls: 'fit-section-title' });
 		if (workouts.length > 3) {
-			const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'view all' });
+			const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'View all' });
 			viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
 		}
 
@@ -255,7 +255,7 @@ export class HomeScreen implements Screen {
 		// Section header with view all link
 		const header = section.createDiv({ cls: 'fit-section-header' });
 		header.createEl('h2', { text: 'Recent workouts', cls: 'fit-section-title' });
-		const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'view all' });
+		const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'View all' });
 		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('history'));
 
 		const list = section.createDiv({ cls: 'fit-session-list' });

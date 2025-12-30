@@ -48,7 +48,7 @@ describe('ExerciseAutocomplete', () => {
 			});
 
 			const dropdown = container.querySelector('.fit-autocomplete-dropdown') as HTMLElement;
-			expect(dropdown.style.display).toBe('none');
+			expect(dropdown.classList.contains('is-hidden')).toBe(true);
 		});
 	});
 
@@ -66,7 +66,7 @@ describe('ExerciseAutocomplete', () => {
 			await new Promise(resolve => setTimeout(resolve, 10));
 
 			const dropdown = container.querySelector('.fit-autocomplete-dropdown') as HTMLElement;
-			expect(dropdown.style.display).toBe('block');
+			expect(dropdown.classList.contains('is-hidden')).toBe(false);
 		});
 
 		it('should filter items on input', async () => {
@@ -198,12 +198,12 @@ describe('ExerciseAutocomplete', () => {
 			await new Promise(resolve => setTimeout(resolve, 10));
 
 			const dropdown = container.querySelector('.fit-autocomplete-dropdown') as HTMLElement;
-			expect(dropdown.style.display).toBe('block');
+			expect(dropdown.classList.contains('is-hidden')).toBe(false);
 
 			// Press Escape
 			input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
-			expect(dropdown.style.display).toBe('none');
+			expect(dropdown.classList.contains('is-hidden')).toBe(true);
 		});
 	});
 

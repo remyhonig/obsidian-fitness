@@ -98,7 +98,7 @@ describe('HomeScreen', () => {
 
 			const viewAllLink = container.querySelector('.fit-section-link');
 			expect(viewAllLink).not.toBeNull();
-			expect(viewAllLink?.textContent).toBe('view all');
+			expect(viewAllLink?.textContent).toBe('View all');
 		});
 
 		it('should navigate to workout-picker when view all is clicked', async () => {
@@ -158,7 +158,7 @@ describe('HomeScreen', () => {
 
 			const links = container.querySelectorAll('.fit-section-link');
 			// Look for the "view all" link near Recent workouts section
-			const viewAllLinks = Array.from(links).filter(link => link.textContent === 'view all');
+			const viewAllLinks = Array.from(links).filter(link => link.textContent === 'View all');
 			expect(viewAllLinks.length).toBeGreaterThan(0);
 		});
 	});

@@ -282,9 +282,7 @@ export class SessionScreen implements Screen {
 		});
 
 		// Row with sets, reps, rest
-		const row = formCard.createDiv({ cls: 'fit-workout-exercise-row' });
-		row.style.padding = '0';
-		row.style.background = 'none';
+		const row = formCard.createDiv({ cls: 'fit-workout-exercise-row fit-workout-exercise-row-compact' });
 
 		// Sets input
 		const setsGroup = row.createDiv({ cls: 'fit-inline-group' });
@@ -318,7 +316,8 @@ export class SessionScreen implements Screen {
 
 		// Rest input
 		const restGroup = row.createDiv({ cls: 'fit-inline-group' });
-		restGroup.createEl('label', { text: 'Rest' });
+		// eslint-disable-next-line obsidianmd/ui/sentence-case
+		restGroup.createEl('label', { text: 'rest' });
 		const restInput = restGroup.createEl('input', {
 			cls: 'fit-form-input fit-small-input',
 			attr: { type: 'number', min: '0', max: '600', value: String(formState.restSeconds) }

@@ -1,4 +1,4 @@
-import type { SessionExercise, LoggedSet, Session } from '../../types';
+import type { SessionExercise, LoggedSet } from '../../types';
 import type { SessionRepository } from '../../data/session-repository';
 
 /**

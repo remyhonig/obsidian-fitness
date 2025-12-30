@@ -352,11 +352,6 @@ export function parseMarkdownTable(tableContent: string): Record<string, string>
 		const line = lines[i];
 		if (!line) continue;
 
-		const cells = line
-			.split('|')
-			.map(c => c.trim())
-			.filter((_, idx, arr) => idx > 0 && idx < arr.length - 1 || arr.length === headers.length);
-
 		// Handle edge case where split creates empty first/last elements
 		const values = line.startsWith('|')
 			? line.split('|').slice(1, -1).map(c => c.trim())
