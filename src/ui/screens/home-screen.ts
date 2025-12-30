@@ -114,9 +114,9 @@ export class HomeScreen implements Screen {
 
 	private renderResumeCard(parent: HTMLElement, session: Session): void {
 		const section = parent.createDiv({ cls: 'fit-section' });
-		const grid = section.createDiv({ cls: 'fit-program-grid' });
+		const row = section.createDiv({ cls: 'fit-resume-row' });
 
-		const resumeCard = grid.createDiv({
+		const resumeCard = row.createDiv({
 			cls: 'fit-program-workout-card fit-program-workout-current'
 		});
 
@@ -144,6 +144,31 @@ export class HomeScreen implements Screen {
 		resumeCard.addEventListener('click', () => {
 			this.ctx.view.navigateTo('session');
 		});
+
+		// Fullscreen toggle button
+		if (this.ctx.view.isInFullscreen()) {
+			// Exit fullscreen button
+			const exitBtn = row.createEl('button', {
+				cls: 'fit-fullscreen-exit',
+				attr: { 'aria-label': 'Exit fullscreen' }
+			});
+			exitBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`;
+			exitBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.ctx.view.exitFullscreen();
+			});
+		} else {
+			// Enter fullscreen button
+			const enterBtn = row.createEl('button', {
+				cls: 'fit-fullscreen-enter',
+				attr: { 'aria-label': 'Enter fullscreen' }
+			});
+			enterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`;
+			enterBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.ctx.view.enterFullscreen();
+			});
+		}
 	}
 
 	private async renderActiveProgram(parent: HTMLElement, hasResumeCard: boolean, signal: AbortSignal): Promise<void> {
@@ -166,11 +191,9 @@ export class HomeScreen implements Screen {
 
 		const section = parent.createDiv({ cls: 'fit-section fit-program-section' });
 
-		// Section header with program name and view all link
+		// Section header with program name
 		const header = section.createDiv({ cls: 'fit-section-header' });
 		header.createEl('h2', { text: program.name, cls: 'fit-section-title' });
-		const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'View all' });
-		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
 
 		const grid = section.createDiv({ cls: 'fit-program-grid' });
 
@@ -211,6 +234,9 @@ export class HomeScreen implements Screen {
 			}
 		}
 
+		// View all link at bottom
+		const viewAllLink = section.createEl('a', { cls: 'fit-section-footer-link', text: 'View all workouts' });
+		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
 	}
 
 	private async renderQuickStart(parent: HTMLElement, signal: AbortSignal): Promise<void> {
@@ -219,13 +245,9 @@ export class HomeScreen implements Screen {
 
 		const section = parent.createDiv({ cls: 'fit-section' });
 
-		// Section header with view all link
+		// Section header
 		const header = section.createDiv({ cls: 'fit-section-header' });
 		header.createEl('h2', { text: 'Quick start', cls: 'fit-section-title' });
-		if (workouts.length > 3) {
-			const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'View all' });
-			viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
-		}
 
 		const grid = section.createDiv({ cls: 'fit-workout-grid' });
 
@@ -238,6 +260,12 @@ export class HomeScreen implements Screen {
 				exerciseCount: workout.exercises.length,
 				onClick: () => { void this.startFromWorkout(workout); }
 			});
+		}
+
+		// View all link at bottom (only if more workouts exist)
+		if (workouts.length > 3) {
+			const viewAllLink = section.createEl('a', { cls: 'fit-section-footer-link', text: 'View all workouts' });
+			viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
 		}
 	}
 
@@ -252,11 +280,9 @@ export class HomeScreen implements Screen {
 
 		const section = parent.createDiv({ cls: 'fit-section' });
 
-		// Section header with view all link
+		// Section header
 		const header = section.createDiv({ cls: 'fit-section-header' });
 		header.createEl('h2', { text: 'Recent workouts', cls: 'fit-section-title' });
-		const viewAllLink = header.createEl('a', { cls: 'fit-section-link', text: 'View all' });
-		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('history'));
 
 		const list = section.createDiv({ cls: 'fit-session-list' });
 
@@ -277,6 +303,10 @@ export class HomeScreen implements Screen {
 				onClick: () => this.ctx.view.navigateTo('session-detail', { sessionId: session.id })
 			});
 		}
+
+		// View all link at bottom
+		const viewAllLink = section.createEl('a', { cls: 'fit-section-footer-link', text: 'View all history' });
+		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('history'));
 	}
 
 	private async startFromWorkout(workout: Workout): Promise<void> {

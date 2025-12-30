@@ -2,6 +2,7 @@
 
 /* ========== Base View ========== */
 .fit-view {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -22,6 +23,7 @@
 	height: 100%;
 	overflow-y: auto;
 	padding: 12px;
+	padding-top: calc(12px + var(--fit-top-padding, 0px)); /* Configurable via settings */
 	padding-bottom: var(--fit-bottom-padding, 100px); /* Configurable via settings */
 }
 
@@ -673,6 +675,20 @@
 }
 
 .fit-section-link:hover {
+	text-decoration: underline;
+}
+
+.fit-section-footer-link {
+	display: block;
+	text-align: center;
+	font-size: 14px;
+	color: var(--text-accent);
+	cursor: pointer;
+	padding: 12px;
+	margin-top: 8px;
+}
+
+.fit-section-footer-link:hover {
 	text-decoration: underline;
 }
 
@@ -1782,6 +1798,95 @@
 	-webkit-overflow-scrolling: touch;
 }
 
+/* ========== Full-screen View Overlay ========== */
+.fit-fullscreen-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: var(--background-primary);
+	z-index: 999;
+	display: flex;
+	flex-direction: column;
+	animation: fadeIn 0.15s ease-out;
+	/* Safe area insets for mobile navigation bars */
+	padding-top: env(safe-area-inset-top, 0);
+	padding-bottom: env(safe-area-inset-bottom, 0);
+	padding-left: env(safe-area-inset-left, 0);
+	padding-right: env(safe-area-inset-right, 0);
+}
+
+.fit-fullscreen-overlay-mobile {
+	/* Additional mobile-specific adjustments if needed */
+}
+
+.fit-fullscreen-exit {
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 8px;
+	transition: background 0.15s, color 0.15s;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.fit-fullscreen-exit:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.fit-fullscreen-exit:active {
+	transform: scale(0.95);
+}
+
+.fit-fullscreen-exit svg {
+	width: 20px;
+	height: 20px;
+}
+
+.fit-fullscreen-content {
+	flex: 1;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+/* ========== Fullscreen Enter Button ========== */
+.fit-fullscreen-enter {
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 8px;
+	transition: background 0.15s, color 0.15s;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.fit-fullscreen-enter:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.fit-fullscreen-enter:active {
+	transform: scale(0.95);
+}
+
+.fit-fullscreen-enter svg {
+	width: 20px;
+	height: 20px;
+}
+
 /* Legacy dropdown (keep for backwards compat, but hidden by default) */
 .fit-autocomplete-dropdown {
 	position: absolute;
@@ -1976,6 +2081,21 @@
 	font-size: 14px;
 	color: var(--text-muted);
 	margin-top: 4px;
+}
+
+.fit-resume-row {
+	display: flex;
+	align-items: stretch;
+	gap: 8px;
+	padding: 4px 0;
+}
+
+.fit-resume-row .fit-program-workout-card {
+	flex: 1;
+}
+
+.fit-resume-row .fit-fullscreen-enter {
+	flex-shrink: 0;
 }
 
 .fit-program-grid {

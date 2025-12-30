@@ -22,6 +22,7 @@ export interface PluginSettings {
 	weightIncrementsLbs: number[];
 	activeProgram?: string;
 	programWorkoutIndex: number;
+	topPadding: number;
 	bottomPadding: number;
 }
 
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	weightIncrementsKg: [10, 2.5, 0.5, 0.25],
 	weightIncrementsLbs: [45, 10, 5, 2.5],
 	programWorkoutIndex: 0,
+	topPadding: 20,
 	bottomPadding: 100
 };
 
@@ -87,6 +89,14 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 		this.renderProgramSetting(containerEl);
 
 		createSettingHeading(containerEl, 'Display');
+
+		createNumberSetting(containerEl, this.plugin, {
+			name: 'Top padding (fullscreen)',
+			desc: 'Extra padding at the top in fullscreen mode (in pixels). Increase if content is hidden by mobile status bars or notches.',
+			key: 'topPadding',
+			placeholder: '20',
+			min: 0
+		});
 
 		createNumberSetting(containerEl, this.plugin, {
 			name: 'Bottom padding',

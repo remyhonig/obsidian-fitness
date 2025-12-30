@@ -96,9 +96,9 @@ describe('HomeScreen', () => {
 			screen.render();
 			await flushPromises();
 
-			const viewAllLink = container.querySelector('.fit-section-link');
+			const viewAllLink = container.querySelector('.fit-section-footer-link');
 			expect(viewAllLink).not.toBeNull();
-			expect(viewAllLink?.textContent).toBe('View all');
+			expect(viewAllLink?.textContent).toBe('View all workouts');
 		});
 
 		it('should navigate to workout-picker when view all is clicked', async () => {
@@ -113,7 +113,7 @@ describe('HomeScreen', () => {
 			screen.render();
 			await flushPromises();
 
-			const viewAllLink = container.querySelector('.fit-section-link') as HTMLElement;
+			const viewAllLink = container.querySelector('.fit-section-footer-link') as HTMLElement;
 			click(viewAllLink);
 
 			expect(ctx.view.navigateTo).toHaveBeenCalledWith('workout-picker');
@@ -156,9 +156,9 @@ describe('HomeScreen', () => {
 			screen.render();
 			await flushPromises();
 
-			const links = container.querySelectorAll('.fit-section-link');
-			// Look for the "view all" link near Recent workouts section
-			const viewAllLinks = Array.from(links).filter(link => link.textContent === 'View all');
+			const links = container.querySelectorAll('.fit-section-footer-link');
+			// Look for the "view all history" link in Recent workouts section
+			const viewAllLinks = Array.from(links).filter(link => link.textContent === 'View all history');
 			expect(viewAllLinks.length).toBeGreaterThan(0);
 		});
 	});

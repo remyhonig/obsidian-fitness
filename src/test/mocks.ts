@@ -285,7 +285,10 @@ export function createMockView() {
 		goBack: vi.fn().mockImplementation(() => {
 			navigationHistory.pop();
 		}),
-		getNavigationHistory: () => navigationHistory
+		getNavigationHistory: () => navigationHistory,
+		isInFullscreen: vi.fn().mockReturnValue(false),
+		enterFullscreen: vi.fn(),
+		exitFullscreen: vi.fn()
 	};
 }
 

@@ -77,6 +77,10 @@ export class FitView extends ItemView {
 	// Per-file watchers for screens that need specific file notifications
 	private fileWatchers = new Map<string, Set<FileWatchCallback>>();
 
+	// Fullscreen overlay elements
+	private fullscreenOverlay: HTMLElement | null = null;
+	private isFullscreen = true;
+
 	constructor(
 		leaf: WorkspaceLeaf,
 		private plugin: MainPlugin
@@ -119,14 +123,17 @@ export class FitView extends ItemView {
 			container.addClass('fit-view-mobile');
 		}
 
-		// Apply bottom padding from settings
-		this.applyBottomPadding();
+		// Apply padding from settings
+		this.applyPadding();
 
 		// Register vault event listeners for file changes
 		this.registerVaultEvents();
 
 		// Try to restore active session (but don't auto-navigate, let user choose)
 		await this.sessionState.loadFromDisk();
+
+		// Start in fullscreen mode
+		this.enterFullscreen();
 
 		this.navigateTo('home');
 	}
@@ -139,6 +146,13 @@ export class FitView extends ItemView {
 		if (this.refreshDebounceTimer !== null) {
 			window.clearTimeout(this.refreshDebounceTimer);
 			this.refreshDebounceTimer = null;
+		}
+
+		// Remove fullscreen overlay if present
+		if (this.fullscreenOverlay) {
+			this.fullscreenOverlay.remove();
+			this.fullscreenOverlay = null;
+			this.isFullscreen = false;
 		}
 
 		// Cleanup session state
@@ -230,19 +244,88 @@ export class FitView extends ItemView {
 		this.unregisterVaultEvents();
 		this.registerVaultEvents();
 
-		// Update bottom padding
-		this.applyBottomPadding();
+		// Update padding
+		this.applyPadding();
 
 		// Refresh the view
 		this.refresh();
 	}
 
 	/**
-	 * Applies bottom padding CSS variable from settings
+	 * Applies padding CSS variables from settings (top padding only in fullscreen)
 	 */
-	private applyBottomPadding(): void {
+	private applyPadding(): void {
 		const container = this.containerEl.children[1] as HTMLElement;
+		container.style.setProperty('--fit-top-padding', '0px'); // Top padding only in fullscreen
 		container.style.setProperty('--fit-bottom-padding', `${this.plugin.settings.bottomPadding}px`);
+	}
+
+	/**
+	 * Enters fullscreen mode by creating a fixed overlay
+	 */
+	enterFullscreen(): void {
+		if (this.fullscreenOverlay) return;
+
+		// Create fullscreen overlay
+		this.fullscreenOverlay = document.body.createDiv({ cls: 'fit-fullscreen-overlay' });
+
+		// Add mobile class if on mobile
+		if (Platform.isMobile) {
+			this.fullscreenOverlay.addClass('fit-fullscreen-overlay-mobile');
+		}
+
+		// Create content container for screens
+		const content = this.fullscreenOverlay.createDiv({ cls: 'fit-fullscreen-content fit-view' });
+
+		// Apply mobile class to content if on mobile
+		if (Platform.isMobile) {
+			content.addClass('fit-view-mobile');
+		}
+
+		// Apply padding
+		content.style.setProperty('--fit-top-padding', `${this.plugin.settings.topPadding}px`);
+		content.style.setProperty('--fit-bottom-padding', `${this.plugin.settings.bottomPadding}px`);
+
+		this.isFullscreen = true;
+
+		// Re-render current screen in fullscreen container (if we have one)
+		if (this.currentScreenType) {
+			this.navigateTo(this.currentScreenType, this.screenParams);
+		}
+	}
+
+	/**
+	 * Exits fullscreen mode and returns to normal view
+	 */
+	exitFullscreen(): void {
+		if (!this.fullscreenOverlay) return;
+
+		this.fullscreenOverlay.remove();
+		this.fullscreenOverlay = null;
+		this.isFullscreen = false;
+
+		// Re-render current screen in the normal container
+		if (this.currentScreenType) {
+			this.navigateTo(this.currentScreenType, this.screenParams);
+		}
+	}
+
+	/**
+	 * Returns whether the view is currently in fullscreen mode
+	 */
+	isInFullscreen(): boolean {
+		return this.isFullscreen;
+	}
+
+	/**
+	 * Gets the container element to render screens into
+	 */
+	private getScreenContainer(): HTMLElement {
+		if (this.isFullscreen && this.fullscreenOverlay) {
+			const content = this.fullscreenOverlay.querySelector('.fit-fullscreen-content') as HTMLElement;
+			if (content) return content;
+		}
+		return this.containerEl.children[1] as HTMLElement;
 	}
 
 	/**
@@ -296,8 +379,8 @@ export class FitView extends ItemView {
 		// Destroy current screen
 		this.currentScreen?.destroy();
 
-		// Get the content container
-		const container = this.containerEl.children[1] as HTMLElement;
+		// Get the content container (fullscreen or normal)
+		const container = this.getScreenContainer();
 		container.empty();
 
 		// Store current screen info
