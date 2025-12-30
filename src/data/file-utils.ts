@@ -357,6 +357,10 @@ export function parseMarkdownTable(tableContent: string): Record<string, string>
 			? line.split('|').slice(1, -1).map(c => c.trim())
 			: line.split('|').map(c => c.trim());
 
+		// Skip empty rows (all values are empty or just dashes/whitespace)
+		const hasContent = values.some(v => v && v !== '-' && v !== '—');
+		if (!hasContent) continue;
+
 		const row: Record<string, string> = {};
 		headers.forEach((header, idx) => {
 			row[header] = values[idx] ?? '';
@@ -620,9 +624,15 @@ export function parseSessionBody(body: string): SessionExerciseBlock[] {
 				const setNum = parseInt(row['#'] ?? row['Set'] ?? '0', 10);
 				if (setNum === 0) continue;
 
+				// Parse weight: "body weight", empty, "-", or "0" all mean body weight (0)
+				const rawWeight = (row['kg'] ?? row['weight'] ?? '').trim().toLowerCase();
+				const weight = (rawWeight === 'body weight' || rawWeight === '' || rawWeight === '-' || rawWeight === '0')
+					? 0
+					: parseFloat(rawWeight);
+
 				sets.push({
 					setNumber: setNum,
-					weight: parseFloat(row['kg'] ?? row['weight'] ?? '0'),
+					weight: isNaN(weight) ? 0 : weight,
 					reps: parseInt(row['reps'] ?? '0', 10),
 					rpe: row['rpe'] && row['rpe'] !== '-' ? parseInt(row['rpe'], 10) : undefined,
 					timestamp: row['time'] ?? '',
@@ -685,7 +695,7 @@ export function createSessionBody(exercises: SessionExerciseBlock[]): string {
 
 		const setRows = exercise.sets.map((set, idx) => ({
 			num: String(set.setNumber || idx + 1),
-			kg: String(set.weight),
+			kg: set.weight === 0 ? 'body weight' : String(set.weight),
 			reps: String(set.reps),
 			rpe: set.rpe !== undefined ? String(set.rpe) : '-',
 			time: formatTimeFromISO(set.timestamp)
@@ -786,7 +796,7 @@ export function createPreviousExercisesBody(
 		const completedSets = exercise.sets.filter(s => s.completed);
 		const setRows = completedSets.map((set, idx) => ({
 			num: String(set.setNumber || idx + 1),
-			kg: String(set.weight),
+			kg: set.weight === 0 ? 'body weight' : String(set.weight),
 			reps: String(set.reps),
 			rpe: set.rpe !== undefined ? String(set.rpe) : '-',
 			time: formatTimeFromISO(set.timestamp)

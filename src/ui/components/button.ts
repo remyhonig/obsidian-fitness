@@ -70,13 +70,15 @@ function buildButtonClasses(options: ButtonOptions): string {
 export function createPrimaryAction(
 	parent: HTMLElement,
 	text: string,
-	onClick: () => void
+	onClick: () => void,
+	disabled?: boolean
 ): HTMLButtonElement {
 	return createButton(parent, {
 		text,
 		variant: 'primary',
 		size: 'large',
 		fullWidth: true,
+		disabled,
 		onClick
 	});
 }

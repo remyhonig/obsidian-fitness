@@ -2,7 +2,7 @@ import { setIcon, MarkdownRenderer, Component } from 'obsidian';
 import type { Screen, ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, SessionExercise, Session, MuscleEngagement } from '../../types';
 import { createPrimaryAction, createButton } from '../components/button';
-import { formatWeight } from '../components/stepper';
+import { formatWeight, formatWeightNumeric } from '../components/stepper';
 import { createHorizontalRepsSelector } from '../components/reps-grid';
 import { createRpeSelector } from '../components/rpe-selector';
 import { createMuscleEngagementSelector } from '../components/muscle-engagement-selector';
@@ -276,23 +276,21 @@ export class ExerciseScreen implements Screen {
 		const allExercisesComplete = allStatuses.every(s => s.isComplete);
 
 		if (isExerciseComplete) {
+			// Check if questionnaire is complete (muscle engagement and RPE)
+			const lastSetIndex = exercise.sets.length - 1;
+			const lastSet = exercise.sets[lastSetIndex];
+			const questionnaireComplete = exercise.muscleEngagement !== undefined && lastSet?.rpe !== undefined;
+
 			// Show navigation button (next exercise or complete session)
 			if (allExercisesComplete) {
 				createPrimaryAction(actionArea, 'Complete session', () => {
 					void this.finishWorkout();
-				});
+				}, !questionnaireComplete);
 			} else {
 				createPrimaryAction(actionArea, 'Next exercise', () => {
 					this.ctx.view.navigateTo('session');
-				});
+				}, !questionnaireComplete);
 			}
-
-			// Skip RPE option
-			createButton(actionArea, {
-				text: 'Skip RPE',
-				variant: 'ghost',
-				onClick: () => this.ctx.view.navigateTo('session')
-			});
 		} else {
 			// Complete set button
 			createPrimaryAction(actionArea, 'Complete set', () => void this.completeSet());
@@ -512,12 +510,12 @@ export class ExerciseScreen implements Screen {
 			const val = parseFloat(input.value);
 			if (!isNaN(val) && val >= 0) {
 				this.formState.setWeight(val);
-				input.value = formatWeight(this.formState.weight);
+				input.value = formatWeightNumeric(this.formState.weight);
 			}
 		});
 
 		input.addEventListener('blur', () => {
-			input.value = formatWeight(this.formState.weight);
+			input.value = formatWeightNumeric(this.formState.weight);
 		});
 
 		// Right buttons (increase)
@@ -544,7 +542,7 @@ export class ExerciseScreen implements Screen {
 
 			const input = container.querySelector('.fit-weight-input') as HTMLInputElement;
 			if (input) {
-				input.value = formatWeight(this.formState.weight);
+				input.value = formatWeightNumeric(this.formState.weight);
 			}
 		};
 
@@ -591,9 +589,10 @@ export class ExerciseScreen implements Screen {
 			const currSet = currentSets[i];
 			if (currSet) {
 				const chip = pairContainer.createDiv({ cls: 'fit-set-chip fit-set-chip-current' });
+				const weightDisplay = formatWeight(currSet.weight);
 				chip.createSpan({
 					cls: 'fit-set-chip-text',
-					text: `${currSet.reps}×${formatWeight(currSet.weight)}${unit}`
+					text: `${currSet.reps}×${weightDisplay}${currSet.weight === 0 ? '' : unit}`
 				});
 
 				const deleteBtn = chip.createEl('button', { cls: 'fit-set-chip-delete' });
@@ -646,7 +645,8 @@ export class ExerciseScreen implements Screen {
 				chip.className = 'fit-set-chip fit-set-chip-history';
 				const textSpan = document.createElement('span');
 				textSpan.className = 'fit-set-chip-text';
-				textSpan.textContent = `${histSet.reps}×${formatWeight(histSet.weight)}${unit}`;
+				const histWeightDisplay = formatWeight(histSet.weight);
+				textSpan.textContent = `${histSet.reps}×${histWeightDisplay}${histSet.weight === 0 ? '' : unit}`;
 				chip.appendChild(textSpan);
 
 				if (placeholder) {
@@ -676,11 +676,12 @@ export class ExerciseScreen implements Screen {
 			const set = exercise.sets[i];
 			if (!set) continue;
 
-			// Compact chip with notation: "8×40kg" (reps×weight)
+			// Compact chip with notation: "8×40kg" (reps×weight) or "8×BW" for body weight
 			const chip = row.createDiv({ cls: 'fit-set-chip' });
+			const setWeightDisplay = formatWeight(set.weight);
 			chip.createSpan({
 				cls: 'fit-set-chip-text',
-				text: `${set.reps}×${formatWeight(set.weight)}${unit}`
+				text: `${set.reps}×${setWeightDisplay}${set.weight === 0 ? '' : unit}`
 			});
 
 			const deleteBtn = chip.createEl('button', { cls: 'fit-set-chip-delete' });
@@ -747,9 +748,10 @@ export class ExerciseScreen implements Screen {
 
 			for (const set of lastSession.sets) {
 				const chip = row.createDiv({ cls: 'fit-set-chip fit-set-chip-history' });
+				const historyWeightDisplay = formatWeight(set.weight);
 				chip.createSpan({
 					cls: 'fit-set-chip-text',
-					text: `${set.reps}×${formatWeight(set.weight)}${unit}`
+					text: `${set.reps}×${historyWeightDisplay}${set.weight === 0 ? '' : unit}`
 				});
 			}
 		});

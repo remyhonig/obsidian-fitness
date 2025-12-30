@@ -17,6 +17,7 @@ export class QuestionnaireScreen implements Screen {
 	private programId: string;
 	private questions: Question[];
 	private answers: Map<string, AnswerState> = new Map();
+	private completeBtn: HTMLButtonElement | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -58,6 +59,7 @@ export class QuestionnaireScreen implements Screen {
 				onSelect: (optionId) => {
 					const current = this.answers.get(question.id) ?? {};
 					this.answers.set(question.id, { ...current, selectedOptionId: optionId });
+					this.updateCompleteButtonState();
 				},
 				onFreeTextChange: (text) => {
 					const current = this.answers.get(question.id) ?? {};
@@ -75,9 +77,22 @@ export class QuestionnaireScreen implements Screen {
 			onClick: () => { void this.saveReview(true); }
 		});
 
-		createPrimaryAction(actions, 'Voltooien', () => {
+		this.completeBtn = createPrimaryAction(actions, 'Voltooien', () => {
 			void this.saveReview(false);
+		}, !this.allQuestionsAnswered());
+	}
+
+	private allQuestionsAnswered(): boolean {
+		return this.questions.every(q => {
+			const answer = this.answers.get(q.id);
+			return answer?.selectedOptionId !== undefined;
 		});
+	}
+
+	private updateCompleteButtonState(): void {
+		if (this.completeBtn) {
+			this.completeBtn.disabled = !this.allQuestionsAnswered();
+		}
 	}
 
 	private async saveReview(skipped: boolean): Promise<void> {

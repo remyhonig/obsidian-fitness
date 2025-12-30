@@ -69,7 +69,7 @@ export function createExerciseAutocomplete(
 			text: '×'
 		});
 		closeBtn.addEventListener('click', () => {
-			closeOverlay();
+			closeWithFreeText();
 		});
 
 		// Results container
@@ -89,19 +89,18 @@ export function createExerciseAutocomplete(
 		// Handle keyboard navigation in overlay
 		overlayInput.addEventListener('keydown', handleKeyDown);
 
-		// Prevent backdrop clicks from closing (only close button should close)
+		// Backdrop click closes with free text
 		overlay.addEventListener('click', (e) => {
 			if (e.target === overlay) {
-				closeOverlay();
+				closeWithFreeText();
 			}
 		});
 	};
 
-	const closeOverlay = () => {
-		if (overlay) {
-			// Save overlay input value before clearing
-			const finalValue = overlayInput?.value ?? input.value;
+	const closeOverlay = (): string => {
+		const finalValue = overlayInput?.value ?? input.value;
 
+		if (overlay) {
 			overlay.remove();
 			overlay = null;
 			overlayInput = null;
@@ -111,10 +110,15 @@ export function createExerciseAutocomplete(
 
 			// Update main input with final value
 			input.value = finalValue;
-
-			// Notify of final value
-			options.onSelect(null, finalValue);
 		}
+
+		return finalValue;
+	};
+
+	/** Close overlay and notify with free text (no exercise selected) */
+	const closeWithFreeText = () => {
+		const finalValue = closeOverlay();
+		options.onSelect(null, finalValue);
 	};
 
 	// Load items on first focus
@@ -198,9 +202,9 @@ export function createExerciseAutocomplete(
 	};
 
 	const selectItem = (exercise: Exercise) => {
-		input.value = exercise.name;
 		options.onSelect(exercise, exercise.name);
 		closeOverlay();
+		input.value = exercise.name; // Set after closeOverlay to avoid being overwritten
 	};
 
 	const openOverlay = async () => {
@@ -233,13 +237,13 @@ export function createExerciseAutocomplete(
 				if (selectedIndex >= 0 && selectedItem) {
 					selectItem(selectedItem);
 				} else {
-					closeOverlay();
+					closeWithFreeText();
 				}
 			}
 				break;
 			case 'Escape':
 				e.preventDefault();
-				closeOverlay();
+				closeWithFreeText();
 				break;
 		}
 	};

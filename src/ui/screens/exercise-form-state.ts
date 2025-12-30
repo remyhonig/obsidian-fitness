@@ -109,8 +109,9 @@ export class ExerciseFormState {
 
 	/**
 	 * Validates that the form has valid values for logging
+	 * Weight can be 0 for body weight exercises
 	 */
 	isValid(): boolean {
-		return this.weight > 0 && this.reps > 0;
+		return this.weight >= 0 && this.reps > 0;
 	}
 }

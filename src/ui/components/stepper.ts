@@ -205,9 +205,23 @@ export function createSimpleStepper(
 }
 
 /**
- * Formats weight for display - no decimals if whole number
+ * Formats weight for display - returns "BW" for body weight (0), no decimals if whole number
  */
 export function formatWeight(value: number): string {
+	if (value === 0) {
+		return 'BW';
+	}
+	if (Number.isInteger(value)) {
+		return String(value);
+	}
+	// Remove trailing zeros
+	return value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+/**
+ * Formats weight as a numeric string (for input fields) - no decimals if whole number
+ */
+export function formatWeightNumeric(value: number): string {
 	if (Number.isInteger(value)) {
 		return String(value);
 	}
