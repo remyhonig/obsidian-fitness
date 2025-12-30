@@ -823,6 +823,13 @@
 	font-size: 16px;
 }
 
+.fit-empty-state-small {
+	padding: 16px;
+	font-size: 14px;
+	background: var(--background-secondary);
+	border-radius: 8px;
+}
+
 /* ========== Forms ========== */
 .fit-form {
 	display: flex;
@@ -2861,6 +2868,17 @@
 /* Training Review Section */
 .fit-session-detail-review {
 	margin-bottom: 20px;
+}
+
+.fit-session-detail-review-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12px;
+}
+
+.fit-session-detail-review-header .fit-session-detail-section-title {
+	margin-bottom: 0;
 }
 
 .fit-session-detail-answer {

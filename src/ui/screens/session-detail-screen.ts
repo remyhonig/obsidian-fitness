@@ -128,12 +128,37 @@ export class SessionDetailScreen extends BaseScreen {
 			}
 		}
 
-		// Questionnaire answers section (if review exists and wasn't skipped)
-		if (session.review && !session.review.skipped && session.review.answers.length > 0) {
-			const reviewSection = this.containerEl.createDiv({ cls: 'fit-session-detail-review' });
-			reviewSection.createDiv({ cls: 'fit-session-detail-section-title', text: 'Training Review' });
+		// Questionnaire answers section
+		void this.renderReviewSection(session);
+	}
 
-			for (const answer of session.review.answers) {
+	private async renderReviewSection(session: Session): Promise<void> {
+		// Check if the program has questions
+		const program = await this.findProgramForSession(session);
+		const hasQuestions = program?.questions && program.questions.length > 0;
+
+		// Only show review section if program has questions
+		if (!hasQuestions) return;
+
+		const hasAnswers = session.review && !session.review.skipped && session.review.answers.length > 0;
+
+		const reviewSection = this.containerEl.createDiv({ cls: 'fit-session-detail-review' });
+
+		// Header with title and edit button
+		const reviewHeader = reviewSection.createDiv({ cls: 'fit-session-detail-review-header' });
+		reviewHeader.createDiv({ cls: 'fit-session-detail-section-title', text: 'Training Review' });
+
+		const editBtn = reviewHeader.createEl('button', {
+			cls: 'fit-button fit-button-ghost fit-button-small',
+			text: hasAnswers ? 'Edit answers' : 'Add answers'
+		});
+		editBtn.addEventListener('click', () => {
+			void this.editReviewAnswers(session, program!);
+		});
+
+		if (hasAnswers) {
+			// Show answers
+			for (const answer of session.review!.answers) {
 				const answerCard = reviewSection.createDiv({ cls: 'fit-session-detail-answer' });
 				answerCard.createDiv({ cls: 'fit-session-detail-answer-question', text: answer.questionText });
 				answerCard.createDiv({ cls: 'fit-session-detail-answer-response', text: answer.selectedOptionLabel });
@@ -142,7 +167,26 @@ export class SessionDetailScreen extends BaseScreen {
 					answerCard.createDiv({ cls: 'fit-session-detail-answer-freetext', text: answer.freeText });
 				}
 			}
+		} else {
+			// Show empty state
+			reviewSection.createDiv({
+				cls: 'fit-empty-state fit-empty-state-small',
+				text: 'No review answers yet'
+			});
 		}
+	}
+
+	private async editReviewAnswers(session: Session, program: Program): Promise<void> {
+		if (!program.questions || program.questions.length === 0) {
+			return;
+		}
+
+		// Navigate to questionnaire with existing answers (or empty for new)
+		this.ctx.view.navigateTo('questionnaire', {
+			sessionId: session.id,
+			programId: program.id,
+			questions: program.questions
+		});
 	}
 
 	private async saveFeedback(sessionId: string): Promise<void> {

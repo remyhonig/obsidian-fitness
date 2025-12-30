@@ -19,6 +19,7 @@ export class QuestionnaireScreen extends BaseScreen {
 	private questions: Question[];
 	private answers: Map<string, AnswerState> = new Map();
 	private completeBtn: HTMLButtonElement | null = null;
+	private isEditing = false;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -40,7 +41,24 @@ export class QuestionnaireScreen extends BaseScreen {
 			return;
 		}
 
-		this.renderContent();
+		// Load existing answers if editing
+		void this.loadExistingAnswers().then(() => {
+			this.renderContent();
+		});
+	}
+
+	private async loadExistingAnswers(): Promise<void> {
+		const session = await this.ctx.sessionRepo.get(this.sessionId);
+		if (session?.review && !session.review.skipped) {
+			// Pre-fill answers from existing review
+			this.isEditing = true;
+			for (const answer of session.review.answers) {
+				this.answers.set(answer.questionId, {
+					selectedOptionId: answer.selectedOptionId,
+					freeText: answer.freeText
+				});
+			}
+		}
 	}
 
 	private renderContent(): void {
@@ -76,11 +94,23 @@ export class QuestionnaireScreen extends BaseScreen {
 		// Actions - both buttons same size in a row
 		const actions = this.containerEl.createDiv({ cls: 'fit-bottom-actions fit-questionnaire-actions' });
 
-		createButton(actions, {
-			text: 'Overslaan',
-			variant: 'secondary',
-			onClick: () => { void this.saveReview(true); }
-		});
+		if (this.isEditing) {
+			// Editing mode: Cancel just goes back without changes
+			createButton(actions, {
+				text: 'Cancel',
+				variant: 'secondary',
+				onClick: () => {
+					this.ctx.view.navigateTo('session-detail', { sessionId: this.sessionId });
+				}
+			});
+		} else {
+			// New review: Skip saves as skipped
+			createButton(actions, {
+				text: 'Overslaan',
+				variant: 'secondary',
+				onClick: () => { void this.saveReview(true); }
+			});
+		}
 
 		this.completeBtn = createButton(actions, {
 			text: 'Voltooien',
@@ -140,8 +170,12 @@ export class QuestionnaireScreen extends BaseScreen {
 			console.error('Failed to save review:', error);
 		}
 
-		// Navigate to finish screen
-		this.ctx.view.navigateTo('finish', { sessionId: this.sessionId });
+		// Navigate back: to session-detail if editing, to finish if new
+		if (this.isEditing) {
+			this.ctx.view.navigateTo('session-detail', { sessionId: this.sessionId });
+		} else {
+			this.ctx.view.navigateTo('finish', { sessionId: this.sessionId });
+		}
 	}
 
 	destroy(): void {
