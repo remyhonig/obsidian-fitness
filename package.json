@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-fitness",
-	"version": "1.0.9",
+	"version": "1.0.10",
 	"description": "Mobile-first workout tracking with zero-typing set logging, templates, and rest timers.",
 	"main": "main.js",
 	"type": "module",
