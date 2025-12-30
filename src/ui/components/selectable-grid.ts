@@ -45,9 +45,6 @@ export function createSelectableGrid<T>(
 	const container = parent.createDiv({ cls: gridClass });
 	const cleanup: (() => void)[] = [];
 
-	// Track current selection for setSelected
-	let currentSelection = options.selectedValue;
-
 	for (const opt of options.options) {
 		const isSelected = options.selectedValue === opt.value;
 		const item = container.createDiv({
@@ -72,7 +69,6 @@ export function createSelectableGrid<T>(
 			});
 			// Select this item
 			item.addClass(selectedClass);
-			currentSelection = opt.value;
 			options.onSelect(opt.value);
 		};
 
@@ -81,7 +77,6 @@ export function createSelectableGrid<T>(
 	}
 
 	const setSelected = (value: T | undefined) => {
-		currentSelection = value;
 		container.querySelectorAll(`.${itemClass}`).forEach(el => {
 			const itemValue = (el as unknown as { _value: T })._value;
 			if (itemValue === value) {

@@ -2937,3 +2937,273 @@
 	padding-top: 4px;
 	border-top: 1px solid var(--background-modifier-border);
 }
+
+/* ============================================
+   Feedback Status Callout
+   ============================================ */
+
+.fit-feedback-status {
+	background: var(--background-secondary);
+	border-radius: 8px;
+	padding: 12px;
+	margin-bottom: 12px;
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.fit-feedback-status.is-hidden {
+	display: none;
+}
+
+.fit-feedback-status-error {
+	border-left-color: var(--text-error);
+}
+
+.fit-feedback-status-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.fit-feedback-status-icon {
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+}
+
+.fit-feedback-status-icon-success {
+	color: var(--text-success);
+}
+
+.fit-feedback-status-icon-warning {
+	color: var(--text-warning);
+}
+
+.fit-feedback-status-icon-error {
+	color: var(--text-error);
+}
+
+.fit-feedback-status-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.fit-feedback-status-content {
+	margin-top: 10px;
+}
+
+.fit-feedback-status-section {
+	margin-bottom: 10px;
+}
+
+.fit-feedback-status-section:last-child {
+	margin-bottom: 0;
+}
+
+.fit-feedback-status-label {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--text-muted);
+	margin-bottom: 4px;
+}
+
+.fit-feedback-status-label-warning {
+	color: var(--text-warning);
+}
+
+.fit-feedback-status-list {
+	margin: 0;
+	padding-left: 18px;
+	font-size: 13px;
+	color: var(--text-normal);
+}
+
+.fit-feedback-status-list li {
+	margin-bottom: 2px;
+}
+
+.fit-feedback-status-exercises {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.fit-feedback-exercise-match {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+}
+
+.fit-feedback-exercise-match-icon {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+}
+
+.fit-feedback-exercise-match-name {
+	color: var(--text-normal);
+}
+
+.fit-feedback-exercise-match-hint {
+	font-size: 11px;
+	color: var(--text-warning);
+	margin-left: 6px;
+	font-style: italic;
+}
+
+/* ============================================
+   Exercise Coach Cue
+   ============================================ */
+
+.fit-exercise-coach-cue {
+	background: var(--background-secondary);
+	border-left: 3px solid var(--interactive-accent);
+	padding: 10px 12px;
+	margin-bottom: 12px;
+	border-radius: 6px;
+}
+
+.fit-coach-cue-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 4px;
+}
+
+.fit-coach-cue-text {
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--text-normal);
+}
+
+/* Exercise Feedback Callouts (This time / Last time) */
+.fit-exercise-feedback-callout {
+	background: var(--background-secondary);
+	border-radius: 8px;
+	padding: 10px 12px;
+	margin-bottom: 10px;
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.fit-exercise-feedback-this-time {
+	border-left-color: var(--interactive-accent);
+}
+
+.fit-exercise-feedback-last-time {
+	border-left-color: var(--text-muted);
+}
+
+.fit-exercise-feedback-callout-title {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 8px;
+}
+
+.fit-exercise-feedback-callout-content {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.fit-exercise-feedback-callout-item {
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.fit-exercise-feedback-callout-label {
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.fit-exercise-feedback-callout-value {
+	color: var(--text-normal);
+}
+
+/* ============================================
+   Structured Feedback Display
+   ============================================ */
+
+.fit-structured-feedback-section {
+	margin-bottom: 12px;
+}
+
+.fit-structured-feedback-title {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 8px;
+}
+
+.fit-structured-feedback-list {
+	margin: 0;
+	padding-left: 20px;
+}
+
+.fit-structured-feedback-list li {
+	font-size: 14px;
+	color: var(--text-normal);
+	margin-bottom: 4px;
+}
+
+.fit-structured-feedback-motivation {
+	font-size: 14px;
+	line-height: 1.6;
+	color: var(--text-normal);
+	font-style: italic;
+}
+
+.fit-structured-feedback-note {
+	font-size: 12px;
+	color: var(--text-muted);
+	font-style: italic;
+	margin-top: 12px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* ============================================
+   Exercise Feedback (Session Detail)
+   ============================================ */
+
+.fit-exercise-feedback {
+	background: var(--background-secondary);
+	border-radius: 8px;
+	padding: 10px 12px;
+	margin-top: 10px;
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.fit-exercise-feedback-item {
+	font-size: 13px;
+	line-height: 1.5;
+	margin-bottom: 6px;
+}
+
+.fit-exercise-feedback-item:last-child {
+	margin-bottom: 0;
+}
+
+.fit-exercise-feedback-label {
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.fit-exercise-feedback-value {
+	color: var(--text-normal);
+}
+
+.fit-exercise-feedback-cue {
+	font-size: 14px;
+}
+
+.fit-exercise-feedback-cue .fit-exercise-feedback-value {
+	font-weight: 500;
+}

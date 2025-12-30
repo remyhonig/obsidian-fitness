@@ -5,6 +5,9 @@ import { BaseScreen } from './base-screen';
 import { createScreenHeader } from '../components/screen-header';
 import { formatDuration } from '../components/timer';
 import { toFilename, resolveTransclusions, parseDescriptionSection, parseFrontmatter } from '../../data/file-utils';
+import { parseCoachFeedbackYaml, validateFeedbackAgainstSession, findExerciseFeedback } from '../../data/coach-feedback-parser';
+import { createFeedbackStatusCallout, type FeedbackStatusCalloutRefs } from '../components/feedback-status-callout';
+import type { FeedbackValidationStatus, StructuredCoachFeedback } from '../../data/coach-feedback-types';
 
 /**
  * Session detail screen - shows full details of a completed session
@@ -14,6 +17,9 @@ export class SessionDetailScreen extends BaseScreen {
 	private textArea: HTMLTextAreaElement | null = null;
 	private feedbackSection: HTMLElement | null = null;
 	private currentSession: Session | null = null;
+	private feedbackStatusRefs: FeedbackStatusCalloutRefs | null = null;
+	private currentValidationStatus: FeedbackValidationStatus | null = null;
+	private parsedFeedback: StructuredCoachFeedback | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -73,6 +79,11 @@ export class SessionDetailScreen extends BaseScreen {
 		// Store session for later use
 		this.currentSession = session;
 
+		// Parse feedback once for use in multiple places
+		this.parsedFeedback = session.coachFeedback
+			? parseCoachFeedbackYaml(session.coachFeedback)
+			: null;
+
 		// Coach feedback section (always visible)
 		this.feedbackSection = this.containerEl.createDiv({ cls: 'fit-session-detail-feedback' });
 		this.renderFeedbackSection(session.coachFeedback ? 'view' : 'edit');
@@ -108,6 +119,14 @@ export class SessionDetailScreen extends BaseScreen {
 				}
 				setsContainer.createDiv({ cls: 'fit-session-detail-set', text: setText });
 			}
+
+			// Exercise-specific feedback from structured coach feedback
+			if (this.parsedFeedback) {
+				const exerciseFeedback = findExerciseFeedback(this.parsedFeedback, exercise.exercise);
+				if (exerciseFeedback) {
+					this.renderExerciseFeedback(exerciseCard, exerciseFeedback);
+				}
+			}
 		}
 
 		// Questionnaire answers section
@@ -138,15 +157,21 @@ export class SessionDetailScreen extends BaseScreen {
 				this.renderFeedbackSection('edit');
 			});
 
-			// Render markdown content
+			// Try to render structured feedback, fall back to markdown
 			const contentEl = this.feedbackSection.createDiv({ cls: 'fit-feedback-content' });
-			void MarkdownRenderer.render(
-				this.ctx.app,
-				feedback,
-				contentEl,
-				'',
-				this.ctx.view
-			);
+
+			if (this.parsedFeedback) {
+				this.renderStructuredFeedback(contentEl);
+			} else {
+				// Fallback to raw markdown
+				void MarkdownRenderer.render(
+					this.ctx.app,
+					feedback,
+					contentEl,
+					'',
+					this.ctx.view
+				);
+			}
 		} else {
 			// Edit mode: show Copy for AI button
 			const copyBtn = feedbackHeader.createEl('button', {
@@ -157,12 +182,28 @@ export class SessionDetailScreen extends BaseScreen {
 			copyBtn.createSpan({ text: ' Copy for AI' });
 			copyBtn.addEventListener('click', () => { void this.copySession(this.currentSession!); });
 
+			// Status callout for feedback validation (above textarea)
+			const statusContainer = this.feedbackSection.createDiv({ cls: 'fit-feedback-status-container' });
+			this.feedbackStatusRefs = createFeedbackStatusCallout(statusContainer, {
+				status: this.currentValidationStatus
+			});
+
 			// Show textarea
 			this.textArea = this.feedbackSection.createEl('textarea', {
 				cls: 'fit-feedback-textarea',
 				attr: { placeholder: 'Add feedback from your coach or personal notes...' }
 			});
 			this.textArea.value = feedback;
+
+			// Real-time parsing and validation on input
+			this.textArea.addEventListener('input', () => {
+				this.parseAndValidateFeedback();
+			});
+
+			// Initial parse if there's existing content
+			if (feedback) {
+				this.parseAndValidateFeedback();
+			}
 
 			// Auto-save on blur and switch to view mode if there's content
 			this.textArea.addEventListener('blur', () => {
@@ -182,6 +223,91 @@ export class SessionDetailScreen extends BaseScreen {
 			if (feedback) {
 				this.textArea.focus();
 			}
+		}
+	}
+
+	private parseAndValidateFeedback(): void {
+		const content = this.textArea?.value ?? '';
+		const parsed = parseCoachFeedbackYaml(content);
+
+		if (parsed) {
+			// Valid structured YAML - show validation status
+			const sessionExercises = this.currentSession?.exercises.map(e => e.exercise) ?? [];
+			this.currentValidationStatus = validateFeedbackAgainstSession(parsed, sessionExercises);
+		} else {
+			// Plain text or empty - hide status callout (will be shown as markdown)
+			this.currentValidationStatus = null;
+		}
+
+		this.feedbackStatusRefs?.update(this.currentValidationStatus);
+	}
+
+	private renderStructuredFeedback(parent: HTMLElement): void {
+		if (!this.parsedFeedback) return;
+
+		// Training tips (gymfloor_acties)
+		if (this.parsedFeedback.gymfloor_acties && this.parsedFeedback.gymfloor_acties.length > 0) {
+			const section = parent.createDiv({ cls: 'fit-structured-feedback-section' });
+			section.createDiv({ cls: 'fit-structured-feedback-title', text: 'Training Tips' });
+			const list = section.createEl('ul', { cls: 'fit-structured-feedback-list' });
+			for (const actie of this.parsedFeedback.gymfloor_acties) {
+				list.createEl('li', { text: actie.actie });
+			}
+		}
+
+		// Motivation
+		if (this.parsedFeedback.motivatie_boost) {
+			const section = parent.createDiv({ cls: 'fit-structured-feedback-section' });
+			section.createDiv({ cls: 'fit-structured-feedback-title', text: 'Motivation' });
+			section.createDiv({
+				cls: 'fit-structured-feedback-motivation',
+				text: this.parsedFeedback.motivatie_boost.tekst
+			});
+		}
+
+		// Note about exercise feedback
+		if (this.parsedFeedback.analyse_en_context && this.parsedFeedback.analyse_en_context.length > 0) {
+			const note = parent.createDiv({ cls: 'fit-structured-feedback-note' });
+			note.setText(`Exercise-specific feedback shown below each exercise (${this.parsedFeedback.analyse_en_context.length} exercises)`);
+		}
+	}
+
+	private renderExerciseFeedback(parent: HTMLElement, feedback: import('../../data/coach-feedback-types').ExerciseFeedback): void {
+		const container = parent.createDiv({ cls: 'fit-exercise-feedback' });
+
+		// Coach cue (most important)
+		if (feedback.coach_cue_volgende_sessie) {
+			const cueSection = container.createDiv({ cls: 'fit-exercise-feedback-item fit-exercise-feedback-cue' });
+			cueSection.createSpan({ cls: 'fit-exercise-feedback-label', text: 'Coach cue: ' });
+			cueSection.createSpan({ cls: 'fit-exercise-feedback-value', text: feedback.coach_cue_volgende_sessie });
+		}
+
+		// Approach for next session
+		if (feedback.aanpak_volgende_sessie) {
+			const approachSection = container.createDiv({ cls: 'fit-exercise-feedback-item' });
+			approachSection.createSpan({ cls: 'fit-exercise-feedback-label', text: 'Approach: ' });
+			approachSection.createSpan({ cls: 'fit-exercise-feedback-value', text: feedback.aanpak_volgende_sessie });
+		}
+
+		// Stimulus
+		if (feedback.stimulus) {
+			const stimulusSection = container.createDiv({ cls: 'fit-exercise-feedback-item' });
+			stimulusSection.createSpan({ cls: 'fit-exercise-feedback-label', text: 'Stimulus: ' });
+			stimulusSection.createSpan({ cls: 'fit-exercise-feedback-value', text: feedback.stimulus });
+		}
+
+		// Set degradation
+		if (feedback.set_degradatie_en_vermoeidheid) {
+			const degradationSection = container.createDiv({ cls: 'fit-exercise-feedback-item' });
+			degradationSection.createSpan({ cls: 'fit-exercise-feedback-label', text: 'Set analysis: ' });
+			degradationSection.createSpan({ cls: 'fit-exercise-feedback-value', text: feedback.set_degradatie_en_vermoeidheid });
+		}
+
+		// Progress vs previous
+		if (feedback.progressie_tov_vorige) {
+			const progressSection = container.createDiv({ cls: 'fit-exercise-feedback-item' });
+			progressSection.createSpan({ cls: 'fit-exercise-feedback-label', text: 'Progress: ' });
+			progressSection.createSpan({ cls: 'fit-exercise-feedback-value', text: feedback.progressie_tov_vorige });
 		}
 	}
 
@@ -222,7 +348,7 @@ export class SessionDetailScreen extends BaseScreen {
 		const hasQuestions = program?.questions && program.questions.length > 0;
 
 		// Only show review section if program has questions
-		if (!hasQuestions) return;
+		if (!hasQuestions || !program) return;
 
 		const hasAnswers = session.review && !session.review.skipped && session.review.answers.length > 0;
 
@@ -232,12 +358,14 @@ export class SessionDetailScreen extends BaseScreen {
 		const reviewHeader = reviewSection.createDiv({ cls: 'fit-session-detail-review-header' });
 		reviewHeader.createDiv({ cls: 'fit-session-detail-section-title', text: 'Training Review' });
 
+		// Capture program in a const for the closure
+		const capturedProgram = program;
 		const editBtn = reviewHeader.createEl('button', {
 			cls: 'fit-button fit-button-ghost fit-button-small',
 			text: hasAnswers ? 'Edit answers' : 'Add answers'
 		});
 		editBtn.addEventListener('click', () => {
-			void this.editReviewAnswers(session, program!);
+			this.editReviewAnswers(session, capturedProgram);
 		});
 
 		if (hasAnswers) {
@@ -260,7 +388,7 @@ export class SessionDetailScreen extends BaseScreen {
 		}
 	}
 
-	private async editReviewAnswers(session: Session, program: Program): Promise<void> {
+	private editReviewAnswers(session: Session, program: Program): void {
 		if (!program.questions || program.questions.length === 0) {
 			return;
 		}
@@ -338,6 +466,8 @@ export class SessionDetailScreen extends BaseScreen {
 	}
 
 	destroy(): void {
+		this.feedbackStatusRefs?.destroy();
+		this.feedbackStatusRefs = null;
 		super.destroy();
 	}
 }

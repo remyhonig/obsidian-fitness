@@ -7,6 +7,8 @@ import { createExerciseCard } from '../components/card';
 import { createExerciseAutocomplete } from '../components/autocomplete';
 import { createScreenHeader } from '../components/screen-header';
 import { toFilename } from '../../data/file-utils';
+import { parseCoachFeedbackYaml } from '../../data/coach-feedback-parser';
+import type { StructuredCoachFeedback } from '../../data/coach-feedback-types';
 
 /**
  * Session screen - shows the active workout overview
@@ -198,6 +200,9 @@ export class SessionScreen extends BaseScreen {
 
 		if (!previousSession?.coachFeedback) return;
 
+		// Try to parse as structured YAML
+		const structured = parseCoachFeedbackYaml(previousSession.coachFeedback);
+
 		// Create collapsible container inside the placeholder
 		const container = parentContainer.createDiv({ cls: 'fit-feedback-notice' });
 
@@ -215,14 +220,19 @@ export class SessionScreen extends BaseScreen {
 		// Content area (collapsible)
 		const content = container.createDiv({ cls: 'fit-feedback-notice-content' });
 
-		// Render feedback as markdown
-		void MarkdownRenderer.render(
-			this.ctx.app,
-			previousSession.coachFeedback,
-			content,
-			'',
-			this.ctx.view
-		);
+		if (structured) {
+			// Render structured feedback
+			this.renderStructuredFeedback(structured, content);
+		} else {
+			// Fallback to raw markdown rendering
+			void MarkdownRenderer.render(
+				this.ctx.app,
+				previousSession.coachFeedback,
+				content,
+				'',
+				this.ctx.view
+			);
+		}
 
 		// Toggle collapse/expand (whole header is clickable)
 		let isCollapsed = false;
@@ -232,6 +242,28 @@ export class SessionScreen extends BaseScreen {
 			setIcon(toggleBtn, isCollapsed ? 'chevron-right' : 'chevron-down');
 		};
 		header.addEventListener('click', toggle);
+	}
+
+	private renderStructuredFeedback(feedback: StructuredCoachFeedback, parent: HTMLElement): void {
+		// Render gymfloor_acties as training tips
+		if (feedback.gymfloor_acties && feedback.gymfloor_acties.length > 0) {
+			const section = parent.createDiv({ cls: 'fit-structured-feedback-section' });
+			section.createDiv({ cls: 'fit-structured-feedback-title', text: 'Training Tips' });
+			const list = section.createEl('ul', { cls: 'fit-structured-feedback-list' });
+			for (const actie of feedback.gymfloor_acties) {
+				list.createEl('li', { text: actie.actie });
+			}
+		}
+
+		// Render motivation
+		if (feedback.motivatie_boost) {
+			const section = parent.createDiv({ cls: 'fit-structured-feedback-section' });
+			section.createDiv({ cls: 'fit-structured-feedback-title', text: 'Motivation' });
+			section.createDiv({
+				cls: 'fit-structured-feedback-motivation',
+				text: feedback.motivatie_boost.tekst
+			});
+		}
 	}
 
 	private async renderExerciseCards(session: Session, exerciseList: HTMLElement): Promise<void> {

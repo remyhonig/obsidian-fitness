@@ -18,6 +18,7 @@ import {
 	renderIntegratedSets,
 	WeightInputRefs
 } from './exercise';
+import { parseCoachFeedbackYaml, findExerciseFeedback } from '../../data/coach-feedback-parser';
 
 interface ExerciseStatus {
 	index: number;
@@ -279,6 +280,9 @@ export class ExerciseScreen extends BaseScreen {
 	}
 
 	private renderExerciseDetails(sessionExercise: SessionExercise, parent: HTMLElement): void {
+		// Render coach cue first (above exercise details)
+		void this.renderCoachCue(sessionExercise.exercise, parent);
+
 		// Look up full exercise details asynchronously
 		void this.ctx.exerciseRepo.getByName(sessionExercise.exercise).then(exercise => {
 			// Check if we have any details to show (only images and notes, skip properties)
@@ -324,6 +328,82 @@ export class ExerciseScreen extends BaseScreen {
 				);
 			}
 		});
+	}
+
+	private async renderCoachCue(exerciseName: string, parent: HTMLElement): Promise<void> {
+		// Get current session to find the workout
+		const session = this.ctx.sessionState.getSession();
+		if (!session?.workout) return;
+
+		// Get previous session for this workout
+		const previousSession = await this.ctx.sessionRepo.getPreviousSession(
+			session.workout,
+			session.id
+		);
+
+		if (!previousSession?.coachFeedback) return;
+
+		// Parse structured feedback
+		const structured = parseCoachFeedbackYaml(previousSession.coachFeedback);
+		if (!structured) return;
+
+		// Find feedback for this exercise
+		const exerciseFeedback = findExerciseFeedback(structured, exerciseName);
+		if (!exerciseFeedback) return;
+
+		// Check if we have any "This time" content
+		const hasThisTime = exerciseFeedback.coach_cue_volgende_sessie || exerciseFeedback.aanpak_volgende_sessie;
+
+		// Check if we have any "Last time" content
+		const hasLastTime = exerciseFeedback.stimulus ||
+			exerciseFeedback.set_degradatie_en_vermoeidheid ||
+			exerciseFeedback.progressie_tov_vorige;
+
+		// Render "This time" callout (coach cue + approach)
+		if (hasThisTime) {
+			const thisTimeContainer = parent.createDiv({ cls: 'fit-exercise-feedback-callout fit-exercise-feedback-this-time' });
+			thisTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-title', text: 'This time' });
+
+			const content = thisTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-content' });
+
+			if (exerciseFeedback.coach_cue_volgende_sessie) {
+				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Coach cue: ' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.coach_cue_volgende_sessie });
+			}
+
+			if (exerciseFeedback.aanpak_volgende_sessie) {
+				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Approach: ' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.aanpak_volgende_sessie });
+			}
+		}
+
+		// Render "Last time" callout (stimulus, set analysis, progress)
+		if (hasLastTime) {
+			const lastTimeContainer = parent.createDiv({ cls: 'fit-exercise-feedback-callout fit-exercise-feedback-last-time' });
+			lastTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-title', text: 'Last time' });
+
+			const content = lastTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-content' });
+
+			if (exerciseFeedback.stimulus) {
+				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Stimulus: ' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.stimulus });
+			}
+
+			if (exerciseFeedback.set_degradatie_en_vermoeidheid) {
+				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Set analysis: ' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.set_degradatie_en_vermoeidheid });
+			}
+
+			if (exerciseFeedback.progressie_tov_vorige) {
+				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Progress: ' });
+				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.progressie_tov_vorige });
+			}
+		}
 	}
 
 	private getExercise(): SessionExercise | null {

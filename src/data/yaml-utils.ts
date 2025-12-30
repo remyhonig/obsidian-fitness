@@ -25,7 +25,7 @@ export function parseFrontmatter<T>(content: string): { frontmatter: T | null; b
 /**
  * Simple YAML parser that handles our data structures including nested arrays
  */
-function parseSimpleYaml(yaml: string): Record<string, unknown> {
+export function parseSimpleYaml(yaml: string): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
 	const lines = yaml.split('\n');
 

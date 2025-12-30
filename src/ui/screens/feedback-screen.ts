@@ -4,6 +4,9 @@ import type { ScreenParams } from '../../types';
 import { BaseScreen } from './base-screen';
 import { createScreenHeader } from '../components/screen-header';
 import { createButton, createPrimaryAction } from '../components/button';
+import { parseCoachFeedbackYaml, validateFeedbackAgainstSession } from '../../data/coach-feedback-parser';
+import { createFeedbackStatusCallout, type FeedbackStatusCalloutRefs } from '../components/feedback-status-callout';
+import type { FeedbackValidationStatus } from '../../data/coach-feedback-types';
 
 /**
  * Feedback screen - full-page coach feedback form
@@ -13,6 +16,9 @@ export class FeedbackScreen extends BaseScreen {
 	private workoutName: string;
 	private existingFeedback: string;
 	private textArea: HTMLTextAreaElement | null = null;
+	private feedbackStatusRefs: FeedbackStatusCalloutRefs | null = null;
+	private currentValidationStatus: FeedbackValidationStatus | null = null;
+	private sessionExerciseNames: string[] = [];
 
 	constructor(
 		parentEl: HTMLElement,
@@ -27,6 +33,9 @@ export class FeedbackScreen extends BaseScreen {
 
 	render(): void {
 		this.prepareRender();
+
+		// Load session exercises for validation
+		void this.loadSessionExercises();
 
 		// Header with consistent screen-header component
 		this.headerRefs = createScreenHeader(this.containerEl, {
@@ -45,6 +54,12 @@ export class FeedbackScreen extends BaseScreen {
 			cls: 'fit-feedback-screen-desc'
 		});
 
+		// Status callout for feedback validation (above textarea)
+		const statusContainer = content.createDiv({ cls: 'fit-feedback-status-container' });
+		this.feedbackStatusRefs = createFeedbackStatusCallout(statusContainer, {
+			status: this.currentValidationStatus
+		});
+
 		// Text area
 		this.textArea = content.createEl('textarea', {
 			cls: 'fit-feedback-screen-input',
@@ -54,6 +69,16 @@ export class FeedbackScreen extends BaseScreen {
 			}
 		});
 		this.textArea.value = this.existingFeedback;
+
+		// Real-time parsing and validation on input
+		this.textArea.addEventListener('input', () => {
+			this.parseAndValidateFeedback();
+		});
+
+		// Initial parse if there's existing content
+		if (this.existingFeedback) {
+			this.parseAndValidateFeedback();
+		}
 
 		// Focus the text area
 		setTimeout(() => this.textArea?.focus(), 50);
@@ -70,6 +95,34 @@ export class FeedbackScreen extends BaseScreen {
 		createPrimaryAction(actions, 'Save', () => {
 			void this.saveFeedback();
 		});
+	}
+
+	private async loadSessionExercises(): Promise<void> {
+		if (!this.sessionId) return;
+
+		const session = await this.ctx.sessionRepo.get(this.sessionId);
+		if (session) {
+			this.sessionExerciseNames = session.exercises.map(e => e.exercise);
+			// Re-parse if we have content
+			if (this.textArea?.value) {
+				this.parseAndValidateFeedback();
+			}
+		}
+	}
+
+	private parseAndValidateFeedback(): void {
+		const content = this.textArea?.value ?? '';
+		const parsed = parseCoachFeedbackYaml(content);
+
+		if (parsed) {
+			// Valid structured YAML - show validation status
+			this.currentValidationStatus = validateFeedbackAgainstSession(parsed, this.sessionExerciseNames);
+		} else {
+			// Plain text or empty - hide status callout (will be shown as markdown)
+			this.currentValidationStatus = null;
+		}
+
+		this.feedbackStatusRefs?.update(this.currentValidationStatus);
 	}
 
 	private async saveFeedback(): Promise<void> {
@@ -90,6 +143,8 @@ export class FeedbackScreen extends BaseScreen {
 	}
 
 	destroy(): void {
+		this.feedbackStatusRefs?.destroy();
+		this.feedbackStatusRefs = null;
 		super.destroy();
 	}
 }
