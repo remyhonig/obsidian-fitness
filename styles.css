@@ -1722,8 +1722,67 @@
 
 .fit-autocomplete-input {
 	width: 100%;
+	cursor: pointer;
 }
 
+/* Full-screen autocomplete overlay */
+.fit-autocomplete-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: var(--background-primary);
+	z-index: 1000;
+	display: flex;
+	flex-direction: column;
+	animation: fadeIn 0.15s ease-out;
+}
+
+.fit-autocomplete-overlay-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.fit-autocomplete-overlay-input {
+	flex: 1;
+	font-size: 16px;
+}
+
+.fit-autocomplete-overlay-close {
+	width: 40px;
+	height: 40px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 32px;
+	font-weight: 300;
+	line-height: 1;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 8px;
+	transition: background 0.15s, color 0.15s;
+}
+
+.fit-autocomplete-overlay-close:hover {
+	background: var(--background-secondary);
+	color: var(--text-normal);
+}
+
+.fit-autocomplete-overlay-results {
+	flex: 1;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+/* Legacy dropdown (keep for backwards compat, but hidden by default) */
 .fit-autocomplete-dropdown {
 	position: absolute;
 	top: 100%;
@@ -1740,36 +1799,44 @@
 }
 
 .fit-autocomplete-item {
-	padding: 10px 12px;
+	padding: 16px;
 	cursor: pointer;
 	border-bottom: 1px solid var(--background-modifier-border);
+	transition: background 0.1s ease;
 }
 
 .fit-autocomplete-item:last-child {
 	border-bottom: none;
 }
 
-.fit-autocomplete-item:hover,
-.fit-autocomplete-item-selected {
+.fit-autocomplete-item:hover {
 	background: var(--background-secondary);
+}
+
+.fit-autocomplete-item:active {
+	transform: scale(0.99);
+}
+
+.fit-autocomplete-item-selected {
+	background: var(--background-modifier-hover);
 }
 
 .fit-autocomplete-item-name {
 	font-weight: 500;
-	font-size: 14px;
+	font-size: 16px;
+	margin-bottom: 4px;
 }
 
 .fit-autocomplete-item-meta {
-	font-size: 12px;
+	font-size: 14px;
 	color: var(--text-muted);
-	margin-top: 2px;
 }
 
 .fit-autocomplete-empty {
-	padding: 12px;
+	padding: 48px 24px;
 	text-align: center;
 	color: var(--text-muted);
-	font-size: 14px;
+	font-size: 16px;
 }
 
 /* ========== Exercise Picker Overlay ========== */

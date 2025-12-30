@@ -41,19 +41,19 @@ describe('ExerciseAutocomplete', () => {
 			expect(input.value).toBe('Bench Press');
 		});
 
-		it('should have dropdown hidden initially', () => {
+		it('should not show overlay initially', () => {
 			createExerciseAutocomplete(container, {
 				getItems: () => Promise.resolve(mockExercises),
 				onSelect: vi.fn()
 			});
 
-			const dropdown = container.querySelector('.fit-autocomplete-dropdown') as HTMLElement;
-			expect(dropdown.classList.contains('is-hidden')).toBe(true);
+			const overlay = document.body.querySelector('.fit-autocomplete-overlay');
+			expect(overlay).toBeNull();
 		});
 	});
 
 	describe('interaction', () => {
-		it('should show dropdown on focus', async () => {
+		it('should show overlay on focus', async () => {
 			createExerciseAutocomplete(container, {
 				getItems: () => Promise.resolve(mockExercises),
 				onSelect: vi.fn()
@@ -62,11 +62,11 @@ describe('ExerciseAutocomplete', () => {
 			const input = container.querySelector('input') as HTMLInputElement;
 			input.dispatchEvent(new FocusEvent('focus'));
 
-			// Wait for async getItems
+			// Wait for async getItems and overlay creation
 			await new Promise(resolve => setTimeout(resolve, 10));
 
-			const dropdown = container.querySelector('.fit-autocomplete-dropdown') as HTMLElement;
-			expect(dropdown.classList.contains('is-hidden')).toBe(false);
+			const overlay = document.body.querySelector('.fit-autocomplete-overlay');
+			expect(overlay).not.toBeNull();
 		});
 
 		it('should filter items on input', async () => {
@@ -77,16 +77,19 @@ describe('ExerciseAutocomplete', () => {
 
 			const input = container.querySelector('input') as HTMLInputElement;
 
-			// Focus first to load items
+			// Focus first to open overlay
 			input.dispatchEvent(new FocusEvent('focus'));
-			await new Promise(resolve => setTimeout(resolve, 10));
+			await new Promise(resolve => setTimeout(resolve, 150));
 
-			// Type 'bench'
-			input.value = 'bench';
-			input.dispatchEvent(new Event('input'));
+			// Get overlay input and type 'bench'
+			const overlayInput = document.body.querySelector('.fit-autocomplete-overlay-input') as HTMLInputElement;
+			expect(overlayInput).not.toBeNull();
 
-			const dropdown = container.querySelector('.fit-autocomplete-dropdown') as HTMLElement;
-			const items = dropdown.querySelectorAll('.fit-autocomplete-item');
+			overlayInput.value = 'bench';
+			overlayInput.dispatchEvent(new Event('input'));
+
+			const results = document.body.querySelector('.fit-autocomplete-overlay-results') as HTMLElement;
+			const items = results.querySelectorAll('.fit-autocomplete-item');
 
 			expect(items.length).toBe(1);
 			expect(items[0].querySelector('.fit-autocomplete-item-name')?.textContent).toBe('Bench Press');
@@ -100,15 +103,16 @@ describe('ExerciseAutocomplete', () => {
 
 			const input = container.querySelector('input') as HTMLInputElement;
 
-			// Focus first to load items
+			// Focus first to open overlay
 			input.dispatchEvent(new FocusEvent('focus'));
-			await new Promise(resolve => setTimeout(resolve, 10));
+			await new Promise(resolve => setTimeout(resolve, 150));
 
-			// Type something with no match
-			input.value = 'xyznotfound';
-			input.dispatchEvent(new Event('input'));
+			// Get overlay input and type something with no match
+			const overlayInput = document.body.querySelector('.fit-autocomplete-overlay-input') as HTMLInputElement;
+			overlayInput.value = 'xyznotfound';
+			overlayInput.dispatchEvent(new Event('input'));
 
-			const emptyState = container.querySelector('.fit-autocomplete-empty');
+			const emptyState = document.body.querySelector('.fit-autocomplete-empty');
 			expect(emptyState?.textContent).toBe('No exercises found');
 		});
 
@@ -121,11 +125,11 @@ describe('ExerciseAutocomplete', () => {
 
 			const input = container.querySelector('input') as HTMLInputElement;
 
-			// Focus first to load items
+			// Focus first to open overlay
 			input.dispatchEvent(new FocusEvent('focus'));
-			await new Promise(resolve => setTimeout(resolve, 10));
+			await new Promise(resolve => setTimeout(resolve, 150));
 
-			const items = container.querySelectorAll('.fit-autocomplete-item');
+			const items = document.body.querySelectorAll('.fit-autocomplete-item');
 			(items[0] as HTMLElement).dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
 
 			expect(onSelect).toHaveBeenCalledWith(mockExercises[0], 'Bench Press');
@@ -140,8 +144,15 @@ describe('ExerciseAutocomplete', () => {
 			});
 
 			const input = container.querySelector('input') as HTMLInputElement;
-			input.value = 'test';
-			input.dispatchEvent(new Event('input'));
+
+			// Focus to open overlay
+			input.dispatchEvent(new FocusEvent('focus'));
+			await new Promise(resolve => setTimeout(resolve, 150));
+
+			// Type in overlay input
+			const overlayInput = document.body.querySelector('.fit-autocomplete-overlay-input') as HTMLInputElement;
+			overlayInput.value = 'test';
+			overlayInput.dispatchEvent(new Event('input'));
 
 			expect(onChange).toHaveBeenCalledWith('test');
 		});
@@ -154,14 +165,15 @@ describe('ExerciseAutocomplete', () => {
 
 			const input = container.querySelector('input') as HTMLInputElement;
 
-			// Focus first to load items
+			// Focus first to open overlay
 			input.dispatchEvent(new FocusEvent('focus'));
-			await new Promise(resolve => setTimeout(resolve, 10));
+			await new Promise(resolve => setTimeout(resolve, 150));
 
-			// Press down arrow
-			input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+			// Get overlay input and press down arrow
+			const overlayInput = document.body.querySelector('.fit-autocomplete-overlay-input') as HTMLInputElement;
+			overlayInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
 
-			const selectedItem = container.querySelector('.fit-autocomplete-item-selected');
+			const selectedItem = document.body.querySelector('.fit-autocomplete-item-selected');
 			expect(selectedItem).not.toBeNull();
 		});
 
@@ -174,18 +186,19 @@ describe('ExerciseAutocomplete', () => {
 
 			const input = container.querySelector('input') as HTMLInputElement;
 
-			// Focus first to load items
+			// Focus first to open overlay
 			input.dispatchEvent(new FocusEvent('focus'));
-			await new Promise(resolve => setTimeout(resolve, 10));
+			await new Promise(resolve => setTimeout(resolve, 150));
 
-			// Navigate to first item and press Enter
-			input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-			input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+			// Get overlay input, navigate to first item and press Enter
+			const overlayInput = document.body.querySelector('.fit-autocomplete-overlay-input') as HTMLInputElement;
+			overlayInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+			overlayInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
 			expect(onSelect).toHaveBeenCalledWith(mockExercises[0], 'Bench Press');
 		});
 
-		it('should close dropdown on Escape', async () => {
+		it('should close overlay on Escape', async () => {
 			createExerciseAutocomplete(container, {
 				getItems: () => Promise.resolve(mockExercises),
 				onSelect: vi.fn()
@@ -193,22 +206,25 @@ describe('ExerciseAutocomplete', () => {
 
 			const input = container.querySelector('input') as HTMLInputElement;
 
-			// Focus first to load items
+			// Focus first to open overlay
 			input.dispatchEvent(new FocusEvent('focus'));
-			await new Promise(resolve => setTimeout(resolve, 10));
+			await new Promise(resolve => setTimeout(resolve, 150));
 
-			const dropdown = container.querySelector('.fit-autocomplete-dropdown') as HTMLElement;
-			expect(dropdown.classList.contains('is-hidden')).toBe(false);
+			let overlay = document.body.querySelector('.fit-autocomplete-overlay');
+			expect(overlay).not.toBeNull();
 
-			// Press Escape
-			input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+			// Press Escape in overlay input
+			const overlayInput = document.body.querySelector('.fit-autocomplete-overlay-input') as HTMLInputElement;
+			overlayInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
-			expect(dropdown.classList.contains('is-hidden')).toBe(true);
+			// Overlay should be removed
+			overlay = document.body.querySelector('.fit-autocomplete-overlay');
+			expect(overlay).toBeNull();
 		});
 	});
 
 	describe('display', () => {
-		it('should show exercise category and equipment in dropdown', async () => {
+		it('should show exercise category and equipment in overlay', async () => {
 			createExerciseAutocomplete(container, {
 				getItems: () => Promise.resolve(mockExercises),
 				onSelect: vi.fn()
@@ -216,9 +232,9 @@ describe('ExerciseAutocomplete', () => {
 
 			const input = container.querySelector('input') as HTMLInputElement;
 			input.dispatchEvent(new FocusEvent('focus'));
-			await new Promise(resolve => setTimeout(resolve, 10));
+			await new Promise(resolve => setTimeout(resolve, 150));
 
-			const meta = container.querySelector('.fit-autocomplete-item-meta');
+			const meta = document.body.querySelector('.fit-autocomplete-item-meta');
 			expect(meta?.textContent).toContain('Chest');
 			expect(meta?.textContent).toContain('Barbell');
 		});
