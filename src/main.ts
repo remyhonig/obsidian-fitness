@@ -24,11 +24,11 @@ export default class MainPlugin extends Plugin {
 		// Initialize database exercise repository
 		this.databaseExerciseRepo = new DatabaseExerciseRepository(
 			async () => {
-				const data = await this.loadData();
-				return data?.[EXERCISE_DATABASE_KEY] as ExerciseDatabaseData | null;
+				const data = await this.loadData() as Record<string, unknown> | null | undefined;
+				return (data?.[EXERCISE_DATABASE_KEY] as ExerciseDatabaseData | null) ?? null;
 			},
 			async (dbData) => {
-				const data = await this.loadData() ?? {};
+				const data = (await this.loadData() as Record<string, unknown> | null) ?? {};
 				data[EXERCISE_DATABASE_KEY] = dbData;
 				await this.saveData(data);
 			}

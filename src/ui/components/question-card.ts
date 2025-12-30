@@ -1,4 +1,4 @@
-import type { Question, QuestionOption } from '../../types';
+import type { Question } from '../../types';
 
 export interface QuestionCardOptions {
 	question: Question;
@@ -39,12 +39,12 @@ export function createQuestionCard(parent: HTMLElement, options: QuestionCardOpt
 			options.onSelect(opt.id);
 
 			// Show/hide free text input if this option triggers it
-			const freeTextContainer = container.querySelector('.fit-question-freetext') as HTMLElement | null;
-			if (freeTextContainer) {
+			const freeTextContainer = container.querySelector('.fit-question-freetext');
+			if (freeTextContainer instanceof HTMLElement) {
 				if (options.question.freeTextTrigger === opt.id) {
-					freeTextContainer.style.display = 'block';
+					freeTextContainer.toggleClass('is-hidden', false);
 				} else {
-					freeTextContainer.style.display = 'none';
+					freeTextContainer.toggleClass('is-hidden', true);
 				}
 			}
 		});
@@ -56,7 +56,7 @@ export function createQuestionCard(parent: HTMLElement, options: QuestionCardOpt
 
 		// Initially hide unless the trigger option is already selected
 		if (options.selectedOptionId !== options.question.freeTextTrigger) {
-			freeTextContainer.style.display = 'none';
+			freeTextContainer.addClass('is-hidden');
 		}
 
 		const textarea = freeTextContainer.createEl('textarea', {

@@ -35,8 +35,7 @@ export function createExerciseAutocomplete(
 		}
 	});
 
-	const dropdown = wrapper.createDiv({ cls: 'fit-autocomplete-dropdown' });
-	dropdown.style.display = 'none';
+	const dropdown = wrapper.createDiv({ cls: 'fit-autocomplete-dropdown is-hidden' });
 
 	let items: Exercise[] = [];
 	let filteredItems: Exercise[] = [];
@@ -129,13 +128,13 @@ export function createExerciseAutocomplete(
 	const openDropdown = async () => {
 		await loadItems();
 		updateDropdown();
-		dropdown.style.display = 'block';
+		dropdown.removeClass('is-hidden');
 		isOpen = true;
 		selectedIndex = -1;
 	};
 
 	const closeDropdown = () => {
-		dropdown.style.display = 'none';
+		dropdown.addClass('is-hidden');
 		isOpen = false;
 		selectedIndex = -1;
 	};
@@ -184,7 +183,7 @@ export function createExerciseAutocomplete(
 				selectedIndex = Math.max(selectedIndex - 1, -1);
 				updateSelection();
 				break;
-			case 'Enter':
+			case 'Enter': {
 				e.preventDefault();
 				const selectedItem = filteredItems[selectedIndex];
 				if (selectedIndex >= 0 && selectedItem) {
@@ -193,6 +192,7 @@ export function createExerciseAutocomplete(
 					closeDropdown();
 					options.onSelect(null, input.value);
 				}
+			}
 				break;
 			case 'Escape':
 				e.preventDefault();

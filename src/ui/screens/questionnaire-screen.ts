@@ -44,7 +44,7 @@ export class QuestionnaireScreen implements Screen {
 	private renderContent(): void {
 		// Header
 		const header = this.containerEl.createDiv({ cls: 'fit-questionnaire-header' });
-		header.createEl('h1', { text: 'Training Review', cls: 'fit-questionnaire-title' });
+		header.createEl('h1', { text: 'Training review', cls: 'fit-questionnaire-title' });
 
 		// Questions
 		const questionsContainer = this.containerEl.createDiv({ cls: 'fit-questionnaire-questions' });

@@ -207,7 +207,7 @@ export class ExerciseScreen implements Screen {
 			});
 		} else {
 			// Complete set button
-			createPrimaryAction(actionArea, 'Complete set', () => this.completeSet());
+			createPrimaryAction(actionArea, 'Complete set', () => void this.completeSet());
 		}
 
 		// Subscribe to specific events
@@ -290,7 +290,8 @@ export class ExerciseScreen implements Screen {
 		if (!this.timerEl) return;
 
 		if (this.timerLabelEl) {
-			this.timerLabelEl.textContent = 'Rest';
+			// eslint-disable-next-line obsidianmd/ui/sentence-case
+			this.timerLabelEl.textContent = 'rest';
 		}
 
 		const minutes = Math.floor(remaining / 60);
@@ -477,11 +478,11 @@ export class ExerciseScreen implements Screen {
 				});
 
 				const deleteBtn = chip.createEl('button', { cls: 'fit-set-chip-delete' });
-				try { setIcon(deleteBtn, 'x'); } catch { deleteBtn.textContent = 'x'; }
+				try { setIcon(deleteBtn, 'x'); } catch { deleteBtn.textContent = 'X'; }
 				const setIndex = i;
 				deleteBtn.addEventListener('click', (e) => {
 					e.stopPropagation();
-					this.deleteSet(setIndex);
+					void this.deleteSet(setIndex);
 				});
 			}
 		}
@@ -564,10 +565,10 @@ export class ExerciseScreen implements Screen {
 			});
 
 			const deleteBtn = chip.createEl('button', { cls: 'fit-set-chip-delete' });
-			try { setIcon(deleteBtn, 'x'); } catch { deleteBtn.textContent = 'x'; }
+			try { setIcon(deleteBtn, 'x'); } catch { deleteBtn.textContent = 'X'; }
 			deleteBtn.addEventListener('click', (e) => {
 				e.stopPropagation();
-				this.deleteSet(i);
+				void this.deleteSet(i);
 			});
 		}
 	}

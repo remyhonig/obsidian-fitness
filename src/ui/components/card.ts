@@ -242,12 +242,6 @@ export function createSessionCard(parent: HTMLElement, options: SessionCardOptio
 	return card;
 }
 
-/**
- * Formats weight for display (removes trailing zeros)
- */
-function formatWeight(weight: number): string {
-	return weight % 1 === 0 ? String(weight) : weight.toFixed(1).replace(/\.0$/, '');
-}
 
 /**
  * Formats a date string for display
