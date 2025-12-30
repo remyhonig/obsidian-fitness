@@ -2504,6 +2504,7 @@
 
 .fit-questionnaire-actions {
 	display: flex;
+	flex-direction: row;
 	gap: 12px;
 }
 
@@ -2537,7 +2538,7 @@
 	gap: 8px;
 }
 
-.fit-question-option {
+.fit-question-item {
 	display: flex;
 	align-items: center;
 	padding: 12px 16px;
@@ -2548,20 +2549,21 @@
 	border: 2px solid transparent;
 }
 
-.fit-question-option:active {
+.fit-question-item:active {
 	transform: scale(0.98);
 }
 
-.fit-question-option-selected {
-	background: var(--interactive-accent);
+.fit-question-item-selected {
+	background: var(--background-primary);
 	border-color: var(--interactive-accent);
 }
 
-.fit-question-option-selected .fit-question-option-label {
-	color: var(--text-on-accent);
+.fit-question-item-selected .fit-question-label {
+	color: var(--text-normal);
+	font-weight: 600;
 }
 
-.fit-question-option-label {
+.fit-question-label {
 	font-size: 14px;
 	color: var(--text-normal);
 }
@@ -2854,4 +2856,37 @@
 .fit-session-detail-set {
 	font-size: 14px;
 	color: var(--text-muted);
+}
+
+/* Training Review Section */
+.fit-session-detail-review {
+	margin-bottom: 20px;
+}
+
+.fit-session-detail-answer {
+	background: var(--background-secondary);
+	border-radius: 12px;
+	padding: 12px 16px;
+	margin-bottom: 8px;
+}
+
+.fit-session-detail-answer-question {
+	font-size: 14px;
+	font-weight: 600;
+	margin-bottom: 4px;
+	color: var(--text-normal);
+}
+
+.fit-session-detail-answer-response {
+	font-size: 14px;
+	color: var(--text-muted);
+}
+
+.fit-session-detail-answer-freetext {
+	font-size: 13px;
+	color: var(--text-muted);
+	font-style: italic;
+	margin-top: 4px;
+	padding-top: 4px;
+	border-top: 1px solid var(--background-modifier-border);
 }

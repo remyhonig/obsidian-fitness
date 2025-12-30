@@ -128,6 +128,21 @@ export class SessionDetailScreen extends BaseScreen {
 			}
 		}
 
+		// Questionnaire answers section (if review exists and wasn't skipped)
+		if (session.review && !session.review.skipped && session.review.answers.length > 0) {
+			const reviewSection = this.containerEl.createDiv({ cls: 'fit-session-detail-review' });
+			reviewSection.createDiv({ cls: 'fit-session-detail-section-title', text: 'Training Review' });
+
+			for (const answer of session.review.answers) {
+				const answerCard = reviewSection.createDiv({ cls: 'fit-session-detail-answer' });
+				answerCard.createDiv({ cls: 'fit-session-detail-answer-question', text: answer.questionText });
+				answerCard.createDiv({ cls: 'fit-session-detail-answer-response', text: answer.selectedOptionLabel });
+
+				if (answer.freeText) {
+					answerCard.createDiv({ cls: 'fit-session-detail-answer-freetext', text: answer.freeText });
+				}
+			}
+		}
 	}
 
 	private async saveFeedback(sessionId: string): Promise<void> {

@@ -2,7 +2,7 @@ import type { ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, Question, QuestionAnswer, SessionReview } from '../../types';
 import { BaseScreen } from './base-screen';
 import { createScreenHeader } from '../components/screen-header';
-import { createButton, createPrimaryAction } from '../components/button';
+import { createButton } from '../components/button';
 import { createQuestionCard } from '../components/question-card';
 
 interface AnswerState {
@@ -73,7 +73,7 @@ export class QuestionnaireScreen extends BaseScreen {
 			});
 		}
 
-		// Actions
+		// Actions - both buttons same size in a row
 		const actions = this.containerEl.createDiv({ cls: 'fit-bottom-actions fit-questionnaire-actions' });
 
 		createButton(actions, {
@@ -82,9 +82,12 @@ export class QuestionnaireScreen extends BaseScreen {
 			onClick: () => { void this.saveReview(true); }
 		});
 
-		this.completeBtn = createPrimaryAction(actions, 'Voltooien', () => {
-			void this.saveReview(false);
-		}, !this.allQuestionsAnswered());
+		this.completeBtn = createButton(actions, {
+			text: 'Voltooien',
+			variant: 'primary',
+			onClick: () => { void this.saveReview(false); },
+			disabled: !this.allQuestionsAnswered()
+		});
 	}
 
 	private allQuestionsAnswered(): boolean {
