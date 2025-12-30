@@ -178,6 +178,7 @@ export interface ScreenParams {
 	workoutName?: string; // For feedback screen title
 	existingFeedback?: string; // For pre-populating feedback textarea
 	fromScreen?: ScreenType; // Origin screen for context-aware back navigation
+	editSession?: boolean; // When true, edit session exercises instead of workout template
 }
 
 // Event listener types

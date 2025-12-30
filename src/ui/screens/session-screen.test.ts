@@ -86,7 +86,8 @@ describe('SessionScreen', () => {
 			expect(button).not.toBeNull();
 		});
 
-		it('should render "Finish workout" button', () => {
+		it('should render "Finish workout" button when session is in progress', () => {
+			// Session with completed sets (in progress)
 			const activeSession = createSampleSession({ status: 'active' });
 			const ctx = createMockScreenContext({ activeSession });
 			const screen = new SessionScreen(container, ctx);
@@ -94,6 +95,90 @@ describe('SessionScreen', () => {
 
 			const button = findButton(container, 'Finish workout');
 			expect(button).not.toBeNull();
+		});
+
+		it('should NOT render "Finish workout" button when session is NOT in progress', () => {
+			// Session with no completed sets (not in progress)
+			const activeSession = createSampleSession({
+				status: 'active',
+				exercises: [createSampleSessionExercise({ sets: [] })]
+			});
+			const ctx = createMockScreenContext({ activeSession });
+			const screen = new SessionScreen(container, ctx);
+			screen.render();
+
+			const button = findButton(container, 'Finish workout');
+			expect(button).toBeNull();
+		});
+
+		it('should render "Edit workout" button when session is NOT in progress', () => {
+			// Session with no completed sets (not in progress)
+			const activeSession = createSampleSession({
+				status: 'active',
+				workout: 'Push Day',
+				exercises: [createSampleSessionExercise({ sets: [] })]
+			});
+			const ctx = createMockScreenContext({ activeSession });
+			const screen = new SessionScreen(container, ctx);
+			screen.render();
+
+			const button = findButton(container, 'Edit workout');
+			expect(button).not.toBeNull();
+		});
+
+		it('should render "Edit exercises" button when session IS in progress', () => {
+			// Session with completed sets (in progress)
+			const activeSession = createSampleSession({ status: 'active', workout: 'Push Day' });
+			const ctx = createMockScreenContext({ activeSession });
+			const screen = new SessionScreen(container, ctx);
+			screen.render();
+
+			// Should show "Edit exercises" instead of "Edit workout"
+			const editWorkoutButton = findButton(container, 'Edit workout');
+			expect(editWorkoutButton).toBeNull();
+
+			const editExercisesButton = findButton(container, 'Edit exercises');
+			expect(editExercisesButton).not.toBeNull();
+		});
+
+		it('should navigate to workout-editor with editSession=true when "Edit exercises" is clicked', () => {
+			// Session with completed sets (in progress)
+			const activeSession = createSampleSession({ status: 'active', workout: 'Push Day' });
+			const ctx = createMockScreenContext({ activeSession });
+			const screen = new SessionScreen(container, ctx);
+			screen.render();
+
+			const button = findButton(container, 'Edit exercises');
+			expect(button).not.toBeNull();
+			click(button!);
+
+			expect(ctx.view.navigateTo).toHaveBeenCalledWith('workout-editor', {
+				workoutId: 'Push Day',
+				isNew: false,
+				editSession: true
+			});
+		});
+
+		it('should navigate to workout-editor when "Edit workout" is clicked', () => {
+			// Session with no completed sets (not in progress)
+			const activeSession = createSampleSession({
+				status: 'active',
+				workout: 'Push Day',
+				exercises: [createSampleSessionExercise({ sets: [] })]
+			});
+			const ctx = createMockScreenContext({ activeSession });
+			const screen = new SessionScreen(container, ctx);
+			screen.render();
+
+			const button = findButton(container, 'Edit workout');
+			expect(button).not.toBeNull();
+			click(button!);
+
+			expect(ctx.view.navigateTo).toHaveBeenCalledWith('workout-editor', {
+				workoutId: 'Push Day',
+				isNew: false,
+				editSession: false
+			});
 		});
 	});
 

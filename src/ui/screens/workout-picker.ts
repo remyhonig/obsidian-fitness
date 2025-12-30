@@ -116,12 +116,7 @@ export class WorkoutPickerScreen extends BaseScreen {
 	private async selectWorkout(workout: Workout): Promise<void> {
 		// Check for active session with completed sets
 		if (this.ctx.sessionState.hasActiveSession()) {
-			const session = this.ctx.sessionState.getSession();
-			const hasCompletedSets = session?.exercises.some(ex =>
-				ex.sets.some(s => s.completed)
-			) ?? false;
-
-			if (hasCompletedSets) {
+			if (this.ctx.sessionState.isInProgress()) {
 				// Has real progress - don't override
 				this.ctx.view.navigateTo('session');
 				return;
@@ -139,12 +134,7 @@ export class WorkoutPickerScreen extends BaseScreen {
 	private async startEmptyWorkout(): Promise<void> {
 		// Check for active session with completed sets
 		if (this.ctx.sessionState.hasActiveSession()) {
-			const session = this.ctx.sessionState.getSession();
-			const hasCompletedSets = session?.exercises.some(ex =>
-				ex.sets.some(s => s.completed)
-			) ?? false;
-
-			if (hasCompletedSets) {
+			if (this.ctx.sessionState.isInProgress()) {
 				// Has real progress - navigate to it
 				this.ctx.view.navigateTo('session');
 				return;

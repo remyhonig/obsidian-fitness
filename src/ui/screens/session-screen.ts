@@ -22,6 +22,15 @@ export class SessionScreen extends BaseScreen {
 		if (session?.workout) {
 			const workoutId = toFilename(session.workout);
 			const workoutPath = `${ctx.settings.basePath}/Workouts/${workoutId}.md`;
+
+			// Sync immediately on construction (in case workout was edited while away)
+			// Only sync if session is not in progress (no completed sets)
+			if (!ctx.sessionState.isInProgress()) {
+				const signal = this.resetAbortController();
+				void this.syncSessionWithWorkout(workoutId, signal);
+			}
+
+			// Also watch for future changes
 			this.unsubscribeFileWatch = ctx.watchFile(workoutPath, () => {
 				// Abort previous sync, start new one
 				const signal = this.resetAbortController();
@@ -149,28 +158,29 @@ export class SessionScreen extends BaseScreen {
 			onClick: () => { this.showExercisePicker(); }
 		});
 
-		// Edit workout button (if workout has a name/ID)
+		// Edit workout button
+		// - When not in progress: edit the workout template (changes sync to session)
+		// - When in progress: edit session exercises only (doesn't modify template)
 		if (session.workout) {
+			const isInProgress = this.ctx.sessionState.isInProgress();
 			createButton(actions, {
-				text: 'Edit workout',
+				text: isInProgress ? 'Edit exercises' : 'Edit workout',
 				variant: 'ghost',
 				onClick: () => {
-					this.ctx.view.navigateTo('workout-editor', { workoutId: session.workout, isNew: false });
+					this.ctx.view.navigateTo('workout-editor', {
+						workoutId: session.workout,
+						isNew: false,
+						editSession: isInProgress
+					});
 				}
 			});
 		}
 
-		// Show Cancel if no sets logged, Finish workout if there are sets
-		const totalSets = this.getTotalCompletedSets(session);
-		if (totalSets > 0) {
+		// Show Finish workout button only when session is in progress (at least one set completed)
+		// No cancel button needed when session hasn't started - user can just navigate away
+		if (this.ctx.sessionState.isInProgress()) {
 			createPrimaryAction(actions, 'Finish workout', () => {
 				void this.finishWorkout();
-			});
-		} else {
-			createButton(actions, {
-				text: 'Cancel',
-				variant: 'ghost',
-				onClick: () => { void this.cancelWorkout(); }
 			});
 		}
 

@@ -58,11 +58,7 @@ export function createScreenHeader(
 
 	// Determine state: accented and timer shown if there's an active session with completed sets
 	const session = options.sessionState.getSession();
-	const hasCompletedSets = session?.exercises.some(ex =>
-		ex.sets.some(s => s.completed)
-	) ?? false;
-	const hasActiveSession = options.sessionState.hasActiveSession();
-	const isWorkoutInProgress = hasActiveSession && hasCompletedSets;
+	const isWorkoutInProgress = options.sessionState.isInProgress();
 
 	// Get workout name from session state, or use fallback
 	const workoutName = session?.workout ?? options.fallbackWorkoutName ?? 'Workout';

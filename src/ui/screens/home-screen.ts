@@ -46,20 +46,17 @@ export class HomeScreen extends BaseScreen {
 		const hasActiveProgram = settings.activeProgram != null;
 
 		// Check for active session with completed sets to resume
-		const hasActiveSession = this.ctx.sessionState.hasActiveSession();
 		const activeSession = this.ctx.sessionState.getSession();
-		const hasCompletedSets = activeSession?.exercises.some(ex =>
-			ex.sets.some(s => s.completed)
-		) ?? false;
+		const isInProgress = this.ctx.sessionState.isInProgress();
 
-		// Show resume card only if session has completed at least one set
-		if (hasActiveSession && activeSession && hasCompletedSets) {
+		// Show resume card only if session is in progress (at least one set completed)
+		if (activeSession && isInProgress) {
 			this.renderResumeCard(parent, activeSession);
 		}
 
 		if (hasActiveProgram) {
 			// Show program section with view all workouts link
-			await this.renderActiveProgram(parent, hasCompletedSets, signal);
+			await this.renderActiveProgram(parent, isInProgress, signal);
 		} else {
 			// Show quick start when no program is active
 			await this.renderQuickStart(parent, signal);
@@ -256,12 +253,7 @@ export class HomeScreen extends BaseScreen {
 	private async startFromWorkout(workout: Workout): Promise<void> {
 		// Check if there's already an active session with completed sets
 		if (this.ctx.sessionState.hasActiveSession()) {
-			const session = this.ctx.sessionState.getSession();
-			const hasCompletedSets = session?.exercises.some(ex =>
-				ex.sets.some(s => s.completed)
-			) ?? false;
-
-			if (hasCompletedSets) {
+			if (this.ctx.sessionState.isInProgress()) {
 				// Has real progress - navigate to it
 				this.ctx.view.navigateTo('session');
 				return;

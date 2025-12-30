@@ -7,12 +7,18 @@ import { createButton } from '../components/button';
 import { createExerciseAutocomplete } from '../components/autocomplete';
 
 /**
- * Workout editor screen - create/edit workouts
+ * Workout editor screen - create/edit workouts or session exercises
+ *
+ * Modes:
+ * - isNew=true: Create a new workout template
+ * - isNew=false, editSession=false: Edit an existing workout template
+ * - isNew=false, editSession=true: Edit session exercises only (doesn't modify template)
  */
 export class WorkoutEditorScreen extends BaseScreen {
 	private isNew: boolean;
 	private workoutId: string | null;
 	private workout: Workout | null = null;
+	private editSession: boolean;
 
 	// Form state
 	private name = '';
@@ -41,9 +47,10 @@ export class WorkoutEditorScreen extends BaseScreen {
 		super(parentEl, ctx, 'fit-workout-editor-screen');
 		this.isNew = params.isNew ?? true;
 		this.workoutId = params.workoutId ?? null;
+		this.editSession = params.editSession ?? false;
 
-		// Subscribe to file changes when editing an existing workout
-		if (!this.isNew && this.workoutId) {
+		// Subscribe to file changes when editing an existing workout template (not session)
+		if (!this.isNew && this.workoutId && !this.editSession) {
 			const workoutPath = `${ctx.settings.basePath}/Workouts/${this.workoutId}.md`;
 			this.unsubscribeFileWatch = ctx.watchFile(workoutPath, () => {
 				void this.reloadWorkout();
@@ -77,8 +84,12 @@ export class WorkoutEditorScreen extends BaseScreen {
 	render(): void {
 		this.prepareRender();
 
-		// Load existing workout if editing
-		if (!this.isNew && this.workoutId) {
+		if (this.editSession) {
+			// Session edit mode - load from session state
+			this.loadFromSession();
+			this.renderForm();
+		} else if (!this.isNew && this.workoutId) {
+			// Edit existing workout template
 			void this.loadWorkout().then(() => {
 				this.renderForm();
 			});
@@ -86,6 +97,29 @@ export class WorkoutEditorScreen extends BaseScreen {
 			// New workout - render empty form immediately
 			this.renderForm();
 		}
+	}
+
+	/**
+	 * Loads exercise data from current session state
+	 */
+	private loadFromSession(): void {
+		const session = this.ctx.sessionState.getSession();
+		if (!session) return;
+
+		this.name = session.workout ?? 'Workout';
+		this.description = '';
+		this.exercises = session.exercises.map(se => ({
+			exercise: se.exercise,
+			targetSets: se.targetSets,
+			targetRepsMin: se.targetRepsMin,
+			targetRepsMax: se.targetRepsMax,
+			restSeconds: se.restSeconds
+		}));
+
+		// Store original state for change detection
+		this.originalName = this.name;
+		this.originalDescription = '';
+		this.originalExercises = this.exercises.map(e => ({ ...e }));
 	}
 
 	private async loadWorkout(): Promise<void> {
@@ -119,11 +153,21 @@ export class WorkoutEditorScreen extends BaseScreen {
 		existingForm?.remove();
 		existingActions?.remove();
 
+		// Determine header title based on mode
+		let headerTitle: string;
+		if (this.editSession) {
+			headerTitle = 'Edit exercises';
+		} else if (this.isNew) {
+			headerTitle = 'New workout';
+		} else {
+			headerTitle = 'Edit workout';
+		}
+
 		// Header (only render if not already present)
 		if (!this.containerEl.querySelector('.fit-section')) {
 			this.headerRefs = createScreenHeader(this.containerEl, {
 				leftElement: 'back',
-				fallbackWorkoutName: this.isNew ? 'New workout' : 'Edit workout',
+				fallbackWorkoutName: headerTitle,
 				view: this.ctx.view,
 				sessionState: this.ctx.sessionState,
 				onBack: () => this.ctx.view.goBack()
@@ -133,37 +177,40 @@ export class WorkoutEditorScreen extends BaseScreen {
 		// Form
 		const form = this.containerEl.createDiv({ cls: 'fit-form' });
 
-		// Name input
-		const nameGroup = form.createDiv({ cls: 'fit-form-group' });
-		nameGroup.createEl('label', { text: 'Workout name', cls: 'fit-form-label' });
-		const nameInput = nameGroup.createEl('input', {
-			cls: 'fit-form-input',
-			attr: {
-				type: 'text',
-				placeholder: 'Push day',
-				value: this.name
-			}
-		});
-		nameInput.addEventListener('input', (e) => {
-			this.name = (e.target as HTMLInputElement).value;
-			this.updateSaveButton();
-		});
+		// Name and description inputs - only show for workout template editing (not session)
+		if (!this.editSession) {
+			// Name input
+			const nameGroup = form.createDiv({ cls: 'fit-form-group' });
+			nameGroup.createEl('label', { text: 'Workout name', cls: 'fit-form-label' });
+			const nameInput = nameGroup.createEl('input', {
+				cls: 'fit-form-input',
+				attr: {
+					type: 'text',
+					placeholder: 'Push day',
+					value: this.name
+				}
+			});
+			nameInput.addEventListener('input', (e) => {
+				this.name = (e.target as HTMLInputElement).value;
+				this.updateSaveButton();
+			});
 
-		// Description input
-		const descGroup = form.createDiv({ cls: 'fit-form-group' });
-		descGroup.createEl('label', { text: 'Description (optional)', cls: 'fit-form-label' });
-		const descInput = descGroup.createEl('textarea', {
-			cls: 'fit-form-textarea',
-			attr: {
-				placeholder: 'Describe this workout...',
-				rows: '2'
-			}
-		});
-		descInput.value = this.description;
-		descInput.addEventListener('input', (e) => {
-			this.description = (e.target as HTMLTextAreaElement).value;
-			this.updateSaveButton();
-		});
+			// Description input
+			const descGroup = form.createDiv({ cls: 'fit-form-group' });
+			descGroup.createEl('label', { text: 'Description (optional)', cls: 'fit-form-label' });
+			const descInput = descGroup.createEl('textarea', {
+				cls: 'fit-form-textarea',
+				attr: {
+					placeholder: 'Describe this workout...',
+					rows: '2'
+				}
+			});
+			descInput.value = this.description;
+			descInput.addEventListener('input', (e) => {
+				this.description = (e.target as HTMLTextAreaElement).value;
+				this.updateSaveButton();
+			});
+		}
 
 		// Exercises section
 		const exercisesSection = form.createDiv({ cls: 'fit-form-section' });
@@ -183,7 +230,8 @@ export class WorkoutEditorScreen extends BaseScreen {
 		// Actions
 		const actions = this.containerEl.createDiv({ cls: 'fit-bottom-actions' });
 
-		if (!this.isNew) {
+		// Delete button - only show for existing workout templates (not new or session edit)
+		if (!this.isNew && !this.editSession) {
 			createButton(actions, {
 				text: 'Delete',
 				variant: 'danger',
@@ -196,9 +244,10 @@ export class WorkoutEditorScreen extends BaseScreen {
 		}
 
 		// Save button (disabled when no changes for existing workouts)
+		const saveButtonText = this.editSession ? 'Save exercises' : 'Save workout';
 		this.saveBtn = actions.createEl('button', {
 			cls: 'fit-button fit-button-primary fit-button-full fit-button-large',
-			text: 'Save workout'
+			text: saveButtonText
 		});
 		this.saveBtn.addEventListener('click', () => {
 			this.saveWorkout().catch((err: unknown) => {
@@ -401,12 +450,24 @@ export class WorkoutEditorScreen extends BaseScreen {
 			return this.name.trim().length > 0;
 		}
 
+		// For session edit mode, only check exercises
+		if (this.editSession) {
+			return this.exercisesChanged();
+		}
+
 		// Check name
 		if (this.name !== this.originalName) return true;
 
 		// Check description
 		if (this.description !== this.originalDescription) return true;
 
+		return this.exercisesChanged();
+	}
+
+	/**
+	 * Checks if exercises have changed from original
+	 */
+	private exercisesChanged(): boolean {
 		// Check exercises count
 		if (this.exercises.length !== this.originalExercises.length) return true;
 
@@ -438,16 +499,24 @@ export class WorkoutEditorScreen extends BaseScreen {
 	}
 
 	private async saveWorkout(): Promise<void> {
-		// Validate
-		if (!this.name.trim()) {
-			new Notice('Please enter a workout name');
-			return;
-		}
-
 		// Filter out empty exercises
 		const validExercises = this.exercises.filter(e => e.exercise.trim());
 
 		try {
+			if (this.editSession) {
+				// Session edit mode - update session exercises only
+				this.saveToSession(validExercises);
+				new Notice('Exercises updated');
+				this.ctx.view.goBack();
+				return;
+			}
+
+			// Validate name for workout template
+			if (!this.name.trim()) {
+				new Notice('Please enter a workout name');
+				return;
+			}
+
 			if (this.isNew) {
 				await this.ctx.workoutRepo.create({
 					name: this.name.trim(),
@@ -474,6 +543,44 @@ export class WorkoutEditorScreen extends BaseScreen {
 			console.error('Failed to save workout:', error);
 			new Notice(`Failed to save workout: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
+	}
+
+	/**
+	 * Saves exercises to the current session state
+	 * Preserves logged sets while updating exercise definitions
+	 */
+	private saveToSession(exercises: WorkoutExercise[]): void {
+		const session = this.ctx.sessionState.getSession();
+		if (!session) return;
+
+		// Build a map of existing exercises to preserve logged sets
+		const existingSets = new Map<string, typeof session.exercises[0]['sets']>();
+		const existingRpe = new Map<string, number | undefined>();
+		const existingEngagement = new Map<string, typeof session.exercises[0]['muscleEngagement']>();
+
+		for (const ex of session.exercises) {
+			existingSets.set(ex.exercise.toLowerCase(), ex.sets);
+			existingRpe.set(ex.exercise.toLowerCase(), ex.rpe);
+			existingEngagement.set(ex.exercise.toLowerCase(), ex.muscleEngagement);
+		}
+
+		// Convert workout exercises to session exercises, preserving logged data
+		const sessionExercises = exercises.map(we => {
+			const key = we.exercise.toLowerCase();
+			return {
+				exercise: we.exercise,
+				targetSets: we.targetSets,
+				targetRepsMin: we.targetRepsMin,
+				targetRepsMax: we.targetRepsMax,
+				restSeconds: we.restSeconds,
+				sets: existingSets.get(key) ?? [],
+				rpe: existingRpe.get(key),
+				muscleEngagement: existingEngagement.get(key)
+			};
+		});
+
+		// Update session state
+		this.ctx.sessionState.updateExercises(sessionExercises);
 	}
 
 	private async deleteWorkout(): Promise<void> {

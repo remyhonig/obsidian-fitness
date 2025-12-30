@@ -131,6 +131,9 @@ export function createMockSessionState(activeSession: Session | null = null) {
 
 	return {
 		hasActiveSession: vi.fn().mockImplementation(() => session !== null),
+		isInProgress: vi.fn().mockImplementation(() =>
+			session !== null && session.exercises.some(e => e.sets.some(s => s.completed))
+		),
 		getSession: vi.fn().mockImplementation(() => session),
 		getExercise: vi.fn().mockImplementation((index: number) =>
 			session?.exercises[index] ?? null
@@ -166,6 +169,23 @@ export function createMockSessionState(activeSession: Session | null = null) {
 				status: 'active',
 				exercises: []
 			};
+			notifyListeners();
+		}),
+		reloadFromWorkout: vi.fn().mockImplementation((workout: Workout) => {
+			if (!session) return;
+			// Only reload if not in progress (no completed sets)
+			const hasCompletedSets = session.exercises.some(e => e.sets.some(s => s.completed));
+			if (hasCompletedSets) return;
+
+			session.exercises = workout.exercises.map(we => ({
+				exercise: we.exercise,
+				targetSets: we.targetSets,
+				targetRepsMin: we.targetRepsMin,
+				targetRepsMax: we.targetRepsMax,
+				restSeconds: we.restSeconds,
+				sets: []
+			}));
+			session.workout = workout.name;
 			notifyListeners();
 		}),
 		addExercise: vi.fn().mockImplementation((name: string) => {

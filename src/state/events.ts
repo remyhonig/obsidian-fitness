@@ -7,6 +7,7 @@ export interface SessionEvents {
 	// Session lifecycle
 	'session.started': void;
 	'session.loaded': void;
+	'session.reloaded': void;
 	'session.finished': void;
 	'session.discarded': void;
 

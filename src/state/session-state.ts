@@ -16,6 +16,7 @@ import type { SessionEventName, SessionEventPayload, SessionEventListener } from
 import { RestTimerManager } from './rest-timer-manager';
 import { SetTimerManager } from './set-timer-manager';
 import { DurationTimerManager } from './duration-timer-manager';
+import { selectHasCompletedWork } from './selectors';
 
 /**
  * Manages the active workout session state
@@ -134,6 +135,31 @@ export class SessionStateManager {
 	}
 
 	/**
+	 * Reloads the session exercises from an updated workout template.
+	 * Only works when session is not in progress (no completed sets).
+	 * Preserves session metadata (id, date, startTime).
+	 */
+	reloadFromWorkout(workout: Workout): void {
+		if (!this.session) return;
+		if (this.isInProgress()) return; // Don't overwrite session with real work
+
+		const exercises: SessionExercise[] = workout.exercises.map(we => ({
+			exercise: we.exercise,
+			targetSets: we.targetSets,
+			targetRepsMin: we.targetRepsMin,
+			targetRepsMax: we.targetRepsMax,
+			restSeconds: we.restSeconds,
+			sets: []
+		}));
+
+		this.session.exercises = exercises;
+		this.session.workout = workout.name;
+		this.currentExerciseIndex = 0;
+		this.emit('session.reloaded', undefined);
+		this.notifyListeners();
+	}
+
+	/**
 	 * Starts an empty session (no workout)
 	 */
 	startEmpty(): void {
@@ -236,6 +262,16 @@ export class SessionStateManager {
 	 */
 	hasActiveSession(): boolean {
 		return this.session !== null;
+	}
+
+	/**
+	 * Gets whether there's an active session with at least one completed set.
+	 * A session is "in progress" once real work has been done (first set completed).
+	 * Use this to determine if cancel vs finish should be shown, timer visibility, etc.
+	 */
+	isInProgress(): boolean {
+		if (!this.session) return false;
+		return selectHasCompletedWork(this.session);
 	}
 
 	/**
