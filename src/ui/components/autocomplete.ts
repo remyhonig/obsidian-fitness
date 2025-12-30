@@ -190,6 +190,7 @@ export function createExerciseAutocomplete(
 	};
 
 	const updateSelection = () => {
+		if (!dropdown) return;
 		const items = dropdown.querySelectorAll('.fit-autocomplete-item');
 		items.forEach((item, i) => {
 			item.classList.toggle('fit-autocomplete-item-selected', i === selectedIndex);
