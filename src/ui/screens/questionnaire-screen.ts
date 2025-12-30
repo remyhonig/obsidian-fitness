@@ -71,7 +71,7 @@ export class QuestionnaireScreen extends BaseScreen {
 			view: this.ctx.view,
 			sessionState: this.ctx.sessionState,
 			onBack: this.fromSessionDetail ? () => {
-				this.ctx.view.navigateTo('session-detail', { sessionId: this.sessionId });
+				this.ctx.view.goBack();
 			} : undefined
 		});
 
@@ -105,7 +105,7 @@ export class QuestionnaireScreen extends BaseScreen {
 				text: 'Cancel',
 				variant: 'secondary',
 				onClick: () => {
-					this.ctx.view.navigateTo('session-detail', { sessionId: this.sessionId });
+					this.ctx.view.goBack();
 				}
 			});
 		} else {
@@ -175,9 +175,9 @@ export class QuestionnaireScreen extends BaseScreen {
 			console.error('Failed to save review:', error);
 		}
 
-		// Navigate back: to session-detail if came from there, to finish if from workout completion
+		// Navigate: go back if came from session-detail, to finish if from workout completion
 		if (this.fromSessionDetail) {
-			this.ctx.view.navigateTo('session-detail', { sessionId: this.sessionId });
+			this.ctx.view.goBack();
 		} else {
 			this.ctx.view.navigateTo('finish', { sessionId: this.sessionId });
 		}

@@ -1,4 +1,4 @@
-import { Notice, setIcon } from 'obsidian';
+import { Notice, setIcon, MarkdownRenderer } from 'obsidian';
 import type { ScreenContext } from '../../views/fit-view';
 import type { ScreenParams, Session, Program } from '../../types';
 import { BaseScreen } from './base-screen';
@@ -12,6 +12,8 @@ import { toFilename } from '../../data/file-utils';
 export class SessionDetailScreen extends BaseScreen {
 	private sessionId: string;
 	private textArea: HTMLTextAreaElement | null = null;
+	private feedbackSection: HTMLElement | null = null;
+	private currentSession: Session | null = null;
 
 	constructor(
 		parentEl: HTMLElement,
@@ -53,17 +55,7 @@ export class SessionDetailScreen extends BaseScreen {
 			onBack: () => this.ctx.view.goBack()
 		});
 
-		// Copy button below header
-		const copySection = this.containerEl.createDiv({ cls: 'fit-session-detail-actions' });
-		const copyBtn = copySection.createEl('button', {
-			cls: 'fit-button fit-button-ghost',
-			attr: { 'aria-label': 'Copy for AI' }
-		});
-		setIcon(copyBtn, 'copy');
-		copyBtn.createSpan({ text: ' Copy for AI' });
-		copyBtn.addEventListener('click', () => { void this.copySession(session); });
-
-		// Session info
+		// Session info (date)
 		const info = this.containerEl.createDiv({ cls: 'fit-session-detail-info' });
 
 		const date = new Date(session.date);
@@ -75,25 +67,15 @@ export class SessionDetailScreen extends BaseScreen {
 		});
 		info.createDiv({ cls: 'fit-session-detail-date', text: dateStr });
 
-		if (session.endTime) {
-			const duration = formatDuration(session.startTime, session.endTime);
-			info.createDiv({ cls: 'fit-session-detail-duration', text: `Duration: ${duration}` });
-		}
+		// Stats section (same as finish screen)
+		this.renderStats(session);
+
+		// Store session for later use
+		this.currentSession = session;
 
 		// Coach feedback section (always visible)
-		const feedbackSection = this.containerEl.createDiv({ cls: 'fit-session-detail-feedback' });
-		feedbackSection.createDiv({ cls: 'fit-session-detail-section-title', text: 'Coach Feedback' });
-
-		this.textArea = feedbackSection.createEl('textarea', {
-			cls: 'fit-feedback-textarea',
-			attr: { placeholder: 'Add feedback from your coach or personal notes...' }
-		});
-		this.textArea.value = session.coachFeedback ?? '';
-
-		// Auto-save on blur
-		this.textArea.addEventListener('blur', () => {
-			void this.saveFeedback(session.id);
-		});
+		this.feedbackSection = this.containerEl.createDiv({ cls: 'fit-session-detail-feedback' });
+		this.renderFeedbackSection(session.coachFeedback ? 'view' : 'edit');
 
 		// Exercises section
 		const exercisesSection = this.containerEl.createDiv({ cls: 'fit-session-detail-exercises' });
@@ -130,6 +112,108 @@ export class SessionDetailScreen extends BaseScreen {
 
 		// Questionnaire answers section
 		void this.renderReviewSection(session);
+	}
+
+	private renderFeedbackSection(mode: 'view' | 'edit'): void {
+		if (!this.feedbackSection || !this.currentSession) return;
+
+		// Clear existing content
+		this.feedbackSection.empty();
+
+		const feedback = this.currentSession.coachFeedback ?? '';
+
+		// Header row with title and action button
+		const feedbackHeader = this.feedbackSection.createDiv({ cls: 'fit-session-detail-section-header' });
+		feedbackHeader.createDiv({ cls: 'fit-session-detail-section-title', text: 'Coach Feedback' });
+
+		if (mode === 'view' && feedback) {
+			// View mode: show Edit button
+			const editBtn = feedbackHeader.createEl('button', {
+				cls: 'fit-button fit-button-ghost fit-button-small',
+				attr: { 'aria-label': 'Edit feedback' }
+			});
+			setIcon(editBtn, 'pencil');
+			editBtn.createSpan({ text: ' Edit' });
+			editBtn.addEventListener('click', () => {
+				this.renderFeedbackSection('edit');
+			});
+
+			// Render markdown content
+			const contentEl = this.feedbackSection.createDiv({ cls: 'fit-feedback-content' });
+			void MarkdownRenderer.render(
+				this.ctx.app,
+				feedback,
+				contentEl,
+				'',
+				this.ctx.view
+			);
+		} else {
+			// Edit mode: show Copy for AI button
+			const copyBtn = feedbackHeader.createEl('button', {
+				cls: 'fit-button fit-button-ghost fit-button-small',
+				attr: { 'aria-label': 'Copy for AI' }
+			});
+			setIcon(copyBtn, 'copy');
+			copyBtn.createSpan({ text: ' Copy for AI' });
+			copyBtn.addEventListener('click', () => { void this.copySession(this.currentSession!); });
+
+			// Show textarea
+			this.textArea = this.feedbackSection.createEl('textarea', {
+				cls: 'fit-feedback-textarea',
+				attr: { placeholder: 'Add feedback from your coach or personal notes...' }
+			});
+			this.textArea.value = feedback;
+
+			// Auto-save on blur and switch to view mode if there's content
+			this.textArea.addEventListener('blur', () => {
+				void this.saveFeedback(this.currentSession!.id).then(() => {
+					// Update the stored feedback value
+					if (this.currentSession && this.textArea) {
+						this.currentSession.coachFeedback = this.textArea.value.trim();
+						// Switch to view mode if there's content
+						if (this.currentSession.coachFeedback) {
+							this.renderFeedbackSection('view');
+						}
+					}
+				});
+			});
+
+			// Focus the textarea when entering edit mode
+			if (feedback) {
+				this.textArea.focus();
+			}
+		}
+	}
+
+	private renderStats(session: Session): void {
+		const stats = this.containerEl.createDiv({ cls: 'fit-finish-stats' });
+
+		// Duration
+		if (session.endTime) {
+			const duration = formatDuration(session.startTime, session.endTime);
+			this.renderStat(stats, 'Duration', duration);
+		}
+
+		// Total sets
+		const totalSets = this.ctx.sessionRepo.countCompletedSets(session);
+		this.renderStat(stats, 'Sets', String(totalSets));
+
+		// Total volume
+		const volume = this.ctx.sessionRepo.calculateVolume(session);
+		const unit = this.ctx.settings.weightUnit;
+		this.renderStat(stats, 'Volume', `${volume.toLocaleString()} ${unit}`);
+
+		// Exercises
+		const exercisesWithSets = session.exercises.filter(e =>
+			e.sets.some(s => s.completed)
+		).length;
+		this.renderStat(stats, 'Exercises', String(exercisesWithSets));
+	}
+
+	private renderStat(parent: HTMLElement, label: string, value: string): void {
+		const stat = parent.createDiv({ cls: 'fit-finish-stat' });
+		stat.createDiv({ cls: 'fit-finish-stat-value', text: value });
+		stat.createDiv({ cls: 'fit-finish-stat-label', text: label });
 	}
 
 	private async renderReviewSection(session: Session): Promise<void> {
@@ -182,7 +266,7 @@ export class SessionDetailScreen extends BaseScreen {
 		}
 
 		// Navigate to questionnaire with existing answers (or empty for new)
-		// Pass fromScreen so questionnaire knows to return here
+		// Pass fromScreen so questionnaire knows to show back/cancel buttons
 		this.ctx.view.navigateTo('questionnaire', {
 			sessionId: session.id,
 			programId: program.id,

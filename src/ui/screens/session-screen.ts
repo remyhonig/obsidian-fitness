@@ -1,4 +1,4 @@
-import { setIcon } from 'obsidian';
+import { setIcon, MarkdownRenderer } from 'obsidian';
 import type { ScreenContext } from '../../views/fit-view';
 import { BaseScreen } from './base-screen';
 import type { Session, Exercise } from '../../types';
@@ -131,9 +131,10 @@ export class SessionScreen extends BaseScreen {
 			}
 		});
 
-		// Show coach feedback notice from previous session if available
+		// Placeholder for coach feedback notice (filled asynchronously)
+		const feedbackContainer = this.containerEl.createDiv({ cls: 'fit-feedback-notice-container' });
 		if (session.workout) {
-			void this.renderFeedbackNotice(session);
+			void this.renderFeedbackNotice(session, feedbackContainer);
 		}
 
 		// Exercise list
@@ -186,7 +187,7 @@ export class SessionScreen extends BaseScreen {
 
 	}
 
-	private async renderFeedbackNotice(currentSession: Session): Promise<void> {
+	private async renderFeedbackNotice(currentSession: Session, parentContainer: HTMLElement): Promise<void> {
 		if (!currentSession.workout) return;
 
 		// Get previous session for this workout to check for feedback
@@ -197,25 +198,40 @@ export class SessionScreen extends BaseScreen {
 
 		if (!previousSession?.coachFeedback) return;
 
-		// Create feedback notice (insert after header section)
-		const headerSection = this.containerEl.querySelector('.fit-section');
-		if (!headerSection) return;
+		// Create collapsible container inside the placeholder
+		const container = parentContainer.createDiv({ cls: 'fit-feedback-notice' });
 
-		// Create a temporary container to use Obsidian's createDiv
-		const tempContainer = this.containerEl.createDiv({ cls: 'fit-feedback-notice' });
-		headerSection.insertAdjacentElement('afterend', tempContainer);
+		// Header row with title and toggle button
+		const header = container.createDiv({ cls: 'fit-feedback-notice-header' });
 
-		const closeBtn = tempContainer.createEl('button', {
-			cls: 'fit-feedback-notice-close',
-			attr: { 'aria-label': 'Dismiss feedback' }
+		const toggleBtn = header.createEl('button', {
+			cls: 'fit-feedback-notice-toggle',
+			attr: { 'aria-label': 'Toggle feedback' }
 		});
-		setIcon(closeBtn, 'x');
-		closeBtn.addEventListener('click', () => {
-			tempContainer.remove();
-		});
+		setIcon(toggleBtn, 'chevron-down');
 
-		tempContainer.createDiv({ cls: 'fit-feedback-notice-title', text: 'Coach Feedback' });
-		tempContainer.createDiv({ cls: 'fit-feedback-notice-content', text: previousSession.coachFeedback });
+		header.createDiv({ cls: 'fit-feedback-notice-title', text: 'Coach Feedback' });
+
+		// Content area (collapsible)
+		const content = container.createDiv({ cls: 'fit-feedback-notice-content' });
+
+		// Render feedback as markdown
+		void MarkdownRenderer.render(
+			this.ctx.app,
+			previousSession.coachFeedback,
+			content,
+			'',
+			this.ctx.view
+		);
+
+		// Toggle collapse/expand (whole header is clickable)
+		let isCollapsed = false;
+		const toggle = () => {
+			isCollapsed = !isCollapsed;
+			container.toggleClass('is-collapsed', isCollapsed);
+			setIcon(toggleBtn, isCollapsed ? 'chevron-right' : 'chevron-down');
+		};
+		header.addEventListener('click', toggle);
 	}
 
 	private async renderExerciseCards(session: Session, exerciseList: HTMLElement): Promise<void> {

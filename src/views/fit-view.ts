@@ -58,10 +58,16 @@ export interface ScreenContext {
 /**
  * Main view for the workout tracker
  */
+interface NavigationEntry {
+	screenType: ScreenType;
+	params: ScreenParams;
+}
+
 export class FitView extends ItemView {
 	private currentScreen: Screen | null = null;
 	private currentScreenType: ScreenType | null = null;
 	private screenParams: ScreenParams = {};
+	private navigationStack: NavigationEntry[] = [];
 
 	// Shared state and repositories
 	sessionState: SessionStateManager;
@@ -377,18 +383,17 @@ export class FitView extends ItemView {
 		};
 	}
 
-	// Screens that support context-aware back navigation (return to origin)
-	private static readonly MODAL_LIKE_SCREENS: ScreenType[] = [
-		'exercise', 'session-detail', 'workout-editor'
-	];
-
 	/**
-	 * Navigates to a screen
+	 * Navigates to a screen, pushing it onto the navigation stack.
+	 * Use replace: true to replace the current screen instead of pushing.
 	 */
-	navigateTo(screenType: ScreenType, params: ScreenParams = {}): void {
-		// Auto-track origin for modal-like screens (unless already set)
-		if (FitView.MODAL_LIKE_SCREENS.includes(screenType) && !params.fromScreen && this.currentScreenType) {
-			params.fromScreen = this.currentScreenType;
+	navigateTo(screenType: ScreenType, params: ScreenParams = {}, options: { replace?: boolean } = {}): void {
+		// Push current screen to stack (unless replacing or no current screen)
+		if (this.currentScreenType && !options.replace) {
+			this.navigationStack.push({
+				screenType: this.currentScreenType,
+				params: this.screenParams
+			});
 		}
 
 		// Destroy current screen
@@ -449,57 +454,27 @@ export class FitView extends ItemView {
 	}
 
 	/**
-	 * Goes back to the previous logical screen.
-	 * Modal-like screens (exercise, session-detail, workout-editor) return to their origin.
-	 * Other screens follow hub-and-spoke pattern to home.
+	 * Goes back to the previous screen in the navigation stack.
+	 * Falls back to home if stack is empty.
 	 */
 	goBack(): void {
-		const fromScreen = this.screenParams.fromScreen;
-
-		// Modal-like screens return to their origin if tracked
-		if (fromScreen && FitView.MODAL_LIKE_SCREENS.includes(this.currentScreenType!)) {
-			this.navigateTo(fromScreen);
-			return;
-		}
-
-		// Hub-and-spoke navigation for other screens
-		switch (this.currentScreenType) {
-			case 'exercise':
-				// Fallback if no fromScreen tracked
-				this.navigateTo('session');
-				break;
-			case 'session':
-				this.navigateTo('home');
-				break;
-			case 'workout-picker':
-			case 'history':
-			case 'exercise-library':
-			case 'finish':
-			case 'questionnaire':
-			case 'feedback':
-			case 'session-detail':
-				this.navigateTo('home');
-				break;
-			case 'workout-editor':
-				// Fallback: session if active, otherwise home
-				if (this.sessionState.hasActiveSession()) {
-					this.navigateTo('session');
-				} else {
-					this.navigateTo('home');
-				}
-				break;
-			default:
-				this.navigateTo('home');
+		const previous = this.navigationStack.pop();
+		if (previous) {
+			// Navigate to the previous screen without pushing to stack (replace mode)
+			this.navigateTo(previous.screenType, previous.params, { replace: true });
+		} else {
+			// Stack empty, go to home
+			this.navigateTo('home', {}, { replace: true });
 		}
 	}
 
 	/**
-	 * Refreshes the current screen
+	 * Refreshes the current screen (does not affect navigation stack)
 	 */
 	refresh(): void {
 		if (this.currentScreenType) {
 			console.debug('[Fit] Refreshing screen:', this.currentScreenType);
-			this.navigateTo(this.currentScreenType, this.screenParams);
+			this.navigateTo(this.currentScreenType, this.screenParams, { replace: true });
 		}
 	}
 }

@@ -2683,22 +2683,30 @@
 	margin-top: 16px;
 }
 
-/* Feedback notice in session */
+/* Feedback notice in session (collapsible) */
 .fit-feedback-notice {
-	position: relative;
 	background: var(--background-secondary);
 	border-left: 3px solid var(--interactive-accent);
-	padding: 12px 36px 12px 16px;
 	margin-bottom: 16px;
 	border-radius: 8px;
+	overflow: hidden;
 }
 
-.fit-feedback-notice-close {
-	position: absolute;
-	top: 8px;
-	right: 8px;
-	width: 24px;
-	height: 24px;
+.fit-feedback-notice-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 16px;
+	cursor: pointer;
+}
+
+.fit-feedback-notice-header:hover {
+	background: var(--background-modifier-hover);
+}
+
+.fit-feedback-notice-toggle {
+	width: 20px;
+	height: 20px;
 	padding: 0;
 	border: none;
 	border-radius: 4px;
@@ -2708,30 +2716,37 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	flex-shrink: 0;
 }
 
-.fit-feedback-notice-close:hover {
-	background: var(--background-modifier-hover);
+.fit-feedback-notice-toggle:hover {
 	color: var(--text-normal);
 }
 
-.fit-feedback-notice-close svg {
+.fit-feedback-notice-toggle svg {
 	width: 16px;
 	height: 16px;
 }
 
 .fit-feedback-notice-title {
 	font-weight: 600;
-	margin-bottom: 4px;
 	font-size: 14px;
 	color: var(--text-normal);
+	margin: 0;
 }
 
 .fit-feedback-notice-content {
-	color: var(--text-muted);
+	padding: 0 16px 12px 44px;
 	font-size: 14px;
-	line-height: 1.5;
-	white-space: pre-wrap;
+	line-height: 1.6;
+}
+
+.fit-feedback-notice-content p:last-child {
+	margin-bottom: 0;
+}
+
+.fit-feedback-notice.is-collapsed .fit-feedback-notice-content {
+	display: none;
 }
 
 
@@ -2826,6 +2841,18 @@
 	color: var(--text-muted);
 }
 
+.fit-feedback-content {
+	background: var(--background-secondary);
+	border-radius: 8px;
+	padding: 12px 16px;
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.fit-feedback-content p:last-child {
+	margin-bottom: 0;
+}
+
 .fit-session-detail-exercises {
 	margin-bottom: 20px;
 }
@@ -2870,14 +2897,16 @@
 	margin-bottom: 20px;
 }
 
-.fit-session-detail-review-header {
+.fit-session-detail-review-header,
+.fit-session-detail-section-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: 12px;
 }
 
-.fit-session-detail-review-header .fit-session-detail-section-title {
+.fit-session-detail-review-header .fit-session-detail-section-title,
+.fit-session-detail-section-header .fit-session-detail-section-title {
 	margin-bottom: 0;
 }
 
