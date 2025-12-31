@@ -9,10 +9,22 @@ export interface ScreenHeaderOptions {
 	leftElement: HeaderLeftElement;
 	/** Fallback workout name if no active session (e.g., for "next workout" header) */
 	fallbackWorkoutName?: string;
+	/** Exercise name to display in header (overrides workout name when provided) */
+	exerciseName?: string;
+	/** Timer value to show inline (for exercise screen) */
+	timer?: { label: string; value: string };
+	/** Target reps to show inline (for exercise screen) */
+	targetReps?: string;
 	/** Click handler for the card */
 	onCardClick?: () => void;
 	/** Click handler for back button (required if leftElement is 'back') */
 	onBack?: () => void;
+	/** Click handler for timer (e.g., to reset set timer) */
+	onTimerClick?: () => void;
+	/** Show set timer instead of session duration (for exercise screen) */
+	showSetTimer?: boolean;
+	/** Current exercise index (for set timer) */
+	exerciseIndex?: number;
 	/** Reference to FitView for fullscreen toggle */
 	view: FitView;
 	/** Reference to session state for workout name, timer events, accent, and timer visibility */
@@ -26,6 +38,10 @@ export interface ScreenHeaderRefs {
 	playIconEl: HTMLElement | null;
 	/** Duration display element (for timer updates) */
 	durationEl: HTMLElement | null;
+	/** Inline timer element (for exercise screen header) */
+	inlineTimerEl: HTMLElement | null;
+	/** Inline target element (for exercise screen header) */
+	inlineTargetEl: HTMLElement | null;
 	/** Unsubscribe function for event listeners */
 	destroy: () => void;
 }
@@ -63,25 +79,69 @@ export function createScreenHeader(
 	// Get workout name from session state, or use fallback
 	const workoutName = session?.workout ?? options.fallbackWorkoutName ?? 'Workout';
 
+	// Use exercise name if provided, otherwise workout name
+	const displayName = options.exerciseName ?? workoutName;
+
+	// Only use exercise header card layout if inline timer/target are provided
+	const useExerciseHeaderLayout = !!options.exerciseName && (!!options.timer || !!options.targetReps);
+
 	// Center card
 	const card = row.createDiv({
-		cls: `fit-program-workout-card ${isWorkoutInProgress ? 'fit-program-workout-current' : ''}`
+		cls: `fit-program-workout-card ${isWorkoutInProgress ? 'fit-program-workout-current' : ''} ${useExerciseHeaderLayout ? 'fit-exercise-header-card' : ''}`
 	});
 
-	// Play icon
-	const playIconEl = card.createDiv({ cls: 'fit-program-workout-play' });
-	setIcon(playIconEl, 'play');
+	// Play icon (shown in standard layout)
+	let playIconEl: HTMLElement | null = null;
+	if (!useExerciseHeaderLayout) {
+		playIconEl = card.createDiv({ cls: 'fit-program-workout-play' });
+		setIcon(playIconEl, 'play');
+	}
 
-	// Workout name
+	// Exercise/Workout name
 	card.createDiv({
-		cls: 'fit-program-workout-name',
-		text: workoutName
+		cls: useExerciseHeaderLayout ? 'fit-exercise-header-name' : 'fit-program-workout-name',
+		text: displayName
 	});
+
+	// Inline timer and target (for exercise header layout only)
+	let inlineTimerEl: HTMLElement | null = null;
+	let inlineTargetEl: HTMLElement | null = null;
+
+	if (useExerciseHeaderLayout) {
+		const infoRow = card.createDiv({ cls: 'fit-exercise-header-info' });
+
+		if (options.timer) {
+			const timerWrapper = infoRow.createDiv({ cls: 'fit-exercise-header-timer' });
+			if (options.onTimerClick) {
+				timerWrapper.addClass('fit-exercise-header-timer-clickable');
+				timerWrapper.addEventListener('click', (e) => {
+					e.stopPropagation();
+					options.onTimerClick?.();
+				});
+			}
+			inlineTimerEl = timerWrapper.createSpan({ cls: 'fit-exercise-header-timer-value', text: options.timer.value });
+		}
+
+		if (options.targetReps) {
+			const targetWrapper = infoRow.createDiv({ cls: 'fit-exercise-header-target' });
+			targetWrapper.createSpan({ cls: 'fit-exercise-header-target-label', text: 'Target: ' });
+			inlineTargetEl = targetWrapper.createSpan({ cls: 'fit-exercise-header-target-value', text: options.targetReps });
+		}
+	}
 
 	// Timer - only shown when workout is in progress
 	let durationEl: HTMLElement | null = null;
 	if (isWorkoutInProgress) {
 		durationEl = card.createDiv({ cls: 'fit-program-workout-time' });
+
+		// Make timer clickable if showSetTimer is enabled
+		if (options.showSetTimer && options.onTimerClick) {
+			durationEl.addClass('fit-timer-clickable');
+			durationEl.addEventListener('click', (e) => {
+				e.stopPropagation();
+				options.onTimerClick?.();
+			});
+		}
 
 		// Set initial display
 		const state = options.sessionState;
@@ -91,6 +151,14 @@ export function createScreenHeader(
 			const seconds = remaining % 60;
 			durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 			durationEl.addClass('fit-timer-rest');
+		} else if (options.showSetTimer && state.isSetTimerActive()) {
+			// Show set timer when in set timer mode
+			const setStartTime = state.getSetStartTime();
+			const elapsed = setStartTime ? Math.floor((Date.now() - setStartTime) / 1000) : 0;
+			const minutes = Math.floor(elapsed / 60);
+			const seconds = elapsed % 60;
+			durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+			durationEl.addClass('fit-set-timer');
 		} else {
 			const elapsed = state.getElapsedDuration();
 			const minutes = Math.floor(elapsed / 60);
@@ -158,14 +226,39 @@ export function createScreenHeader(
 		eventUnsubscribers.push(
 			state.on('duration.tick', ({ elapsed }) => {
 				if (!state.isRestTimerActive()) {
-					const minutes = Math.floor(elapsed / 60);
-					const seconds = elapsed % 60;
-					timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+					if (options.showSetTimer && state.isSetTimerActive()) {
+						// Show set timer duration
+						const setStartTime = state.getSetStartTime();
+						const setElapsed = setStartTime ? Math.floor((Date.now() - setStartTime) / 1000) : 0;
+						const minutes = Math.floor(setElapsed / 60);
+						const seconds = setElapsed % 60;
+						timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+						timerEl.addClass('fit-set-timer');
+					} else {
+						// Show session duration
+						const minutes = Math.floor(elapsed / 60);
+						const seconds = elapsed % 60;
+						timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+						timerEl.removeClass('fit-set-timer');
+					}
 					timerEl.removeClass('fit-timer-rest');
 				}
-				iconEl.classList.toggle('fit-pulse-tick');
+				if (iconEl) {
+					iconEl.classList.toggle('fit-pulse-tick');
+				}
 			})
 		);
+
+		// Set started event - update to show set timer (for showSetTimer mode)
+		if (options.showSetTimer) {
+			eventUnsubscribers.push(
+				state.on('set.started', () => {
+					timerEl.textContent = '0:00';
+					timerEl.addClass('fit-set-timer');
+					timerEl.removeClass('fit-timer-rest');
+				})
+			);
+		}
 	}
 
 	// Destroy function to clean up event subscriptions
@@ -179,6 +272,8 @@ export function createScreenHeader(
 		container: section,
 		playIconEl,
 		durationEl,
+		inlineTimerEl,
+		inlineTargetEl,
 		destroy
 	};
 }

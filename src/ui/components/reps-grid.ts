@@ -214,6 +214,11 @@ function updateActive(buttons: HTMLButtonElement[], currentValue: number): void 
 	}
 }
 
+export interface HorizontalRepsSelectorOptions {
+	/** Target rep range (min-max) to highlight with outline */
+	targetRange?: { min: number; max: number };
+}
+
 export interface HorizontalRepsSelectorRefs {
 	container: HTMLElement;
 	destroy: () => void;
@@ -225,7 +230,8 @@ export interface HorizontalRepsSelectorRefs {
 export function createHorizontalRepsSelector(
 	parent: HTMLElement,
 	value: number,
-	onChange: (value: number) => void
+	onChange: (value: number) => void,
+	options?: HorizontalRepsSelectorOptions
 ): HorizontalRepsSelectorRefs {
 	const container = parent.createDiv({ cls: 'fit-reps-horizontal' });
 	let currentValue = value;
@@ -244,8 +250,23 @@ export function createHorizontalRepsSelector(
 	const rightIndicator = container.createDiv({ cls: 'fit-reps-scroll-indicator fit-reps-scroll-right' });
 	rightIndicator.createSpan({ text: '›' });
 
+	// Find target range to wrap in a band
+	const targetRange = options?.targetRange;
+	const targetMin = targetRange?.min ?? -1;
+	const targetMax = targetRange?.max ?? -1;
+
+	// Track when we need to create/close the target band wrapper
+	let targetBand: HTMLElement | null = null;
+
 	for (let i = 1; i <= 20; i++) {
-		const btn = row.createEl('button', {
+		// Start target band wrapper at targetMin
+		if (targetRange && i === targetMin) {
+			targetBand = row.createDiv({ cls: 'fit-reps-target-band' });
+		}
+
+		// Create button in either the target band or directly in the row
+		const parent = (targetBand && i >= targetMin && i <= targetMax) ? targetBand : row;
+		const btn = parent.createEl('button', {
 			cls: 'fit-reps-pill',
 			text: String(i)
 		});
@@ -268,6 +289,11 @@ export function createHorizontalRepsSelector(
 		btn.addEventListener('click', clickHandler);
 		cleanup.push(() => btn.removeEventListener('click', clickHandler));
 		buttons.push(btn);
+
+		// Close target band after targetMax
+		if (targetRange && i === targetMax) {
+			targetBand = null;
+		}
 	}
 
 	// Scroll by page when indicators clicked

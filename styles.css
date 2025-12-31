@@ -713,7 +713,8 @@
 }
 
 .fit-bottom-actions {
-	padding: 12px 0 16px 0;
+	padding: 12px 0;
+	padding-bottom: calc(12px + var(--fit-bottom-padding, 0px));
 	background: var(--background-primary);
 	display: flex;
 	flex-direction: column;
@@ -986,8 +987,51 @@
 	flex-direction: column;
 	padding: 8px 12px;
 	padding-top: calc(8px + var(--fit-top-padding, 0px));
-	padding-bottom: var(--fit-bottom-padding, 100px);
+	padding-bottom: 0;
 	overflow: hidden;
+}
+
+/* Scrollable content area for exercise screen */
+.fit-exercise-scroll-content {
+	flex: 1;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding-bottom: 8px;
+}
+
+/* Inputs section in scroll area */
+.fit-exercise-inputs-section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 8px 0;
+}
+
+/* Action button in scroll area */
+.fit-exercise-action {
+	padding: 8px 0;
+}
+
+/* Exercise explanation section (always visible at bottom) */
+.fit-exercise-explanation {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.fit-exercise-explanation-title {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-muted);
+	margin-bottom: 12px;
+}
+
+.fit-exercise-explanation-content {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
 }
 
 /* Dashboard layout */
@@ -1351,6 +1395,17 @@
 	border-color: var(--interactive-accent);
 }
 
+/* Target range band - continuous outline behind target reps */
+.fit-reps-target-band {
+	display: flex;
+	gap: 8px;
+	padding: 4px;
+	margin: -4px;
+	border: 2px solid var(--text-accent);
+	border-radius: 24px;
+	background: var(--background-primary-alt);
+}
+
 /* Exercise top section (progress + sets) */
 .fit-exercise-top {
 	display: flex;
@@ -1463,13 +1518,57 @@
 
 /* Exercise details section */
 .fit-exercise-details {
-	margin-bottom: 16px;
+	margin-bottom: 8px;
 }
 
-.fit-exercise-details-content {
+/* Collapsible component */
+.fit-collapsible {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.fit-collapsible-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px;
+	background: var(--background-secondary);
+	cursor: pointer;
+	user-select: none;
+}
+
+.fit-collapsible-header:active {
+	background: var(--background-modifier-hover);
+}
+
+.fit-collapsible-chevron {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-muted);
+	transition: transform 0.2s ease;
+}
+
+.fit-collapsible-chevron-open {
+	transform: rotate(90deg);
+}
+
+.fit-collapsible-title {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-normal);
+}
+
+.fit-collapsible-content {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
+	padding: 12px;
+	background: var(--background-primary);
+}
+
+.fit-collapsible-content.fit-collapsed {
+	display: none;
 }
 
 .fit-exercise-detail-row {
@@ -2203,6 +2302,64 @@
 	opacity: 0.7;
 }
 
+/* Exercise header card (used in exercise screen) */
+.fit-exercise-header-card {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 4px;
+	padding: 10px 14px;
+}
+
+.fit-exercise-header-name {
+	font-size: 1rem;
+	font-weight: 600;
+	text-align: center;
+}
+
+.fit-exercise-header-info {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 16px;
+	font-size: 0.85rem;
+	opacity: 0.9;
+}
+
+.fit-exercise-header-timer {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.fit-exercise-header-timer-clickable {
+	cursor: pointer;
+	padding: 4px 8px;
+	margin: -4px -8px;
+	border-radius: 6px;
+}
+
+.fit-exercise-header-timer-clickable:active {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.fit-exercise-header-timer-value {
+	font-variant-numeric: tabular-nums;
+}
+
+.fit-exercise-header-target {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.fit-exercise-header-target-label {
+	opacity: 0.8;
+}
+
+.fit-exercise-header-target-value {
+	font-weight: 600;
+}
+
 .fit-program-workout-info {
 	flex: 1;
 	min-width: 0;
@@ -2223,6 +2380,22 @@
 	white-space: nowrap;
 	flex-shrink: 0;
 	color: black;
+}
+
+.fit-program-workout-time.fit-timer-clickable {
+	cursor: pointer;
+	padding: 4px 8px;
+	margin: -4px -8px;
+	border-radius: 6px;
+}
+
+.fit-program-workout-time.fit-timer-clickable:active {
+	background: rgba(0, 0, 0, 0.1);
+}
+
+.fit-program-workout-time.fit-set-timer {
+	color: black;
+	font-weight: 600;
 }
 
 .fit-program-workout-time.fit-timer-rest {
@@ -3123,6 +3296,47 @@
 
 .fit-exercise-feedback-callout-value {
 	color: var(--text-normal);
+}
+
+/* Set pills in feedback callouts */
+.fit-feedback-sets-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.fit-feedback-set-pill {
+	display: inline-block;
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.fit-feedback-set-completed {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.fit-feedback-set-tappable {
+	cursor: pointer;
+}
+
+.fit-feedback-set-tappable:active {
+	opacity: 0.7;
+	transform: scale(0.95);
+}
+
+.fit-feedback-set-pending {
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.fit-feedback-set-previous {
+	background: var(--background-primary);
+	color: var(--text-muted);
+	border: 1px solid var(--background-modifier-border);
 }
 
 /* ============================================

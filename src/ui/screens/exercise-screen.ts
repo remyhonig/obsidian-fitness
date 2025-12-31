@@ -10,12 +10,7 @@ import { createScreenHeader } from '../components/screen-header';
 import { toFilename } from '../../data/file-utils';
 import { ExerciseFormState } from './exercise-form-state';
 import {
-	TimerDisplayRefs,
-	updateTimerDisplay,
-	updateRestTimerDisplay,
-	createProgressCard,
 	createWeightInput,
-	renderIntegratedSets,
 	WeightInputRefs
 } from './exercise';
 import { parseCoachFeedbackYaml, findExerciseFeedback } from '../../data/coach-feedback-parser';
@@ -35,7 +30,6 @@ export class ExerciseScreen extends BaseScreen {
 	private exerciseIndex: number;
 	private formState: ExerciseFormState;
 	private showingExercisePicker = false;
-	private timerRefs: TimerDisplayRefs | null = null;
 	private weightInputRefs: WeightInputRefs | null = null;
 	private isCompletingSet = false;
 
@@ -108,44 +102,34 @@ export class ExerciseScreen extends BaseScreen {
 			return;
 		}
 
-		// Header with resume-style card
+		// Calculate completion status
+		const completedSets = exercise.sets.filter(s => s.completed).length;
+		const isExerciseComplete = completedSets >= exercise.targetSets;
+
+		// Header with exercise name, set timer shown and clickable
 		this.headerRefs = createScreenHeader(this.containerEl, {
 			leftElement: 'back',
 			view: this.ctx.view,
 			sessionState: this.ctx.sessionState,
+			exerciseName: exercise.exercise,
+			showSetTimer: !isExerciseComplete,
+			exerciseIndex: this.exerciseIndex,
+			onTimerClick: !isExerciseComplete ? () => {
+				const state = this.ctx.sessionState;
+				if (state.isRestTimerActive()) {
+					state.cancelRestTimer();
+				}
+				state.markSetStart(this.exerciseIndex);
+			} : undefined,
 			onBack: () => this.ctx.view.navigateTo('session')
 		});
 
-		// Top section: Progress stats + Sets history (integrated)
-		const topSection = this.containerEl.createDiv({ cls: 'fit-exercise-top' });
-
-		// Exercise title (moved from header)
-		topSection.createEl('h2', { text: exercise.exercise, cls: 'fit-exercise-title' });
-
-		// Progress card - sets, timer, target reps
-		const progressCardRefs = createProgressCard(topSection, {
-			exercise,
-			sessionState: this.ctx.sessionState,
-			exerciseIndex: this.exerciseIndex
-		});
-		this.timerRefs = progressCardRefs.timerRefs;
-		const isExerciseComplete = progressCardRefs.isComplete;
-
-		// Integrated sets row (current session in accent, history in gray)
-		const setsRow = topSection.createDiv({ cls: 'fit-sets-integrated' });
-		renderIntegratedSets(setsRow, {
-			exercise,
-			weightUnit: this.ctx.settings.weightUnit,
-			sessionRepo: this.ctx.sessionRepo,
-			onDeleteSet: (setIndex) => this.deleteSet(setIndex)
-		});
-
-		// Middle content area (scrollable)
-		const middleContent = this.containerEl.createDiv({ cls: 'fit-middle-content' });
+		// Scrollable content area (single scroll for entire page)
+		const scrollContent = this.containerEl.createDiv({ cls: 'fit-exercise-scroll-content' });
 
 		if (isExerciseComplete) {
 			// Show muscle engagement selector first
-			createMuscleEngagementSelector(middleContent, {
+			createMuscleEngagementSelector(scrollContent, {
 				selectedValue: exercise.muscleEngagement,
 				onSelect: (value: MuscleEngagement) => {
 					void this.ctx.sessionState.setExerciseMuscleEngagement(this.exerciseIndex, value);
@@ -155,47 +139,20 @@ export class ExerciseScreen extends BaseScreen {
 			// Show RPE selector below
 			const lastSetIndex = exercise.sets.length - 1;
 			const lastSet = exercise.sets[lastSetIndex];
-			createRpeSelector(middleContent, {
+			createRpeSelector(scrollContent, {
 				selectedValue: lastSet?.rpe,
 				onSelect: (value) => {
 					// Save RPE to the last set
 					void this.ctx.sessionState.editSet(this.exerciseIndex, lastSetIndex, { rpe: value });
 				}
 			});
-		} else {
-			// Show exercise details when still logging sets
-			this.renderExerciseDetails(exercise, middleContent);
 
-			// Bottom input area (fixed above action button)
-			const bottomInputs = this.containerEl.createDiv({ cls: 'fit-bottom-inputs' });
-
-			// Weight card - full width (no title, just controls)
-			const weightCard = bottomInputs.createDiv({ cls: 'fit-input-card-wide' });
-			this.weightInputRefs = createWeightInput(weightCard, {
-				settings: this.ctx.settings,
-				initialWeight: this.formState.weight,
-				onWeightChange: (weight) => this.formState.setWeight(weight)
-			});
-
-			// Reps card - full width (no title, just controls)
-			const repsCard = bottomInputs.createDiv({ cls: 'fit-input-card-wide' });
-			createHorizontalRepsSelector(repsCard, this.formState.reps, (value) => {
-				this.formState.setReps(value);
-			});
-		}
-
-		// Action area
-		const actionArea = this.containerEl.createDiv({ cls: 'fit-bottom-actions' });
-		const allStatuses = this.getAllExerciseStatuses();
-		const allExercisesComplete = allStatuses.every(s => s.isComplete);
-
-		if (isExerciseComplete) {
-			// Check if questionnaire is complete (muscle engagement and RPE)
-			const lastSetIndex = exercise.sets.length - 1;
-			const lastSet = exercise.sets[lastSetIndex];
+			// Action button
+			const actionArea = scrollContent.createDiv({ cls: 'fit-exercise-action' });
+			const allStatuses = this.getAllExerciseStatuses();
+			const allExercisesComplete = allStatuses.every(s => s.isComplete);
 			const questionnaireComplete = exercise.muscleEngagement !== undefined && lastSet?.rpe !== undefined;
 
-			// Show navigation button (next exercise or complete session)
 			if (allExercisesComplete) {
 				createPrimaryAction(actionArea, 'Complete session', () => {
 					void this.finishWorkout();
@@ -206,8 +163,39 @@ export class ExerciseScreen extends BaseScreen {
 				}, !questionnaireComplete);
 			}
 		} else {
-			// Complete set button
-			createPrimaryAction(actionArea, 'Complete set', () => void this.completeSet());
+			// Weight/reps inputs
+			const inputsSection = scrollContent.createDiv({ cls: 'fit-exercise-inputs-section' });
+
+			// Weight card
+			const weightCard = inputsSection.createDiv({ cls: 'fit-input-card-wide' });
+			this.weightInputRefs = createWeightInput(weightCard, {
+				settings: this.ctx.settings,
+				initialWeight: this.formState.weight,
+				onWeightChange: (weight) => this.formState.setWeight(weight)
+			});
+
+			// Reps card
+			const repsCard = inputsSection.createDiv({ cls: 'fit-input-card-wide' });
+			createHorizontalRepsSelector(repsCard, this.formState.reps, (value) => {
+				this.formState.setReps(value);
+			}, {
+				targetRange: { min: exercise.targetRepsMin, max: exercise.targetRepsMax }
+			});
+
+			// Complete set button right after reps
+			const actionArea = inputsSection.createDiv({ cls: 'fit-exercise-action' });
+			const nextSetNumber = completedSets + 1;
+			createPrimaryAction(actionArea, `Complete set ${nextSetNumber} of ${exercise.targetSets}`, () => void this.completeSet());
+
+			// Create containers in correct order (coach cue is async)
+			const coachCueContainer = scrollContent.createDiv({ cls: 'fit-coach-cue-container' });
+			const explanationContainer = scrollContent.createDiv({ cls: 'fit-explanation-container' });
+
+			// Coaching tips (renders into container)
+			void this.renderCoachCue(exercise.exercise, coachCueContainer);
+
+			// Exercise details at the bottom (always shown)
+			this.renderExerciseExplanation(exercise.exercise, explanationContainer);
 		}
 
 		// Subscribe to specific events
@@ -217,42 +205,12 @@ export class ExerciseScreen extends BaseScreen {
 	private subscribeToEvents(): void {
 		const state = this.ctx.sessionState;
 
-		// Rest timer events - update progress card timer
-		this.subscribe(
-			state.on('timer.tick', ({ remaining }) => {
-				updateRestTimerDisplay(this.timerRefs, remaining);
-			})
-		);
-
-		this.subscribe(
-			state.on('timer.started', () => {
-				this.updateTimer();
-			})
-		);
-
+		// Re-render when rest timer cancelled (UI changes after rest period ends)
 		this.subscribe(
 			state.on('timer.cancelled', () => {
-				this.updateTimer();
-				// Re-render to show updated UI (e.g., after rest period ends)
 				if (!this.showingExercisePicker) {
 					this.render();
 				}
-			})
-		);
-
-		// Duration timer events - update progress card timer (only if rest timer is not active)
-		this.subscribe(
-			state.on('duration.tick', () => {
-				if (!state.isRestTimerActive()) {
-					this.updateTimer();
-				}
-			})
-		);
-
-		// Set started event - update timer to show set duration
-		this.subscribe(
-			state.on('set.started', () => {
-				this.updateTimer();
 			})
 		);
 
@@ -272,28 +230,20 @@ export class ExerciseScreen extends BaseScreen {
 		this.subscribe(state.on('muscle.changed', reRenderIfNotPicking));
 	}
 
-	/**
-	 * Update timer display
-	 */
-	private updateTimer(): void {
-		updateTimerDisplay(this.timerRefs, this.ctx.sessionState);
-	}
-
-	private renderExerciseDetails(sessionExercise: SessionExercise, parent: HTMLElement): void {
-		// Render coach cue first (above exercise details)
-		void this.renderCoachCue(sessionExercise.exercise, parent);
-
+	private renderExerciseExplanation(exerciseName: string, parent: HTMLElement): void {
 		// Look up full exercise details asynchronously
-		void this.ctx.exerciseRepo.getByName(sessionExercise.exercise).then(exercise => {
-			// Check if we have any details to show (only images and notes, skip properties)
+		void this.ctx.exerciseRepo.getByName(exerciseName).then(exercise => {
+			// Check if we have any details to show (only images and notes)
 			if (!exercise?.notes && !exercise?.image0) {
 				return;
 			}
 
-			const section = parent.createDiv({ cls: 'fit-exercise-details' });
-			const content = section.createDiv({ cls: 'fit-exercise-details-content' });
+			const section = parent.createDiv({ cls: 'fit-exercise-explanation' });
+			section.createDiv({ cls: 'fit-exercise-explanation-title', text: 'Exercise explanation' });
 
-			// Exercise images at the top (side by side)
+			const content = section.createDiv({ cls: 'fit-exercise-explanation-content' });
+
+			// Exercise images (side by side)
 			if (exercise.image0 || exercise.image1) {
 				const imagesRow = content.createDiv({ cls: 'fit-exercise-images' });
 				if (exercise.image0) {
@@ -310,12 +260,11 @@ export class ExerciseScreen extends BaseScreen {
 				}
 			}
 
-			// Notes - render as markdown (skip muscles, equipment, category)
+			// Notes - render as markdown
 			if (exercise.notes) {
 				const notesSection = content.createDiv({ cls: 'fit-exercise-notes' });
 				const notesContent = notesSection.createDiv({ cls: 'fit-exercise-notes-content' });
 
-				// Use a temporary component for markdown rendering lifecycle
 				const tempComponent = new Component();
 				tempComponent.load();
 
@@ -331,9 +280,11 @@ export class ExerciseScreen extends BaseScreen {
 	}
 
 	private async renderCoachCue(exerciseName: string, parent: HTMLElement): Promise<void> {
-		// Get current session to find the workout
+		// Get current session and exercise
 		const session = this.ctx.sessionState.getSession();
 		if (!session?.workout) return;
+
+		const currentExercise = this.getExercise();
 
 		// Get previous session for this workout
 		const previousSession = await this.ctx.sessionRepo.getPreviousSession(
@@ -341,64 +292,108 @@ export class ExerciseScreen extends BaseScreen {
 			session.id
 		);
 
-		if (!previousSession?.coachFeedback) return;
+		// Find previous exercise data
+		const previousExercise = previousSession?.exercises.find(e =>
+			e.exercise.toLowerCase() === exerciseName.toLowerCase()
+		);
 
-		// Parse structured feedback
-		const structured = parseCoachFeedbackYaml(previousSession.coachFeedback);
-		if (!structured) return;
-
-		// Find feedback for this exercise
-		const exerciseFeedback = findExerciseFeedback(structured, exerciseName);
-		if (!exerciseFeedback) return;
+		// Parse structured feedback if available
+		const structured = previousSession?.coachFeedback
+			? parseCoachFeedbackYaml(previousSession.coachFeedback)
+			: null;
+		const exerciseFeedback = structured
+			? findExerciseFeedback(structured, exerciseName)
+			: null;
 
 		// Check if we have any "This time" content
-		const hasThisTime = exerciseFeedback.coach_cue_volgende_sessie || exerciseFeedback.aanpak_volgende_sessie;
+		const hasThisTimeContent = exerciseFeedback?.coach_cue_volgende_sessie || exerciseFeedback?.aanpak_volgende_sessie;
+		const hasThisTimeSets = currentExercise && currentExercise.targetSets > 0;
 
 		// Check if we have any "Last time" content
-		const hasLastTime = exerciseFeedback.stimulus ||
-			exerciseFeedback.set_degradatie_en_vermoeidheid ||
-			exerciseFeedback.progressie_tov_vorige;
+		const hasLastTimeContent = exerciseFeedback?.stimulus ||
+			exerciseFeedback?.set_degradatie_en_vermoeidheid ||
+			exerciseFeedback?.progressie_tov_vorige;
+		const hasLastTimeSets = previousExercise && previousExercise.sets.length > 0;
 
-		// Render "This time" callout (coach cue + approach)
-		if (hasThisTime) {
+		// Render "This time" callout (current session sets + coach cue)
+		if (hasThisTimeContent || hasThisTimeSets) {
 			const thisTimeContainer = parent.createDiv({ cls: 'fit-exercise-feedback-callout fit-exercise-feedback-this-time' });
 			thisTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-title', text: 'This time' });
 
 			const content = thisTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-content' });
 
-			if (exerciseFeedback.coach_cue_volgende_sessie) {
+			// Current session set pills (with placeholders for incomplete sets)
+			if (currentExercise) {
+				const setsRow = content.createDiv({ cls: 'fit-feedback-sets-row' });
+				const completedSets = currentExercise.sets.filter(s => s.completed);
+
+				for (let i = 0; i < currentExercise.targetSets; i++) {
+					const set = completedSets[i];
+					if (set) {
+						// Completed set (tappable to delete)
+						const pill = setsRow.createSpan({
+							cls: 'fit-feedback-set-pill fit-feedback-set-completed fit-feedback-set-tappable',
+							text: `${set.reps}×${set.weight}kg`
+						});
+						// Find the actual index in the sets array
+						const setIndex = currentExercise.sets.findIndex(s => s === set);
+						pill.addEventListener('click', () => {
+							void this.deleteSet(setIndex);
+						});
+					} else {
+						// Placeholder for incomplete set
+						setsRow.createSpan({
+							cls: 'fit-feedback-set-pill fit-feedback-set-pending',
+							text: '?×?kg'
+						});
+					}
+				}
+			}
+
+			if (exerciseFeedback?.coach_cue_volgende_sessie) {
 				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Coach cue: ' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.coach_cue_volgende_sessie });
 			}
 
-			if (exerciseFeedback.aanpak_volgende_sessie) {
+			if (exerciseFeedback?.aanpak_volgende_sessie) {
 				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Approach: ' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.aanpak_volgende_sessie });
 			}
 		}
 
-		// Render "Last time" callout (stimulus, set analysis, progress)
-		if (hasLastTime) {
+		// Render "Last time" callout (previous session sets + feedback)
+		if (hasLastTimeContent || hasLastTimeSets) {
 			const lastTimeContainer = parent.createDiv({ cls: 'fit-exercise-feedback-callout fit-exercise-feedback-last-time' });
 			lastTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-title', text: 'Last time' });
 
 			const content = lastTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-content' });
 
-			if (exerciseFeedback.stimulus) {
+			// Previous session set pills
+			if (previousExercise) {
+				const setsRow = content.createDiv({ cls: 'fit-feedback-sets-row' });
+				for (const set of previousExercise.sets.filter(s => s.completed)) {
+					setsRow.createSpan({
+						cls: 'fit-feedback-set-pill fit-feedback-set-previous',
+						text: `${set.reps}×${set.weight}kg`
+					});
+				}
+			}
+
+			if (exerciseFeedback?.stimulus) {
 				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Stimulus: ' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.stimulus });
 			}
 
-			if (exerciseFeedback.set_degradatie_en_vermoeidheid) {
+			if (exerciseFeedback?.set_degradatie_en_vermoeidheid) {
 				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Set analysis: ' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.set_degradatie_en_vermoeidheid });
 			}
 
-			if (exerciseFeedback.progressie_tov_vorige) {
+			if (exerciseFeedback?.progressie_tov_vorige) {
 				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Progress: ' });
 				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.progressie_tov_vorige });
