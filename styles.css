@@ -2210,6 +2210,7 @@
 
 .fit-resume-row .fit-program-workout-card {
 	flex: 1;
+	min-width: 0;
 }
 
 .fit-resume-row .fit-fullscreen-enter,
@@ -2314,6 +2315,10 @@
 	font-size: 1rem;
 	font-weight: 600;
 	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .fit-exercise-header-info {
