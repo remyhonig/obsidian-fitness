@@ -3,6 +3,7 @@
  */
 
 import { parseSimpleYaml } from './yaml-utils';
+import { normalizeExerciseName } from '../domain/feedback';
 import type {
 	StructuredCoachFeedback,
 	GymfloorAction,
@@ -11,6 +12,9 @@ import type {
 	ExerciseValidationResult,
 } from './coach-feedback-types';
 
+// Re-export for backward compatibility
+export { normalizeExerciseName };
+
 /**
  * Safely converts unknown value to string (only for primitives)
  */
@@ -18,15 +22,6 @@ function toStringValue(value: unknown): string {
 	if (typeof value === 'string') return value;
 	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 	return '';
-}
-
-/**
- * Normalizes exercise name for comparison.
- * Strips all non-alphanumeric characters (spaces, dashes, symbols) and lowercases.
- * This allows "Easy Bar Curl", "easy-bar-curl", "EASY BAR CURL" to all match.
- */
-export function normalizeExerciseName(name: string): string {
-	return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 /**

@@ -16,7 +16,9 @@ import type { SessionEventName, SessionEventPayload, SessionEventListener } from
 import { RestTimerManager } from './rest-timer-manager';
 import { SetTimerManager } from './set-timer-manager';
 import { DurationTimerManager } from './duration-timer-manager';
-import { selectHasCompletedWork } from './selectors';
+import { hasCompletedWork } from '../domain/metrics';
+import { generateSessionId } from '../domain/identifier';
+import { shouldAutoStartRestTimer } from '../domain/session';
 
 /**
  * Manages the active workout session state
@@ -87,23 +89,6 @@ export class SessionStateManager {
 	// ========== Session Lifecycle ==========
 
 	/**
-	 * Generates a session ID from date, time, and optional workout name
-	 */
-	private generateSessionId(now: Date, workoutName?: string): string {
-		const dateStr = now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10);
-		const hours = now.getHours().toString().padStart(2, '0');
-		const minutes = now.getMinutes().toString().padStart(2, '0');
-		const seconds = now.getSeconds().toString().padStart(2, '0');
-		const timeStr = `${hours}-${minutes}-${seconds}`;
-
-		if (workoutName) {
-			const workoutSlug = workoutName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-			return `${dateStr}-${timeStr}-${workoutSlug}`;
-		}
-		return `${dateStr}-${timeStr}`;
-	}
-
-	/**
 	 * Starts a new session from a workout
 	 */
 	startFromWorkout(workout: Workout): void {
@@ -119,7 +104,7 @@ export class SessionStateManager {
 
 		const dateStr = now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10);
 		this.session = {
-			id: this.generateSessionId(now, workout.name),
+			id: generateSessionId(now, workout.name),
 			date: dateStr,
 			startTime: now.toISOString(),
 			workout: workout.name,
@@ -167,7 +152,7 @@ export class SessionStateManager {
 		const dateStr = now.toISOString().split('T')[0] ?? now.toISOString().slice(0, 10);
 
 		this.session = {
-			id: this.generateSessionId(now),
+			id: generateSessionId(now),
 			date: dateStr,
 			startTime: now.toISOString(),
 			status: 'active',
@@ -271,7 +256,7 @@ export class SessionStateManager {
 	 */
 	isInProgress(): boolean {
 		if (!this.session) return false;
-		return selectHasCompletedWork(this.session);
+		return hasCompletedWork(this.session);
 	}
 
 	/**
@@ -447,9 +432,7 @@ export class SessionStateManager {
 
 		// Auto-start rest timer if enabled, but not if exercise is now complete
 		const completedSets = exercise.sets.filter(s => s.completed).length;
-		const isExerciseComplete = completedSets >= exercise.targetSets;
-
-		if (this.settings.autoStartRestTimer && !isExerciseComplete) {
+		if (shouldAutoStartRestTimer(this.settings.autoStartRestTimer, completedSets, exercise.targetSets)) {
 			this.restTimerManager.start(exercise.restSeconds, exerciseIndex);
 		}
 

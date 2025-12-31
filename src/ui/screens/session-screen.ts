@@ -6,9 +6,10 @@ import { createButton, createPrimaryAction } from '../components/button';
 import { createExerciseCard } from '../components/card';
 import { createExerciseAutocomplete } from '../components/autocomplete';
 import { createScreenHeader } from '../components/screen-header';
-import { toFilename } from '../../data/file-utils';
+import { toSlug } from '../../domain/identifier';
 import { parseCoachFeedbackYaml } from '../../data/coach-feedback-parser';
 import type { StructuredCoachFeedback } from '../../data/coach-feedback-types';
+// Note: toSlug is still needed for syncSessionWithWorkout; program advancement is now in ViewModel
 
 /**
  * Session screen - shows the active workout overview
@@ -22,7 +23,7 @@ export class SessionScreen extends BaseScreen {
 		// Subscribe to workout file changes if there's an active session
 		const session = ctx.sessionState.getSession();
 		if (session?.workout) {
-			const workoutId = toFilename(session.workout);
+			const workoutId = toSlug(session.workout);
 			const workoutPath = `${ctx.settings.basePath}/Workouts/${workoutId}.md`;
 
 			// Sync immediately on construction (in case workout was edited while away)
@@ -55,13 +56,13 @@ export class SessionScreen extends BaseScreen {
 		// Build a map of existing exercises by their ID for preserving logged sets
 		const existingSets = new Map<string, typeof session.exercises[0]['sets']>();
 		for (const ex of session.exercises) {
-			const exId = toFilename(ex.exercise);
+			const exId = toSlug(ex.exercise);
 			existingSets.set(exId, ex.sets);
 		}
 
 		// Update session exercises from workout, preserving logged sets where possible
 		const updatedExercises = workout.exercises.map(we => {
-			const exerciseId = we.exerciseId ?? toFilename(we.exercise);
+			const exerciseId = we.exerciseId ?? toSlug(we.exercise);
 			const existingSetData = existingSets.get(exerciseId);
 
 			return {
@@ -296,7 +297,7 @@ export class SessionScreen extends BaseScreen {
 				onClick: () => this.ctx.view.navigateTo('exercise', { exerciseIndex: i }),
 				draggable: true,
 				onDrop: (fromIndex, toIndex) => {
-					this.ctx.sessionState.reorderExercises(fromIndex, toIndex);
+					this.ctx.viewModel.reorderExercises(fromIndex, toIndex);
 					this.render();
 				}
 			});
@@ -405,7 +406,7 @@ export class SessionScreen extends BaseScreen {
 				return;
 			}
 
-			this.ctx.sessionState.addExercise(formState.exercise.trim(), {
+			this.ctx.viewModel.addExercise(formState.exercise.trim(), {
 				exercise: formState.exercise.trim(),
 				targetSets: formState.targetSets,
 				targetRepsMin: formState.targetRepsMin,
@@ -437,17 +438,15 @@ export class SessionScreen extends BaseScreen {
 
 	private async cancelWorkout(): Promise<void> {
 		// Discard session without saving
-		await this.ctx.sessionState.discardSession();
+		await this.ctx.viewModel.discardWorkout();
 		this.ctx.view.navigateTo('home');
 	}
 
 	private async finishWorkout(): Promise<void> {
 		try {
-			const session = await this.ctx.sessionState.finishSession();
+			// ViewModel handles finishing session and advancing program
+			const session = await this.ctx.viewModel.finishWorkout();
 			if (session) {
-				// Advance program if this workout matches the current program workout
-				await this.advanceProgramIfMatching(session);
-
 				// Check if active program has review questions
 				const reviewData = await this.getReviewQuestionsForSession();
 				if (reviewData) {
@@ -482,31 +481,6 @@ export class SessionScreen extends BaseScreen {
 			console.error('Failed to get review questions:', error);
 		}
 		return null;
-	}
-
-	private async advanceProgramIfMatching(session: Session): Promise<void> {
-		const settings = this.ctx.settings;
-		if (!settings.activeProgram || !session.workout) return;
-
-		try {
-			const program = await this.ctx.programRepo.get(settings.activeProgram);
-			if (!program || program.workouts.length === 0) return;
-
-			// Get the current workout in the program
-			const currentIndex = settings.programWorkoutIndex % program.workouts.length;
-			const currentWorkoutId = program.workouts[currentIndex];
-
-			// Check if the completed session's workout matches the current program workout
-			// Compare by ID (slug) since that's what's stored in the program
-			const sessionWorkoutId = toFilename(session.workout);
-			if (currentWorkoutId === sessionWorkoutId) {
-				// Advance to next workout in the program
-				settings.programWorkoutIndex = (currentIndex + 1) % program.workouts.length;
-				await this.ctx.saveSettings();
-			}
-		} catch (error) {
-			console.error('Failed to advance program:', error);
-		}
 	}
 
 	/**

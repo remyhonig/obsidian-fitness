@@ -4,10 +4,10 @@ import {
 	ensureFolder,
 	getFilesInFolder,
 	getIdFromPath,
-	toFilename,
 	parseFrontmatter,
 	createFileContent
 } from './file-utils';
+import { toSlug } from '../domain/identifier';
 import type { DatabaseExerciseRepository } from './database-exercise-repository';
 
 export class ExerciseRepository {
@@ -178,7 +178,7 @@ export class ExerciseRepository {
 	async create(exercise: Omit<Exercise, 'id'>): Promise<Exercise> {
 		await this.ensureFolder();
 
-		const id = toFilename(exercise.name);
+		const id = toSlug(exercise.name);
 		const path = `${this.basePath}/${id}.md`;
 
 		// Check if already exists

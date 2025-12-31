@@ -327,16 +327,22 @@ export function createHorizontalRepsSelector(
 	scroll.addEventListener('scroll', updateIndicators);
 	cleanup.push(() => scroll.removeEventListener('scroll', updateIndicators));
 
-	// Scroll to show the current value centered
+	// Scroll to show target range at the start (or active value if no target range)
 	setTimeout(() => {
-		const activeBtn = row.querySelector('.fit-reps-pill-active') as HTMLElement;
-		if (activeBtn) {
-			// Calculate scroll position to center the button
-			const scrollWidth = scroll.clientWidth;
-			const btnLeft = activeBtn.offsetLeft;
-			const btnWidth = activeBtn.offsetWidth;
-			const targetScroll = btnLeft - (scrollWidth / 2) + (btnWidth / 2);
-			scroll.scrollLeft = Math.max(0, targetScroll);
+		const targetBandEl = row.querySelector('.fit-reps-target-band') as HTMLElement;
+		if (targetBandEl) {
+			// Align target range to left edge
+			scroll.scrollLeft = Math.max(0, targetBandEl.offsetLeft);
+		} else {
+			// Fall back to centering the active button
+			const activeBtn = row.querySelector('.fit-reps-pill-active') as HTMLElement;
+			if (activeBtn) {
+				const scrollWidth = scroll.clientWidth;
+				const btnLeft = activeBtn.offsetLeft;
+				const btnWidth = activeBtn.offsetWidth;
+				const targetScroll = btnLeft - (scrollWidth / 2) + (btnWidth / 2);
+				scroll.scrollLeft = Math.max(0, targetScroll);
+			}
 		}
 		updateIndicators();
 	}, 0);

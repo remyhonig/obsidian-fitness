@@ -3,7 +3,8 @@ import type { ScreenContext } from '../../views/fit-view';
 import { BaseScreen } from './base-screen';
 import { createWorkoutCard, createSessionCard } from '../components/card';
 import { createScreenHeader } from '../components/screen-header';
-import { toFilename } from '../../data/file-utils';
+import { toSlug } from '../../domain/identifier';
+import { findFirstUnfinishedExerciseIndex } from '../../domain/session';
 import type { Workout, Session } from '../../types';
 
 /**
@@ -70,7 +71,7 @@ export class HomeScreen extends BaseScreen {
 			sessionState: this.ctx.sessionState,
 			showSetTimer: this.ctx.sessionState.isSetTimerActive(),
 			onCardClick: () => {
-				const firstUnfinishedIndex = this.findFirstUnfinishedExerciseIndex(session);
+				const firstUnfinishedIndex = findFirstUnfinishedExerciseIndex(session);
 				if (firstUnfinishedIndex >= 0) {
 					this.ctx.view.navigateTo('exercise', { exerciseIndex: firstUnfinishedIndex });
 				} else {
@@ -216,7 +217,7 @@ export class HomeScreen extends BaseScreen {
 			// Look up actual workout name by converting session.workout to slug
 			let workoutName = session.workout;
 			if (session.workout) {
-				const workoutSlug = toFilename(session.workout);
+				const workoutSlug = toSlug(session.workout);
 				const workout = workoutById.get(workoutSlug);
 				if (workout) {
 					workoutName = workout.name;
@@ -235,22 +236,6 @@ export class HomeScreen extends BaseScreen {
 		viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('history'));
 	}
 
-	/**
-	 * Finds the index of the first exercise that hasn't completed all target sets
-	 * Returns -1 if all exercises are complete
-	 */
-	private findFirstUnfinishedExerciseIndex(session: Session): number {
-		for (let i = 0; i < session.exercises.length; i++) {
-			const exercise = session.exercises[i];
-			if (!exercise) continue;
-			const completedSets = exercise.sets.filter(s => s.completed).length;
-			if (completedSets < exercise.targetSets) {
-				return i;
-			}
-		}
-		return -1;
-	}
-
 	private async startFromWorkout(workout: Workout): Promise<void> {
 		// Check if there's already an active session with completed sets
 		if (this.ctx.sessionState.hasActiveSession()) {
@@ -261,11 +246,11 @@ export class HomeScreen extends BaseScreen {
 			}
 
 			// No completed sets - discard empty session (must await to avoid race condition)
-			await this.ctx.sessionState.discardSession();
+			await this.ctx.viewModel.discardWorkout();
 		}
 
 		// Start new session from workout
-		this.ctx.sessionState.startFromWorkout(workout);
+		this.ctx.viewModel.startWorkout(workout);
 		this.ctx.view.navigateTo('session');
 	}
 

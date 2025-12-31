@@ -4,12 +4,12 @@ import {
 	ensureFolder,
 	getFilesInFolder,
 	getIdFromPath,
-	toFilename,
 	parseFrontmatter,
 	createFileContent,
 	parseWorkoutBody,
 	createWorkoutBody
 } from './file-utils';
+import { toSlug } from '../domain/identifier';
 import type { DatabaseExerciseRepository } from './database-exercise-repository';
 
 // Frontmatter only contains metadata, not exercises
@@ -97,7 +97,7 @@ export class WorkoutRepository {
 	async create(workout: Omit<Workout, 'id'>): Promise<Workout> {
 		await this.ensureFolder();
 
-		const id = toFilename(workout.name);
+		const id = toSlug(workout.name);
 		const path = `${this.basePath}/${id}.md`;
 
 		// Check if already exists
@@ -175,8 +175,8 @@ export class WorkoutRepository {
 		// If name changed, rename the file to match
 		// This uses fileManager.renameFile which updates wikilinks in other files
 		let newId = id;
-		if (updates.name && toFilename(updates.name) !== id) {
-			newId = toFilename(updates.name);
+		if (updates.name && toSlug(updates.name) !== id) {
+			newId = toSlug(updates.name);
 			const newPath = `${this.basePath}/${newId}.md`;
 
 			// Check if target file already exists
@@ -251,7 +251,7 @@ export class WorkoutRepository {
 
 			for (const exercise of workout.exercises) {
 				// Determine the correct source based on database lookup
-				const exerciseId = exercise.exerciseId ?? toFilename(exercise.exercise);
+				const exerciseId = exercise.exerciseId ?? toSlug(exercise.exercise);
 				const dbExercise = databaseRepo.get(exerciseId);
 				const correctSource: ExerciseSource = dbExercise ? 'database' : 'custom';
 
@@ -297,7 +297,7 @@ export class WorkoutRepository {
 			const exercises: WorkoutExercise[] = exerciseRows.map(row => {
 				// Look up proper exercise name from database if available
 				let exerciseName = row.exercise;
-				const exerciseId = row.exerciseId ?? toFilename(row.exercise);
+				const exerciseId = row.exerciseId ?? toSlug(row.exercise);
 
 				if (this.databaseRepo) {
 					const dbExercise = this.databaseRepo.get(exerciseId);

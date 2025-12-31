@@ -1,6 +1,7 @@
 import { setIcon } from 'obsidian';
 import type { FitView } from '../../views/fit-view';
 import type { SessionStateManager } from '../../state/session-state';
+import { formatTime } from './timer';
 
 export type HeaderLeftElement = 'back' | 'barbell' | 'none';
 
@@ -147,9 +148,7 @@ export function createScreenHeader(
 		const state = options.sessionState;
 		if (state.isRestTimerActive()) {
 			const remaining = state.getRestTimeRemaining();
-			const minutes = Math.floor(remaining / 60);
-			const seconds = remaining % 60;
-			const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+			const timeText = formatTime(remaining);
 			// Show "+15s" hint when clickable during rest
 			durationEl.textContent = options.onTimerClick ? `${timeText} +15s` : timeText;
 			durationEl.addClass('fit-timer-rest');
@@ -157,15 +156,11 @@ export function createScreenHeader(
 			// Show set timer when in set timer mode
 			const setStartTime = state.getSetStartTime();
 			const elapsed = setStartTime ? Math.floor((Date.now() - setStartTime) / 1000) : 0;
-			const minutes = Math.floor(elapsed / 60);
-			const seconds = elapsed % 60;
-			durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+			durationEl.textContent = formatTime(elapsed);
 			durationEl.addClass('fit-set-timer');
 		} else {
 			const elapsed = state.getElapsedDuration();
-			const minutes = Math.floor(elapsed / 60);
-			const seconds = elapsed % 60;
-			durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+			durationEl.textContent = formatTime(elapsed);
 		}
 	}
 
@@ -209,9 +204,7 @@ export function createScreenHeader(
 		eventUnsubscribers.push(
 			state.on('timer.tick', ({ remaining }) => {
 				if (state.isRestTimerActive()) {
-					const minutes = Math.floor(remaining / 60);
-					const seconds = remaining % 60;
-					const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+					const timeText = formatTime(remaining);
 					// Show "+15s" hint when clickable during rest
 					timerEl.textContent = options.onTimerClick ? `${timeText} +15s` : timeText;
 					timerEl.addClass('fit-timer-rest');
@@ -234,15 +227,11 @@ export function createScreenHeader(
 						// Show set timer duration
 						const setStartTime = state.getSetStartTime();
 						const setElapsed = setStartTime ? Math.floor((Date.now() - setStartTime) / 1000) : 0;
-						const minutes = Math.floor(setElapsed / 60);
-						const seconds = setElapsed % 60;
-						timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+						timerEl.textContent = formatTime(setElapsed);
 						timerEl.addClass('fit-set-timer');
 					} else {
 						// Show session duration
-						const minutes = Math.floor(elapsed / 60);
-						const seconds = elapsed % 60;
-						timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+						timerEl.textContent = formatTime(elapsed);
 						timerEl.removeClass('fit-set-timer');
 					}
 					timerEl.removeClass('fit-timer-rest');

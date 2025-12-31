@@ -7,6 +7,7 @@ import { ExerciseRepository } from '../data/exercise-repository';
 import { WorkoutRepository } from '../data/workout-repository';
 import { SessionRepository } from '../data/session-repository';
 import { ProgramRepository } from '../data/program-repository';
+import { FitViewModel } from '../viewmodel';
 
 // Screen imports
 import { HomeScreen } from '../ui/screens/home-screen';
@@ -43,6 +44,8 @@ export interface ScreenContext {
 	/** @deprecated Use ctx.settings and ctx.app instead */
 	plugin: MainPlugin;
 	sessionState: SessionStateManager;
+	/** ViewModel for testable application behavior. Screens can gradually migrate to use this. */
+	viewModel: FitViewModel;
 	exerciseRepo: ExerciseRepository;
 	workoutRepo: WorkoutRepository;
 	sessionRepo: SessionRepository;
@@ -71,6 +74,7 @@ export class FitView extends ItemView {
 
 	// Shared state and repositories
 	sessionState: SessionStateManager;
+	viewModel: FitViewModel;
 	exerciseRepo: ExerciseRepository;
 	workoutRepo: WorkoutRepository;
 	sessionRepo: SessionRepository;
@@ -105,6 +109,14 @@ export class FitView extends ItemView {
 
 		// Initialize session state
 		this.sessionState = new SessionStateManager(this.app, plugin.settings);
+
+		// Initialize ViewModel (wraps session state for testable behavior)
+		this.viewModel = new FitViewModel(
+			this.sessionState,
+			plugin.settings,
+			this.programRepo,
+			() => plugin.saveSettings()
+		);
 	}
 
 	getViewType(): string {
@@ -347,6 +359,7 @@ export class FitView extends ItemView {
 			view: this,
 			plugin: this.plugin,
 			sessionState: this.sessionState,
+			viewModel: this.viewModel,
 			exerciseRepo: this.exerciseRepo,
 			workoutRepo: this.workoutRepo,
 			sessionRepo: this.sessionRepo,

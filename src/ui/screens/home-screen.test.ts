@@ -80,7 +80,8 @@ describe('HomeScreen', () => {
 			expect(workoutCard).not.toBeNull();
 			click(workoutCard);
 
-			expect(ctx.sessionState.startFromWorkout).toHaveBeenCalledWith(workout);
+			// Now calls viewModel.startWorkout() instead of sessionState.startFromWorkout()
+			expect(ctx.viewModel.startWorkout).toHaveBeenCalledWith(workout);
 			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session');
 		});
 

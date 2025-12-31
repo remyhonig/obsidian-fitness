@@ -3,6 +3,7 @@ import { SessionRepository } from './session-repository';
 import { TFile, TFolder } from 'obsidian';
 import type { App } from 'obsidian';
 import type { Session, SessionExercise, LoggedSet } from '../types';
+import { calculateTotalVolume, countTotalCompletedSets } from '../domain/metrics';
 
 // Create mock vault
 function createMockVault() {
@@ -371,7 +372,7 @@ Target: 4 × 6-8 | Rest: 180s
 		});
 	});
 
-	describe('calculateVolume', () => {
+	describe('calculateTotalVolume (domain function)', () => {
 		it('should calculate total volume correctly', () => {
 			const session: Session = {
 				id: 'test',
@@ -404,7 +405,7 @@ Target: 4 × 6-8 | Rest: 180s
 				]
 			};
 
-			const volume = repo.calculateVolume(session);
+			const volume = calculateTotalVolume(session);
 			expect(volume).toBe(800 + 640 + 480 + 400); // 2320
 		});
 
@@ -429,12 +430,12 @@ Target: 4 × 6-8 | Rest: 180s
 				]
 			};
 
-			const volume = repo.calculateVolume(session);
+			const volume = calculateTotalVolume(session);
 			expect(volume).toBe(800);
 		});
 	});
 
-	describe('countCompletedSets', () => {
+	describe('countTotalCompletedSets (domain function)', () => {
 		it('should count completed sets correctly', () => {
 			const session: Session = {
 				id: 'test',
@@ -468,7 +469,7 @@ Target: 4 × 6-8 | Rest: 180s
 				]
 			};
 
-			const count = repo.countCompletedSets(session);
+			const count = countTotalCompletedSets(session);
 			expect(count).toBe(4); // 3 from bench + 1 from OHP
 		});
 	});

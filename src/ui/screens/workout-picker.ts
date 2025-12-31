@@ -123,11 +123,11 @@ export class WorkoutPickerScreen extends BaseScreen {
 			}
 
 			// No completed sets - discard empty session (must await to avoid race condition)
-			await this.ctx.sessionState.discardSession();
+			await this.ctx.viewModel.discardWorkout();
 		}
 
 		// Start session from workout
-		this.ctx.sessionState.startFromWorkout(workout);
+		this.ctx.viewModel.startWorkout(workout);
 		this.ctx.view.navigateTo('session');
 	}
 
@@ -141,11 +141,11 @@ export class WorkoutPickerScreen extends BaseScreen {
 			}
 
 			// No completed sets - discard empty session (must await to avoid race condition)
-			await this.ctx.sessionState.discardSession();
+			await this.ctx.viewModel.discardWorkout();
 		}
 
 		// Start empty session
-		this.ctx.sessionState.startEmpty();
+		this.ctx.viewModel.startEmptyWorkout();
 		this.ctx.view.navigateTo('session');
 	}
 

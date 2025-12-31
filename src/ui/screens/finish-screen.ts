@@ -4,6 +4,7 @@ import { BaseScreen } from './base-screen';
 import { createScreenHeader } from '../components/screen-header';
 import { createPrimaryAction } from '../components/button';
 import { formatDuration } from '../components/timer';
+import { countTotalCompletedSets, calculateTotalVolume } from '../../domain/metrics';
 
 /**
  * Finish screen - workout summary after completing a session
@@ -56,11 +57,11 @@ export class FinishScreen extends BaseScreen {
 		}
 
 		// Total sets
-		const totalSets = this.ctx.sessionRepo.countCompletedSets(session);
+		const totalSets = countTotalCompletedSets(session);
 		this.renderStat(stats, 'Sets', String(totalSets));
 
 		// Total volume
-		const volume = this.ctx.sessionRepo.calculateVolume(session);
+		const volume = calculateTotalVolume(session);
 		const unit = this.ctx.settings.weightUnit;
 		this.renderStat(stats, 'Volume', `${volume.toLocaleString()} ${unit}`);
 

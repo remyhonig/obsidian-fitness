@@ -1,13 +1,12 @@
 import { MarkdownRenderer, Component } from 'obsidian';
 import type { ScreenContext } from '../../views/fit-view';
 import { BaseScreen } from './base-screen';
-import type { ScreenParams, SessionExercise, Session, MuscleEngagement } from '../../types';
+import type { ScreenParams, SessionExercise, MuscleEngagement } from '../../types';
 import { createPrimaryAction, createButton } from '../components/button';
 import { createHorizontalRepsSelector } from '../components/reps-grid';
 import { createRpeSelector } from '../components/rpe-selector';
 import { createMuscleEngagementSelector } from '../components/muscle-engagement-selector';
 import { createScreenHeader } from '../components/screen-header';
-import { toFilename } from '../../data/file-utils';
 import { ExerciseFormState } from './exercise-form-state';
 import {
 	createWeightInput,
@@ -42,6 +41,9 @@ export class ExerciseScreen extends BaseScreen {
 		this.exerciseIndex = params.exerciseIndex ?? 0;
 		this.formState = new ExerciseFormState();
 
+		// Sync ViewModel's exercise index
+		this.ctx.viewModel.selectExercise(this.exerciseIndex);
+
 		// Initialize values from current session's last set or defaults
 		const exercise = this.getExercise();
 		const lastSet = this.ctx.sessionState.getLastSet(this.exerciseIndex);
@@ -64,10 +66,10 @@ export class ExerciseScreen extends BaseScreen {
 			// If no sets completed for this exercise, always reset the timer
 			// (user may have been walking around, finding equipment, reading notes)
 			if (completedSets === 0) {
-				this.ctx.sessionState.markSetStart(this.exerciseIndex);
+				this.ctx.viewModel.markSetStart();
 			} else if (!this.ctx.sessionState.isSetTimerActive()) {
 				// Otherwise only start if not already active
-				this.ctx.sessionState.markSetStart(this.exerciseIndex);
+				this.ctx.viewModel.markSetStart();
 			}
 		}
 	}
@@ -115,13 +117,12 @@ export class ExerciseScreen extends BaseScreen {
 			showSetTimer: !isExerciseComplete,
 			exerciseIndex: this.exerciseIndex,
 			onTimerClick: !isExerciseComplete ? () => {
-				const state = this.ctx.sessionState;
-				if (state.isRestTimerActive()) {
+				if (this.ctx.sessionState.isRestTimerActive()) {
 					// Add 15 seconds to rest timer when clicked during rest
-					state.addRestTime(15);
+					this.ctx.viewModel.addRestTime(15);
 				} else {
 					// Reset set timer when clicked outside of rest
-					state.markSetStart(this.exerciseIndex);
+					this.ctx.viewModel.markSetStart();
 				}
 			} : undefined,
 			onBack: () => this.ctx.view.navigateTo('session')
@@ -135,7 +136,7 @@ export class ExerciseScreen extends BaseScreen {
 			createMuscleEngagementSelector(scrollContent, {
 				selectedValue: exercise.muscleEngagement,
 				onSelect: (value: MuscleEngagement) => {
-					void this.ctx.sessionState.setExerciseMuscleEngagement(this.exerciseIndex, value);
+					void this.ctx.viewModel.setMuscleEngagement(value);
 				}
 			});
 
@@ -146,7 +147,7 @@ export class ExerciseScreen extends BaseScreen {
 				selectedValue: lastSet?.rpe,
 				onSelect: (value) => {
 					// Save RPE to the last set
-					void this.ctx.sessionState.editSet(this.exerciseIndex, lastSetIndex, { rpe: value });
+					void this.ctx.viewModel.editSet(lastSetIndex, { rpe: value });
 				}
 			});
 
@@ -420,8 +421,7 @@ export class ExerciseScreen extends BaseScreen {
 
 		try {
 			// Log the set and wait for persistence
-			await this.ctx.sessionState.logSet(
-				this.exerciseIndex,
+			await this.ctx.viewModel.logSet(
 				this.formState.weight,
 				this.formState.reps
 			);
@@ -444,14 +444,14 @@ export class ExerciseScreen extends BaseScreen {
 		this.formState.loadFromSet(set);
 
 		// Delete the set so it can be re-logged
-		await this.ctx.sessionState.deleteSet(this.exerciseIndex, setIndex);
+		await this.ctx.viewModel.deleteSet(setIndex);
 
 		// Re-render
 		this.render();
 	}
 
 	private async deleteSet(setIndex: number): Promise<void> {
-		await this.ctx.sessionState.deleteSet(this.exerciseIndex, setIndex);
+		await this.ctx.viewModel.deleteSet(setIndex);
 		this.render();
 	}
 
@@ -575,7 +575,7 @@ export class ExerciseScreen extends BaseScreen {
 
 	private navigateToExercise(index: number): void {
 		this.exerciseIndex = index;
-		this.ctx.sessionState.setCurrentExerciseIndex(index);
+		this.ctx.viewModel.selectExercise(index);
 
 		// Reset form state from the new exercise's last set
 		const exercise = this.getExercise();
@@ -597,10 +597,9 @@ export class ExerciseScreen extends BaseScreen {
 
 	private async finishWorkout(): Promise<void> {
 		try {
-			const session = await this.ctx.sessionState.finishSession();
+			// ViewModel handles finishing session and advancing program
+			const session = await this.ctx.viewModel.finishWorkout();
 			if (session) {
-				// Advance program if this workout matches the current program workout
-				await this.advanceProgramIfMatching(session);
 				this.ctx.view.navigateTo('finish', { sessionId: session.id });
 			} else {
 				this.ctx.view.navigateTo('home');
@@ -608,31 +607,6 @@ export class ExerciseScreen extends BaseScreen {
 		} catch (error) {
 			console.error('Failed to finish workout:', error);
 			this.ctx.view.navigateTo('home');
-		}
-	}
-
-	private async advanceProgramIfMatching(session: Session): Promise<void> {
-		const settings = this.ctx.settings;
-		if (!settings.activeProgram || !session.workout) return;
-
-		try {
-			const program = await this.ctx.programRepo.get(settings.activeProgram);
-			if (!program || program.workouts.length === 0) return;
-
-			// Get the current workout in the program
-			const currentIndex = settings.programWorkoutIndex % program.workouts.length;
-			const currentWorkoutId = program.workouts[currentIndex];
-
-			// Check if the completed session's workout matches the current program workout
-			// Compare by ID (slug) since that's what's stored in the program
-			const sessionWorkoutId = toFilename(session.workout);
-			if (currentWorkoutId === sessionWorkoutId) {
-				// Advance to next workout in the program
-				settings.programWorkoutIndex = (currentIndex + 1) % program.workouts.length;
-				await this.ctx.saveSettings();
-			}
-		} catch (error) {
-			console.error('Failed to advance program:', error);
 		}
 	}
 

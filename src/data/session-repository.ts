@@ -13,9 +13,9 @@ import {
 	createPreviousExercisesBody,
 	createCoachFeedbackBody,
 	parseCoachFeedbackBody,
-	toFilename,
 	extractWikiLinkName
 } from './file-utils';
+import { toSlug } from '../domain/identifier';
 
 const ACTIVE_SESSION_FILENAME = '.active-session.md';
 
@@ -142,7 +142,7 @@ export class SessionRepository {
 
 		// Store workout as internal link to the workout file
 		const workoutLink = session.workout
-			? `[[Workouts/${toFilename(session.workout)}]]`
+			? `[[Workouts/${toSlug(session.workout)}]]`
 			: undefined;
 
 		// Frontmatter: metadata only (no review, coach feedback - those go in body)
@@ -388,36 +388,6 @@ export class SessionRepository {
 			}
 		}
 		return null;
-	}
-
-	/**
-	 * Calculates total volume for a session
-	 */
-	calculateVolume(session: Session): number {
-		let total = 0;
-		for (const exercise of session.exercises) {
-			for (const set of exercise.sets) {
-				if (set.completed) {
-					total += set.weight * set.reps;
-				}
-			}
-		}
-		return total;
-	}
-
-	/**
-	 * Counts completed sets in a session
-	 */
-	countCompletedSets(session: Session): number {
-		let count = 0;
-		for (const exercise of session.exercises) {
-			for (const set of exercise.sets) {
-				if (set.completed) {
-					count++;
-				}
-			}
-		}
-		return count;
 	}
 
 	/**

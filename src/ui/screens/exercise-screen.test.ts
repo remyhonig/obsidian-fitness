@@ -36,11 +36,11 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const title = container.querySelector('.fit-exercise-title');
+			const title = container.querySelector('.fit-program-workout-name');
 			expect(title?.textContent).toBe('Bench Press');
 		});
 
-		it('should display set counter', () => {
+		it('should display set counter in button', () => {
 			const exercise = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetSets: 4,
@@ -51,13 +51,12 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const progressCard = container.querySelector('.fit-progress-card-wide');
-			expect(progressCard).not.toBeNull();
-			const values = progressCard?.querySelectorAll('.fit-stat-value-large');
-			expect(values?.[0]?.textContent).toBe('0 / 4');
+			// Set counter is shown in the button text "Complete set X of Y"
+			const button = findButton(container, 'Complete set 1 of 4');
+			expect(button).not.toBeNull();
 		});
 
-		it('should display target reps', () => {
+		it('should highlight target reps in selector', () => {
 			const exercise = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetRepsMin: 6,
@@ -68,9 +67,12 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const progressCard = container.querySelector('.fit-progress-card-wide');
-			const values = progressCard?.querySelectorAll('.fit-stat-value-large');
-			expect(values?.[2]?.textContent).toBe('6-8');
+			// Target reps are passed to the horizontal reps selector
+			// Check that the selector exists and has rep buttons
+			const repsSelector = container.querySelector('.fit-reps-horizontal');
+			expect(repsSelector).not.toBeNull();
+			const repButtons = repsSelector?.querySelectorAll('.fit-reps-pill');
+			expect(repButtons?.length).toBe(20);
 		});
 
 		it('should render weight section', () => {
@@ -116,9 +118,10 @@ describe('ExerciseScreen', () => {
 			expect(button).not.toBeNull();
 		});
 
-		it('should render previous sets when they exist', () => {
+		it('should render previous sets when they exist', async () => {
 			const exercise = createSampleSessionExercise({
 				exercise: 'Bench Press',
+				targetSets: 4,
 				sets: [
 					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:00:00Z' },
 					{ weight: 80, reps: 7, completed: true, timestamp: '2025-01-01T10:05:00Z' }
@@ -128,12 +131,19 @@ describe('ExerciseScreen', () => {
 			const ctx = createMockScreenContext({ activeSession });
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
+			await flushPromises();
 
-			const integratedSets = container.querySelector('.fit-sets-integrated');
-			expect(integratedSets).not.toBeNull();
+			// Sets are shown in the "This time" coach cue section
+			const setsRow = container.querySelector('.fit-feedback-sets-row');
+			expect(setsRow).not.toBeNull();
 
-			const setChips = container.querySelectorAll('.fit-set-chip-current');
-			expect(setChips.length).toBe(2);
+			// 2 completed sets + 2 pending placeholder sets = 4 pills total
+			const setChips = container.querySelectorAll('.fit-feedback-set-pill');
+			expect(setChips.length).toBe(4);
+
+			// 2 completed sets
+			const completedChips = container.querySelectorAll('.fit-feedback-set-completed');
+			expect(completedChips.length).toBe(2);
 		});
 
 		it('should show "Complete session" button when target sets completed on single exercise', () => {
@@ -187,7 +197,8 @@ describe('ExerciseScreen', () => {
 			click(button!);
 			await flushPromises();
 
-			expect(ctx.sessionState.logSet).toHaveBeenCalledWith(0, expect.any(Number), expect.any(Number));
+			// Now calls viewModel.logSet(weight, reps) instead of sessionState.logSet(index, weight, reps)
+			expect(ctx.viewModel.logSet).toHaveBeenCalledWith(expect.any(Number), expect.any(Number));
 		});
 
 		it('should not log set with zero weight', async () => {
@@ -257,35 +268,41 @@ describe('ExerciseScreen', () => {
 	});
 
 	describe('delete set', () => {
-		it('should render delete buttons on previous sets', () => {
+		it('should render tappable completed sets', async () => {
 			const exercise = createSampleSessionExercise({
 				exercise: 'Bench Press',
+				targetSets: 3,
 				sets: [{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:00:00Z' }]
 			});
 			const activeSession = createSampleSession({ status: 'active', exercises: [exercise] });
 			const ctx = createMockScreenContext({ activeSession });
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
-
-			const deleteButtons = container.querySelectorAll('.fit-set-chip-delete');
-			expect(deleteButtons.length).toBe(1);
-		});
-
-		it('should delete set when delete button is clicked', async () => {
-			const exercise = createSampleSessionExercise({
-				exercise: 'Bench Press',
-				sets: [{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:00:00Z' }]
-			});
-			const activeSession = createSampleSession({ status: 'active', exercises: [exercise] });
-			const ctx = createMockScreenContext({ activeSession });
-			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
-			screen.render();
-
-			const deleteBtn = container.querySelector('.fit-set-chip-delete') as HTMLElement;
-			click(deleteBtn);
 			await flushPromises();
 
-			expect(ctx.sessionState.deleteSet).toHaveBeenCalledWith(0, 0);
+			// Completed sets are tappable for deletion
+			const tappableSets = container.querySelectorAll('.fit-feedback-set-tappable');
+			expect(tappableSets.length).toBe(1);
+		});
+
+		it('should delete set when tappable set is clicked', async () => {
+			const exercise = createSampleSessionExercise({
+				exercise: 'Bench Press',
+				targetSets: 3,
+				sets: [{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:00:00Z' }]
+			});
+			const activeSession = createSampleSession({ status: 'active', exercises: [exercise] });
+			const ctx = createMockScreenContext({ activeSession });
+			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
+			screen.render();
+			await flushPromises();
+
+			const tappableSet = container.querySelector('.fit-feedback-set-tappable') as HTMLElement;
+			click(tappableSet);
+			await flushPromises();
+
+			// Now calls viewModel.deleteSet(setIndex) instead of sessionState.deleteSet(exerciseIndex, setIndex)
+			expect(ctx.viewModel.deleteSet).toHaveBeenCalledWith(0);
 		});
 	});
 

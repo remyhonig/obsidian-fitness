@@ -3,6 +3,7 @@ import type { ScreenContext } from '../views/fit-view';
 import type { Exercise, Workout, Session, SessionExercise, Program } from '../types';
 import type { PluginSettings } from '../settings';
 import type { SessionEventName, SessionEventListener } from '../state/events';
+import type { FitViewModel, FitViewState } from '../viewmodel';
 
 // Mock plugin settings
 export function createMockSettings(): PluginSettings {
@@ -289,6 +290,57 @@ export function createMockProgramRepo(programs: Program[] = []) {
 	};
 }
 
+// Mock ViewModel - provides a minimal mock for screens that don't use ViewModel yet
+export function createMockViewModel(): Partial<FitViewModel> {
+	const defaultState: FitViewState = {
+		hasActiveSession: false,
+		isInProgress: false,
+		session: null,
+		currentExerciseIndex: 0,
+		currentExercise: null,
+		exerciseCompletion: {
+			completedSets: 0,
+			targetSets: 0,
+			isComplete: false,
+			allExercisesComplete: false
+		},
+		restTimer: null,
+		setTimerActive: false,
+		elapsedDuration: 0,
+		sessionProgress: 0,
+		totalCompletedSets: 0,
+		totalTargetSets: 0,
+		totalVolume: 0,
+		weight: 0,
+		reps: 8
+	};
+
+	return {
+		getState: vi.fn().mockReturnValue(defaultState),
+		subscribe: vi.fn().mockReturnValue(() => {}),
+		startWorkout: vi.fn(),
+		startEmptyWorkout: vi.fn(),
+		finishWorkout: vi.fn().mockResolvedValue(null),
+		discardWorkout: vi.fn().mockResolvedValue(undefined),
+		selectExercise: vi.fn(),
+		addExercise: vi.fn(),
+		removeExercise: vi.fn(),
+		reorderExercises: vi.fn(),
+		logSet: vi.fn().mockResolvedValue(undefined),
+		editSet: vi.fn().mockResolvedValue(undefined),
+		deleteSet: vi.fn().mockResolvedValue(undefined),
+		markSetStart: vi.fn(),
+		startRestTimer: vi.fn(),
+		addRestTime: vi.fn(),
+		cancelRestTimer: vi.fn(),
+		setExerciseRpe: vi.fn().mockResolvedValue(undefined),
+		setMuscleEngagement: vi.fn().mockResolvedValue(undefined),
+		setWeight: vi.fn(),
+		setReps: vi.fn(),
+		adjustWeight: vi.fn()
+	};
+}
+
 // Mock view
 export function createMockView() {
 	const navigationHistory: string[] = [];
@@ -336,6 +388,7 @@ export function createMockScreenContext(options: {
 		sessionRepo: createMockSessionRepo(options.sessions ?? []) as unknown as ScreenContext['sessionRepo'],
 		programRepo: createMockProgramRepo(options.programs ?? []) as unknown as ScreenContext['programRepo'],
 		sessionState: createMockSessionState(options.activeSession ?? null) as unknown as ScreenContext['sessionState'],
+		viewModel: createMockViewModel() as unknown as ScreenContext['viewModel'],
 		// Facade properties
 		settings: settings as PluginSettings,
 		app: mockApp as unknown as ScreenContext['app'],
@@ -436,18 +489,6 @@ export function click(element: HTMLElement): void {
 export function changeInput(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
 	input.value = value;
 	input.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-// Helper to find elements by text content
-export function findByText(container: HTMLElement, text: string): HTMLElement | null {
-	const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-	let node: Node | null;
-	while ((node = walker.nextNode())) {
-		if (node.textContent?.includes(text)) {
-			return node.parentElement;
-		}
-	}
-	return null;
 }
 
 // Helper to find button by text

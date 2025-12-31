@@ -4,13 +4,13 @@ import {
 	ensureFolder,
 	getFilesInFolder,
 	getIdFromPath,
-	toFilename,
 	parseFrontmatter,
 	createFileContent,
 	parseProgramBody,
 	createProgramBody,
 	parseDescriptionSection
 } from './file-utils';
+import { toSlug } from '../domain/identifier';
 
 // Frontmatter only contains metadata, not workouts
 interface ProgramMetadata {
@@ -88,7 +88,7 @@ export class ProgramRepository {
 	async create(program: Omit<Program, 'id'>): Promise<Program> {
 		await this.ensureFolder();
 
-		const id = toFilename(program.name);
+		const id = toSlug(program.name);
 		const path = `${this.basePath}/${id}.md`;
 
 		// Check if already exists

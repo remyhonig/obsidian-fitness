@@ -1,6 +1,6 @@
 import { requestUrl } from 'obsidian';
 import type { Exercise, DatabaseExerciseEntry } from '../types';
-import { toFilename } from './file-utils';
+import { toSlug } from '../domain/identifier';
 
 const DATABASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json';
 const IMAGE_BASE_URL = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises';
@@ -69,7 +69,7 @@ export class DatabaseExerciseRepository {
 		const externalExercises = response.json as ExternalExercise[];
 
 		const entries: DatabaseExerciseEntry[] = externalExercises.map(ext => ({
-			id: toFilename(ext.name),
+			id: toSlug(ext.name),
 			name: ext.name,
 			category: ext.category ? this.titleCase(ext.category) : undefined,
 			equipment: ext.equipment ? this.titleCase(ext.equipment) : undefined,
@@ -136,7 +136,7 @@ export class DatabaseExerciseRepository {
 	 */
 	getByName(name: string): Exercise | null {
 		const nameLower = name.toLowerCase();
-		const nameSlug = toFilename(name);
+		const nameSlug = toSlug(name);
 
 		for (const exercise of this.exercises.values()) {
 			if (exercise.name.toLowerCase() === nameLower || exercise.id === nameSlug) {

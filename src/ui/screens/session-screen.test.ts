@@ -235,6 +235,8 @@ describe('SessionScreen', () => {
 		it('should finish session and navigate to finish screen', async () => {
 			const activeSession = createSampleSession({ status: 'active', id: 'test-session' });
 			const ctx = createMockScreenContext({ activeSession });
+			// Configure finishWorkout to return the completed session
+			ctx.viewModel.finishWorkout = vi.fn().mockResolvedValue({ ...activeSession, status: 'completed' });
 			const screen = new SessionScreen(container, ctx);
 			screen.render();
 
@@ -242,15 +244,16 @@ describe('SessionScreen', () => {
 			click(button!);
 			await flushPromises();
 
-			expect(ctx.sessionState.finishSession).toHaveBeenCalled();
+			// Now calls viewModel.finishWorkout() instead of sessionState.finishSession()
+			expect(ctx.viewModel.finishWorkout).toHaveBeenCalled();
 			expect(ctx.view.navigateTo).toHaveBeenCalledWith('finish', expect.objectContaining({ sessionId: expect.any(String) }));
 		});
 
 		it('should navigate to home if finish returns null', async () => {
 			const activeSession = createSampleSession({ status: 'active' });
 			const ctx = createMockScreenContext({ activeSession });
-			// Override finishSession to return null
-			ctx.sessionState.finishSession = vi.fn().mockResolvedValue(null);
+			// Override finishWorkout to return null
+			ctx.viewModel.finishWorkout = vi.fn().mockResolvedValue(null);
 			const screen = new SessionScreen(container, ctx);
 			screen.render();
 

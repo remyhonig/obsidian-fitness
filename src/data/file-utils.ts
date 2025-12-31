@@ -3,6 +3,7 @@
  */
 
 import { App, TFile, TFolder } from 'obsidian';
+import { toSlug } from '../domain/identifier';
 
 // Re-export from specialized modules for backward compatibility
 export {
@@ -103,12 +104,10 @@ export function getFilesInFolder(app: App, folderPath: string): TFile[] {
 
 /**
  * Generates a safe filename from a string
+ * @deprecated Use toSlug from '../domain/identifier' instead
  */
 export function toFilename(name: string): string {
-	return name
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '');
+	return toSlug(name);
 }
 
 /**

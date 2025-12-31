@@ -3,6 +3,7 @@
  */
 
 import type { SessionStateManager } from '../../../state/session-state';
+import { formatTime } from '../../components/timer';
 
 export interface TimerDisplayRefs {
 	labelEl: HTMLElement;
@@ -43,9 +44,7 @@ export function updateRestTimerDisplay(
 		refs.labelEl.textContent = 'rest';
 	}
 
-	const minutes = Math.floor(remaining / 60);
-	const seconds = remaining % 60;
-	refs.valueEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+	refs.valueEl.textContent = formatTime(remaining);
 	refs.valueEl.addClass('fit-timer-active');
 	refs.valueEl.removeClass('fit-set-timer');
 }
@@ -65,10 +64,8 @@ export function updateSetDurationDisplay(
 
 	const startTime = sessionState.getSetStartTime();
 	const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-	const minutes = Math.floor(elapsed / 60);
-	const seconds = elapsed % 60;
 
-	refs.valueEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+	refs.valueEl.textContent = formatTime(elapsed);
 	refs.valueEl.removeClass('fit-timer-active');
 	refs.valueEl.addClass('fit-set-timer');
 }

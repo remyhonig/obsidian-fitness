@@ -6,6 +6,7 @@ import { SessionRepository } from '../data/session-repository';
 import { SessionStateManager } from '../state/session-state';
 import type { Workout, Session, Question, SessionReview, QuestionAnswer } from '../types';
 import { createMockSettings } from './mocks';
+import { countTotalCompletedSets, calculateTotalVolume } from '../domain/metrics';
 
 /**
  * End-to-end user journey test
@@ -392,10 +393,10 @@ describe('User Journey - Complete Workflow', () => {
 			expect(retrievedSession?.review?.answers[1]?.freeText).toBe('Had trouble sleeping last night');
 
 			// ===== STEP 12: Verify session statistics =====
-			const totalSets = sessionRepo.countCompletedSets(retrievedSession!);
+			const totalSets = countTotalCompletedSets(retrievedSession!);
 			expect(totalSets).toBe(10); // 4 + 3 + 3
 
-			const totalVolume = sessionRepo.calculateVolume(retrievedSession!);
+			const totalVolume = calculateTotalVolume(retrievedSession!);
 			// Bench: (80*8 + 80*7 + 82.5*6 + 82.5*6) = 640 + 560 + 495 + 495 = 2190
 			// OHP: (50*10 + 50*9 + 50*8) = 500 + 450 + 400 = 1350
 			// Row: (70*12 + 70*10 + 70*9) = 840 + 700 + 630 = 2170

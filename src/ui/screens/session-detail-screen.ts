@@ -4,10 +4,12 @@ import type { ScreenParams, Session, Program } from '../../types';
 import { BaseScreen } from './base-screen';
 import { createScreenHeader } from '../components/screen-header';
 import { formatDuration } from '../components/timer';
-import { toFilename, resolveTransclusions, parseDescriptionSection, parseFrontmatter } from '../../data/file-utils';
+import { resolveTransclusions, parseDescriptionSection, parseFrontmatter } from '../../data/file-utils';
+import { toSlug } from '../../domain/identifier';
 import { parseCoachFeedbackYaml, validateFeedbackAgainstSession, findExerciseFeedback } from '../../data/coach-feedback-parser';
 import { createFeedbackStatusCallout, type FeedbackStatusCalloutRefs } from '../components/feedback-status-callout';
 import type { FeedbackValidationStatus, StructuredCoachFeedback } from '../../data/coach-feedback-types';
+import { countTotalCompletedSets, calculateTotalVolume } from '../../domain/metrics';
 
 /**
  * Session detail screen - shows full details of a completed session
@@ -333,11 +335,11 @@ export class SessionDetailScreen extends BaseScreen {
 		}
 
 		// Total sets
-		const totalSets = this.ctx.sessionRepo.countCompletedSets(session);
+		const totalSets = countTotalCompletedSets(session);
 		this.renderStat(stats, 'Sets', String(totalSets));
 
 		// Total volume
-		const volume = this.ctx.sessionRepo.calculateVolume(session);
+		const volume = calculateTotalVolume(session);
 		const unit = this.ctx.settings.weightUnit;
 		this.renderStat(stats, 'Volume', `${volume.toLocaleString()} ${unit}`);
 
@@ -474,7 +476,7 @@ export class SessionDetailScreen extends BaseScreen {
 	private async findProgramForSession(session: Session): Promise<Program | null> {
 		if (!session.workout) return null;
 
-		const workoutId = toFilename(session.workout);
+		const workoutId = toSlug(session.workout);
 		const programs = await this.ctx.programRepo.list();
 
 		for (const program of programs) {
