@@ -119,11 +119,12 @@ export class SessionScreen extends BaseScreen {
 			return;
 		}
 
-		// Header with resume-style card
+		// Header with resume-style card - show set timer when a set is in progress
 		this.headerRefs = createScreenHeader(this.containerEl, {
 			leftElement: 'back',
 			view: this.ctx.view,
 			sessionState: this.ctx.sessionState,
+			showSetTimer: this.ctx.sessionState.isSetTimerActive(),
 			onBack: () => this.confirmExit(),
 			onCardClick: () => {
 				const firstUnfinishedIndex = this.findFirstUnfinishedExerciseIndex(session);

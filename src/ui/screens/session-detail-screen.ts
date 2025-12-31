@@ -83,7 +83,11 @@ export class SessionDetailScreen extends BaseScreen {
 
 		// Motivational quote (from coach feedback, shown prominently at top)
 		if (this.parsedFeedback?.motivatie_boost?.tekst) {
-			this.renderMotivationQuote(info, this.parsedFeedback.motivatie_boost.tekst);
+			this.renderMotivationQuote(
+				info,
+				this.parsedFeedback.motivatie_boost.tekst,
+				this.parsedFeedback.motivatie_boost.stijl
+			);
 		}
 
 		// Stats section (same as finish screen)
@@ -350,8 +354,11 @@ export class SessionDetailScreen extends BaseScreen {
 		stat.createDiv({ cls: 'fit-finish-stat-label', text: label });
 	}
 
-	private renderMotivationQuote(parent: HTMLElement, text: string): void {
+	private renderMotivationQuote(parent: HTMLElement, text: string, stijl?: string): void {
 		const quote = parent.createDiv({ cls: 'fit-motivation-quote' });
+		if (stijl) {
+			quote.dataset.stijl = stijl.toLowerCase();
+		}
 		quote.createDiv({ cls: 'fit-motivation-quote-mark', text: '"' });
 		quote.createDiv({ cls: 'fit-motivation-quote-text', text: text });
 	}

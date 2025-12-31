@@ -68,6 +68,7 @@ export class HomeScreen extends BaseScreen {
 			leftElement: 'barbell',
 			view: this.ctx.view,
 			sessionState: this.ctx.sessionState,
+			showSetTimer: this.ctx.sessionState.isSetTimerActive(),
 			onCardClick: () => {
 				const firstUnfinishedIndex = this.findFirstUnfinishedExerciseIndex(session);
 				if (firstUnfinishedIndex >= 0) {

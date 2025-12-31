@@ -2980,29 +2980,111 @@
 
 /* Motivational quote (mini poster style) */
 .fit-motivation-quote {
+	position: relative;
 	display: flex;
 	align-items: flex-start;
 	gap: 4px;
 	margin-top: 12px;
-	padding: 12px 14px;
-	background: linear-gradient(135deg, var(--interactive-accent), color-mix(in srgb, var(--interactive-accent), black 20%));
-	border-radius: 10px;
-	color: var(--text-on-accent);
+	padding: 14px 16px;
+	background: linear-gradient(135deg, color-mix(in srgb, var(--interactive-accent) 40%, var(--background-secondary)), color-mix(in srgb, var(--interactive-accent) 25%, var(--background-secondary)));
+	border-radius: 12px;
+	color: var(--text-normal);
+	overflow: hidden;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Animated background emoji */
+.fit-motivation-quote::before {
+	content: '💪';
+	position: absolute;
+	right: -10px;
+	top: 50%;
+	transform: translateY(-50%);
+	font-size: 64px;
+	opacity: 0.15;
+	animation: motivation-float 3s ease-in-out infinite;
+	pointer-events: none;
+}
+
+/* Shimmer effect overlay */
+.fit-motivation-quote::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		rgba(255, 255, 255, 0.1),
+		transparent
+	);
+	animation: motivation-shimmer 4s ease-in-out infinite;
+	pointer-events: none;
+}
+
+@keyframes motivation-float {
+	0%, 100% {
+		transform: translateY(-50%) scale(1) rotate(-5deg);
+	}
+	50% {
+		transform: translateY(-55%) scale(1.05) rotate(5deg);
+	}
+}
+
+@keyframes motivation-shimmer {
+	0% {
+		left: -100%;
+	}
+	50%, 100% {
+		left: 100%;
+	}
 }
 
 .fit-motivation-quote-mark {
-	font-size: 28px;
+	font-size: 32px;
 	font-weight: 700;
 	line-height: 1;
-	opacity: 0.5;
+	opacity: 0.4;
 	margin-top: -4px;
+	z-index: 1;
 }
 
 .fit-motivation-quote-text {
-	font-size: 14px;
+	font-size: 15px;
 	font-style: italic;
+	font-weight: 500;
 	line-height: 1.5;
 	flex: 1;
+	z-index: 1;
+	padding-right: 40px;
+}
+
+/* Style variations based on stijl */
+
+/* Controle & Progressie - Subtle blue with chart emoji (structured, focused progress) */
+.fit-motivation-quote[data-stijl="controle & progressie"] {
+	background: linear-gradient(135deg, color-mix(in srgb, #3b82f6 35%, var(--background-secondary)), color-mix(in srgb, #1d4ed8 20%, var(--background-secondary)));
+}
+.fit-motivation-quote[data-stijl="controle & progressie"]::before {
+	content: '📈';
+}
+
+/* Esthetiek & Strategie - Subtle purple with chess emoji (thoughtful, refined) */
+.fit-motivation-quote[data-stijl="esthetiek & strategie"] {
+	background: linear-gradient(135deg, color-mix(in srgb, #8b5cf6 35%, var(--background-secondary)), color-mix(in srgb, #6d28d9 20%, var(--background-secondary)));
+}
+.fit-motivation-quote[data-stijl="esthetiek & strategie"]::before {
+	content: '♟️';
+}
+
+/* Vertrouwen & Ritme - Subtle amber with sparkle emoji (confident, flowing) */
+.fit-motivation-quote[data-stijl="vertrouwen & ritme"] {
+	background: linear-gradient(135deg, color-mix(in srgb, #f59e0b 35%, var(--background-secondary)), color-mix(in srgb, #d97706 20%, var(--background-secondary)));
+}
+.fit-motivation-quote[data-stijl="vertrouwen & ritme"]::before {
+	content: '✨';
 }
 
 .fit-session-detail-duration {
