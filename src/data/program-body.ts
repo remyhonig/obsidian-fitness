@@ -2,6 +2,8 @@
  * Program file body parsing and creation utilities
  */
 
+import { parseSimpleYaml } from './yaml-utils';
+
 /**
  * Parses the ## Description section from program body
  * Returns the content between ## Description and the next ## heading outside code blocks
@@ -91,21 +93,51 @@ export function createProgramBody(workoutIds: string[]): string {
 }
 
 /**
+ * Checks if a string is valid YAML by attempting to parse it
+ */
+function isValidYaml(content: string): boolean {
+	if (!content.trim()) return false;
+	try {
+		const parsed = parseSimpleYaml(content);
+		// Must have at least one key to be considered valid YAML
+		return Object.keys(parsed).length > 0;
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Creates coach feedback section body
+ * If the feedback is valid YAML, wraps it in a ```yaml code block
  */
 export function createCoachFeedbackBody(feedback: string): string {
 	if (!feedback) return '';
+
+	// Check if feedback is valid YAML
+	if (isValidYaml(feedback)) {
+		return `# Coach Feedback\n\n\`\`\`yaml\n${feedback}\n\`\`\`\n`;
+	}
+
 	return `# Coach Feedback\n\n${feedback}\n`;
 }
 
 /**
  * Parses coach feedback from body (the current session's feedback, not previous)
+ * Extracts content from ```yaml code blocks if present
  */
 export function parseCoachFeedbackBody(body: string): string | undefined {
 	// Match "# Coach Feedback" but not "# Previous Coach Feedback"
 	const feedbackMatch = body.match(/(?<!Previous )# Coach Feedback\s*([\s\S]*?)(?=# Previous|# Review|$)/i);
 	if (!feedbackMatch) return undefined;
 
-	const feedback = feedbackMatch[1]?.trim();
+	let feedback = feedbackMatch[1]?.trim();
+	if (!feedback) return undefined;
+
+	// Check if feedback is wrapped in a yaml code block
+	const codeBlockMatch = feedback.match(/^```ya?ml\n([\s\S]*?)\n```$/);
+	if (codeBlockMatch && codeBlockMatch[1]) {
+		feedback = codeBlockMatch[1].trim();
+	}
+
 	return feedback || undefined;
 }

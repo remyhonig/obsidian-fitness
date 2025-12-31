@@ -2978,6 +2978,33 @@
 	margin-bottom: 4px;
 }
 
+/* Motivational quote (mini poster style) */
+.fit-motivation-quote {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+	margin-top: 12px;
+	padding: 12px 14px;
+	background: linear-gradient(135deg, var(--interactive-accent), color-mix(in srgb, var(--interactive-accent), black 20%));
+	border-radius: 10px;
+	color: var(--text-on-accent);
+}
+
+.fit-motivation-quote-mark {
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1;
+	opacity: 0.5;
+	margin-top: -4px;
+}
+
+.fit-motivation-quote-text {
+	font-size: 14px;
+	font-style: italic;
+	line-height: 1.5;
+	flex: 1;
+}
+
 .fit-session-detail-duration {
 	font-size: 14px;
 	color: var(--text-muted);

@@ -23,7 +23,7 @@ export function parseFrontmatter<T>(content: string): { frontmatter: T | null; b
 }
 
 /**
- * Simple YAML parser that handles our data structures including nested arrays
+ * Simple YAML parser that handles our data structures including nested arrays and objects
  */
 export function parseSimpleYaml(yaml: string): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
@@ -44,7 +44,25 @@ export function parseSimpleYaml(yaml: string): Record<string, unknown> {
 		return match?.[1]?.length ?? 0;
 	};
 
-	for (const line of lines) {
+	// Look ahead to determine if a block is an array (starts with -) or object
+	const isArrayBlock = (startIndex: number, blockIndent: number): boolean => {
+		for (let i = startIndex; i < lines.length; i++) {
+			const line = lines[i];
+			if (!line || !line.trim()) continue;
+			const lineIndent = getIndent(line);
+			if (lineIndent <= blockIndent) break; // Left the block
+			if (lineIndent > blockIndent) {
+				// First content line - check if it's an array item
+				return line.trim().startsWith('- ');
+			}
+		}
+		return false;
+	};
+
+	for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+		const line = lines[lineIndex];
+		if (!line) continue;
+
 		// Skip empty lines
 		if (!line.trim()) continue;
 
@@ -90,13 +108,23 @@ export function parseSimpleYaml(yaml: string): Record<string, unknown> {
 			continue;
 		}
 
-		// Check for array start (key followed by colon only)
-		const arrayStartMatch = trimmed.match(/^(\w+):$/);
-		if (arrayStartMatch && arrayStartMatch[1]) {
-			const key = arrayStartMatch[1];
-			const newArray: unknown[] = [];
-			current.obj[key] = newArray;
-			stack.push({ obj: current.obj, array: newArray, key: key, indent: indent });
+		// Check for block start (key followed by colon only) - could be array or object
+		const blockStartMatch = trimmed.match(/^(\w+):$/);
+		if (blockStartMatch && blockStartMatch[1]) {
+			const key = blockStartMatch[1];
+
+			// Look ahead to determine if this is an array or object
+			if (isArrayBlock(lineIndex + 1, indent)) {
+				// It's an array
+				const newArray: unknown[] = [];
+				current.obj[key] = newArray;
+				stack.push({ obj: current.obj, array: newArray, key: key, indent: indent });
+			} else {
+				// It's a nested object
+				const newObj: Record<string, unknown> = {};
+				current.obj[key] = newObj;
+				stack.push({ obj: newObj, array: null, key: key, indent: indent });
+			}
 			continue;
 		}
 

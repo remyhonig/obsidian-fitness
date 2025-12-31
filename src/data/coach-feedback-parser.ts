@@ -72,10 +72,11 @@ export function parseCoachFeedbackYaml(yamlContent: string): StructuredCoachFeed
 		// Parse motivatie_boost
 		if (parsed.motivatie_boost && typeof parsed.motivatie_boost === 'object') {
 			const mb = parsed.motivatie_boost as Record<string, unknown>;
-			const stijl = toStringValue(mb.stijl);
+			const stijl = toStringValue(mb.stijl) || undefined;
 			const tekst = toStringValue(mb.tekst);
-			if (stijl && tekst) {
-				result.motivatie_boost = { stijl, tekst };
+			// Only require tekst, stijl is optional
+			if (tekst) {
+				result.motivatie_boost = { stijl: stijl ?? '', tekst };
 			}
 		}
 

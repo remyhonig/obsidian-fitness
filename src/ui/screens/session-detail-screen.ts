@@ -73,9 +73,6 @@ export class SessionDetailScreen extends BaseScreen {
 		});
 		info.createDiv({ cls: 'fit-session-detail-date', text: dateStr });
 
-		// Stats section (same as finish screen)
-		this.renderStats(session);
-
 		// Store session for later use
 		this.currentSession = session;
 
@@ -83,6 +80,14 @@ export class SessionDetailScreen extends BaseScreen {
 		this.parsedFeedback = session.coachFeedback
 			? parseCoachFeedbackYaml(session.coachFeedback)
 			: null;
+
+		// Motivational quote (from coach feedback, shown prominently at top)
+		if (this.parsedFeedback?.motivatie_boost?.tekst) {
+			this.renderMotivationQuote(info, this.parsedFeedback.motivatie_boost.tekst);
+		}
+
+		// Stats section (same as finish screen)
+		this.renderStats(session);
 
 		// Coach feedback section (always visible)
 		this.feedbackSection = this.containerEl.createDiv({ cls: 'fit-session-detail-feedback' });
@@ -343,6 +348,12 @@ export class SessionDetailScreen extends BaseScreen {
 		const stat = parent.createDiv({ cls: 'fit-finish-stat' });
 		stat.createDiv({ cls: 'fit-finish-stat-value', text: value });
 		stat.createDiv({ cls: 'fit-finish-stat-label', text: label });
+	}
+
+	private renderMotivationQuote(parent: HTMLElement, text: string): void {
+		const quote = parent.createDiv({ cls: 'fit-motivation-quote' });
+		quote.createDiv({ cls: 'fit-motivation-quote-mark', text: '"' });
+		quote.createDiv({ cls: 'fit-motivation-quote-text', text: text });
 	}
 
 	private async renderReviewSection(session: Session): Promise<void> {
