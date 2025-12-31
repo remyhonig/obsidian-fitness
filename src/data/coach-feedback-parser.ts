@@ -21,10 +21,12 @@ function toStringValue(value: unknown): string {
 }
 
 /**
- * Normalizes exercise name for comparison
+ * Normalizes exercise name for comparison.
+ * Strips all non-alphanumeric characters (spaces, dashes, symbols) and lowercases.
+ * This allows "Easy Bar Curl", "easy-bar-curl", "EASY BAR CURL" to all match.
  */
 export function normalizeExerciseName(name: string): string {
-	return name.toLowerCase().trim().replace(/\s+/g, ' ');
+	return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 /**

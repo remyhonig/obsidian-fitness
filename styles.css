@@ -3056,13 +3056,9 @@
 
 .fit-session-detail-sets {
 	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.fit-session-detail-set {
-	font-size: 14px;
-	color: var(--text-muted);
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 8px;
 }
 
 /* Training Review Section */

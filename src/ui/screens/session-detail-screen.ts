@@ -110,14 +110,17 @@ export class SessionDetailScreen extends BaseScreen {
 				});
 			}
 
-			// Sets
+			// Sets as pills (same style as exercise screen)
 			const setsContainer = exerciseCard.createDiv({ cls: 'fit-session-detail-sets' });
 			for (const set of completedSets) {
-				let setText = `${set.reps} reps @ ${set.weight}${unit}`;
+				const pillText = `${set.reps}×${set.weight}${unit}`;
+				const pill = setsContainer.createSpan({
+					cls: 'fit-feedback-set-pill fit-feedback-set-completed',
+					text: pillText
+				});
 				if (set.rpe !== undefined) {
-					setText += ` (RPE ${set.rpe})`;
+					pill.setAttribute('title', `RPE ${set.rpe}`);
 				}
-				setsContainer.createDiv({ cls: 'fit-session-detail-set', text: setText });
 			}
 
 			// Exercise-specific feedback from structured coach feedback
