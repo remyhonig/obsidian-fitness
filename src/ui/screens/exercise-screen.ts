@@ -117,9 +117,12 @@ export class ExerciseScreen extends BaseScreen {
 			onTimerClick: !isExerciseComplete ? () => {
 				const state = this.ctx.sessionState;
 				if (state.isRestTimerActive()) {
-					state.cancelRestTimer();
+					// Add 15 seconds to rest timer when clicked during rest
+					state.addRestTime(15);
+				} else {
+					// Reset set timer when clicked outside of rest
+					state.markSetStart(this.exerciseIndex);
 				}
-				state.markSetStart(this.exerciseIndex);
 			} : undefined,
 			onBack: () => this.ctx.view.navigateTo('session')
 		});

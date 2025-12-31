@@ -134,8 +134,8 @@ export function createScreenHeader(
 	if (isWorkoutInProgress) {
 		durationEl = card.createDiv({ cls: 'fit-program-workout-time' });
 
-		// Make timer clickable if showSetTimer is enabled
-		if (options.showSetTimer && options.onTimerClick) {
+		// Make timer clickable if onTimerClick is provided (works for both set timer and rest timer)
+		if (options.onTimerClick) {
 			durationEl.addClass('fit-timer-clickable');
 			durationEl.addEventListener('click', (e) => {
 				e.stopPropagation();
@@ -149,7 +149,9 @@ export function createScreenHeader(
 			const remaining = state.getRestTimeRemaining();
 			const minutes = Math.floor(remaining / 60);
 			const seconds = remaining % 60;
-			durationEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+			const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+			// Show "+15s" hint when clickable during rest
+			durationEl.textContent = options.onTimerClick ? `${timeText} +15s` : timeText;
 			durationEl.addClass('fit-timer-rest');
 		} else if (options.showSetTimer && state.isSetTimerActive()) {
 			// Show set timer when in set timer mode
@@ -209,7 +211,9 @@ export function createScreenHeader(
 				if (state.isRestTimerActive()) {
 					const minutes = Math.floor(remaining / 60);
 					const seconds = remaining % 60;
-					timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+					const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+					// Show "+15s" hint when clickable during rest
+					timerEl.textContent = options.onTimerClick ? `${timeText} +15s` : timeText;
 					timerEl.addClass('fit-timer-rest');
 				}
 			})

@@ -2392,6 +2392,8 @@
 	padding: 4px 8px;
 	margin: -4px -8px;
 	border-radius: 6px;
+	position: relative;
+	z-index: 10;
 }
 
 .fit-program-workout-time.fit-timer-clickable:active {
@@ -2405,6 +2407,23 @@
 
 .fit-program-workout-time.fit-timer-rest {
 	color: white;
+}
+
+/* Rest timer pill when clickable */
+.fit-program-workout-time.fit-timer-clickable.fit-timer-rest {
+	background: rgba(255, 255, 255, 0.2);
+	padding: 4px 10px;
+	margin: -4px 0;
+	border-radius: 12px;
+	font-weight: 600;
+}
+
+.fit-program-workout-time.fit-timer-clickable.fit-timer-rest:hover {
+	background: rgba(255, 255, 255, 0.3);
+}
+
+.fit-program-workout-time.fit-timer-clickable.fit-timer-rest:active {
+	background: rgba(255, 255, 255, 0.4);
 }
 
 .fit-program-workout-meta {
