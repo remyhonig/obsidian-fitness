@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS, PluginSettings, PluginSettingTab } from './settings';
 import { FitView, VIEW_TYPE_FIT } from './views/fit-view';
 import { bootstrapDataFolder } from './data/bootstrap';
 import { DatabaseExerciseRepository } from './data/database-exercise-repository';
+import { registerContextMenus } from './context-menus';
 import type { DatabaseExerciseEntry } from './types';
 
 // Separate storage key for exercise database (not mixed with settings)
@@ -76,6 +77,9 @@ export default class MainPlugin extends Plugin {
 
 		// Add settings tab
 		this.addSettingTab(new PluginSettingTab(this.app, this));
+
+		// Register folder context menus for adding exercises/programs
+		registerContextMenus(this);
 	}
 
 	/**

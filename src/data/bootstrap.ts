@@ -107,7 +107,7 @@ const STARTER_EXERCISES = [
  * Templates - files users can copy and customize
  * Prefixed with underscore to sort to top and indicate they're templates
  */
-const TEMPLATES = {
+export const TEMPLATES = {
 	exercise: {
 		id: '_template-exercise',
 		content: `---
@@ -115,6 +115,8 @@ name: My Exercise Name
 category: Strength
 equipment: Barbell
 muscleGroups: [Primary Muscle, Secondary Muscle]
+image0:
+image1:
 ---
 
 Describe how to perform this exercise. Include:
@@ -331,7 +333,7 @@ function createProgramContent(program: typeof STARTER_PROGRAMS[0]): string {
 
 /**
  * Bootstraps the data folder structure and starter content.
- * Recreates missing directories, templates, and starter programs on every startup.
+ * Recreates missing directories and starter content on every startup.
  * Existing files are never overwritten.
  */
 export async function bootstrapDataFolder(app: App, basePath: string): Promise<void> {
@@ -343,26 +345,6 @@ export async function bootstrapDataFolder(app: App, basePath: string): Promise<v
 	await ensureFolder(app, exercisesPath);
 	await ensureFolder(app, programsPath);
 	await ensureFolder(app, sessionsPath);
-
-	// Always create templates if missing
-	let templatesCreated = 0;
-	const templatePaths = [
-		{ path: `${exercisesPath}/${TEMPLATES.exercise.id}.md`, content: TEMPLATES.exercise.content },
-		{ path: `${programsPath}/${TEMPLATES.program.id}.md`, content: TEMPLATES.program.content }
-	];
-	for (const template of templatePaths) {
-		if (!app.vault.getFileByPath(template.path)) {
-			try {
-				await app.vault.create(template.path, template.content);
-				templatesCreated++;
-			} catch {
-				// File might already exist (cache miss), skip
-			}
-		}
-	}
-	if (templatesCreated > 0) {
-		new Notice(`Created ${templatesCreated} template file(s)`);
-	}
 
 	// Create starter exercises (only if file doesn't exist)
 	let exercisesCreated = 0;
