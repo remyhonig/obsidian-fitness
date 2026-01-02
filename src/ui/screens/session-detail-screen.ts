@@ -4,7 +4,8 @@ import type { ScreenParams, Session, Program } from '../../types';
 import { BaseScreen } from './base-screen';
 import { createScreenHeader } from '../components/screen-header';
 import { formatDuration } from '../components/timer';
-import { resolveTransclusions, parseDescriptionSection, parseFrontmatter } from '../../data/file-utils';
+import { resolveTransclusions, parseFeedbackPromptSection, parseFrontmatter } from '../../data/file-utils';
+import { SYSTEM_PROMPT } from '../../prompts/system-prompt';
 import { toSlug } from '../../domain/identifier';
 import { parseCoachFeedbackYaml, validateFeedbackAgainstSession, findExerciseFeedback } from '../../data/coach-feedback-parser';
 import { createFeedbackStatusCallout, type FeedbackStatusCalloutRefs } from '../components/feedback-status-callout';
@@ -442,10 +443,13 @@ export class SessionDetailScreen extends BaseScreen {
 
 		const sessionContent = await this.ctx.view.app.vault.read(sessionFile);
 
-		// Build the full content with program description
+		// Build the full content for AI analysis
 		const parts: string[] = [];
 
-		// 1. Program description if session belongs to a program (with resolved transclusions)
+		// 1. System prompt (hardcoded YAML structure requirements)
+		parts.push(SYSTEM_PROMPT);
+
+		// 2. Program feedback prompt if session belongs to a program (with resolved transclusions)
 		const program = await this.findProgramForSession(session);
 		if (program) {
 			const programPath = `${settings.basePath}/Programs/${program.id}.md`;
@@ -453,16 +457,16 @@ export class SessionDetailScreen extends BaseScreen {
 			if (programFile) {
 				// Resolve transclusions using Obsidian's metadata cache
 				const resolvedContent = await resolveTransclusions(this.ctx.app, programFile);
-				// Separate frontmatter from body, then parse description from body
+				// Separate frontmatter from body, then parse feedback prompt from body
 				const { body } = parseFrontmatter(resolvedContent);
-				const description = parseDescriptionSection(body);
-				if (description) {
-					parts.push(`## Program: ${program.name}\n\n${description}`);
+				const feedbackPrompt = parseFeedbackPromptSection(body);
+				if (feedbackPrompt) {
+					parts.push(`## Feedback Prompt\n\n${feedbackPrompt}`);
 				}
 			}
 		}
 
-		// 2. Session data
+		// 3. Session data
 		parts.push(sessionContent);
 
 		const content = parts.join('\n\n---\n\n');

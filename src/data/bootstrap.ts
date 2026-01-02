@@ -173,6 +173,14 @@ description: Brief description of this training program
 - no: No additional notes
 - yes: Yes, I have notes | freeText: 200
 
+## Feedback Prompt
+
+Add program-specific training constraints here. These are included when copying session data for AI feedback.
+
+Example format:
+- IF condition THEN action
+- IF another condition THEN another action
+
 **Copy this file and rename it to create your own program.**
 `
 	}

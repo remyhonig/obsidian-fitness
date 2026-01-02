@@ -20,18 +20,34 @@ export interface InlineWorkout {
  * Returns the content between ## Description and the next ## heading outside code blocks
  */
 export function parseDescriptionSection(body: string): string | undefined {
-	// Find where ## Description starts
-	const descMatch = body.match(/## Description\s*/i);
-	if (!descMatch || descMatch.index === undefined) return undefined;
+	return parseSectionContent(body, 'Description');
+}
 
-	const contentStart = descMatch.index + descMatch[0].length;
+/**
+ * Parses the ## Feedback Prompt section from program body
+ * Returns the content between ## Feedback Prompt and the next ## heading outside code blocks
+ */
+export function parseFeedbackPromptSection(body: string): string | undefined {
+	return parseSectionContent(body, 'Feedback Prompt');
+}
+
+/**
+ * Generic function to parse a ## section from program body
+ * Returns the content between the section header and the next ## heading outside code blocks
+ */
+function parseSectionContent(body: string, sectionName: string): string | undefined {
+	const regex = new RegExp(`## ${sectionName}\\s*`, 'i');
+	const match = body.match(regex);
+	if (!match || match.index === undefined) return undefined;
+
+	const contentStart = match.index + match[0].length;
 	const content = body.slice(contentStart);
 
 	// Find the next ## heading that's outside a code block
 	const endIndex = findNextH2OutsideCodeBlock(content);
-	const description = endIndex === -1 ? content : content.slice(0, endIndex);
+	const sectionContent = endIndex === -1 ? content : content.slice(0, endIndex);
 
-	return description.trim() || undefined;
+	return sectionContent.trim() || undefined;
 }
 
 /**
