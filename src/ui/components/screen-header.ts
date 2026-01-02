@@ -132,13 +132,17 @@ export function createScreenHeader(
 
 	// Timer - only shown when workout is in progress
 	let durationEl: HTMLElement | null = null;
+	let addTimeBtn: HTMLElement | null = null;
 	if (isWorkoutInProgress) {
-		durationEl = card.createDiv({ cls: 'fit-program-workout-time' });
+		// Wrap time and +15s button in a container for closer spacing
+		const timerWrapper = card.createDiv({ cls: 'fit-timer-wrapper' });
+		durationEl = timerWrapper.createDiv({ cls: 'fit-program-workout-time' });
 
-		// Make timer clickable if onTimerClick is provided (works for both set timer and rest timer)
+		// Create separate "+15s" button if clickable during rest
 		if (options.onTimerClick) {
-			durationEl.addClass('fit-timer-clickable');
-			durationEl.addEventListener('click', (e) => {
+			addTimeBtn = timerWrapper.createDiv({ cls: 'fit-add-time-btn' });
+			addTimeBtn.textContent = '+15s';
+			addTimeBtn.addEventListener('click', (e) => {
 				e.stopPropagation();
 				options.onTimerClick?.();
 			});
@@ -148,19 +152,20 @@ export function createScreenHeader(
 		const state = options.sessionState;
 		if (state.isRestTimerActive()) {
 			const remaining = state.getRestTimeRemaining();
-			const timeText = formatTime(remaining);
-			// Show "+15s" hint when clickable during rest
-			durationEl.textContent = options.onTimerClick ? `${timeText} +15s` : timeText;
+			durationEl.textContent = formatTime(remaining);
 			durationEl.addClass('fit-timer-rest');
+			if (addTimeBtn) addTimeBtn.style.display = 'block';
 		} else if (options.showSetTimer && state.isSetTimerActive()) {
 			// Show set timer when in set timer mode
 			const setStartTime = state.getSetStartTime();
 			const elapsed = setStartTime ? Math.floor((Date.now() - setStartTime) / 1000) : 0;
 			durationEl.textContent = formatTime(elapsed);
 			durationEl.addClass('fit-set-timer');
+			if (addTimeBtn) addTimeBtn.style.display = 'none';
 		} else {
 			const elapsed = state.getElapsedDuration();
 			durationEl.textContent = formatTime(elapsed);
+			if (addTimeBtn) addTimeBtn.style.display = 'none';
 		}
 	}
 
@@ -199,15 +204,15 @@ export function createScreenHeader(
 		const state = options.sessionState;
 		const timerEl = durationEl;
 		const iconEl = playIconEl;
+		const addTimeBtnEl = addTimeBtn;
 
 		// Rest timer tick - show rest countdown
 		eventUnsubscribers.push(
 			state.on('timer.tick', ({ remaining }) => {
 				if (state.isRestTimerActive()) {
-					const timeText = formatTime(remaining);
-					// Show "+15s" hint when clickable during rest
-					timerEl.textContent = options.onTimerClick ? `${timeText} +15s` : timeText;
+					timerEl.textContent = formatTime(remaining);
 					timerEl.addClass('fit-timer-rest');
+					if (addTimeBtnEl) addTimeBtnEl.style.display = 'block';
 				}
 			})
 		);
@@ -216,6 +221,7 @@ export function createScreenHeader(
 		eventUnsubscribers.push(
 			state.on('timer.cancelled', () => {
 				timerEl.removeClass('fit-timer-rest');
+				if (addTimeBtnEl) addTimeBtnEl.style.display = 'none';
 			})
 		);
 
@@ -235,6 +241,7 @@ export function createScreenHeader(
 						timerEl.removeClass('fit-set-timer');
 					}
 					timerEl.removeClass('fit-timer-rest');
+					if (addTimeBtnEl) addTimeBtnEl.style.display = 'none';
 				}
 				if (iconEl) {
 					iconEl.classList.toggle('fit-pulse-tick');
@@ -249,6 +256,7 @@ export function createScreenHeader(
 					timerEl.textContent = '0:00';
 					timerEl.addClass('fit-set-timer');
 					timerEl.removeClass('fit-timer-rest');
+					if (addTimeBtnEl) addTimeBtnEl.style.display = 'none';
 				})
 			);
 		}

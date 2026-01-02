@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian';
-import type { Program, Question, QuestionOption } from '../types';
+import type { Program, Question, QuestionOption, Workout, WorkoutExercise } from '../types';
 import {
 	ensureFolder,
 	getFilesInFolder,
@@ -10,6 +10,7 @@ import {
 	createProgramBody,
 	parseDescriptionSection
 } from './file-utils';
+import { parseInlineWorkouts } from './program-body';
 import { toSlug } from '../domain/identifier';
 
 // Frontmatter only contains metadata, not workouts
@@ -20,6 +21,8 @@ interface ProgramMetadata {
 
 export class ProgramRepository {
 	private basePath: string;
+	/** Cache of inline workouts by program ID */
+	private inlineWorkoutCache: Map<string, Map<string, Workout>> = new Map();
 
 	constructor(
 		private app: App,
@@ -170,8 +173,38 @@ export class ProgramRepository {
 				return null;
 			}
 
-			// Parse workouts from body list
-			const workouts = parseProgramBody(body);
+			const programId = getIdFromPath(file.path);
+			let workouts: string[];
+
+			// Try inline workouts first (H2 sections with exercise tables)
+			const inlineWorkouts = parseInlineWorkouts(body);
+			if (inlineWorkouts.length > 0) {
+				// Convert and cache inline workouts
+				const workoutMap = new Map<string, Workout>();
+				for (const inline of inlineWorkouts) {
+					const exercises: WorkoutExercise[] = inline.exercises.map(e => ({
+						exercise: e.exercise,
+						exerciseId: e.exerciseId,
+						targetSets: e.sets,
+						targetRepsMin: e.repsMin,
+						targetRepsMax: e.repsMax,
+						restSeconds: e.restSeconds,
+						source: e.source
+					}));
+					workoutMap.set(inline.id, {
+						id: inline.id,
+						name: inline.name,
+						exercises
+					});
+				}
+				this.inlineWorkoutCache.set(programId, workoutMap);
+				workouts = inlineWorkouts.map(w => w.id);
+			} else {
+				// Fall back to linked workouts (## Workouts with wikilinks)
+				workouts = parseProgramBody(body);
+				// Clear any cached inline workouts for this program
+				this.inlineWorkoutCache.delete(programId);
+			}
 
 			// Parse review questions from body
 			const questions = this.parseReviewSection(body);
@@ -181,7 +214,7 @@ export class ProgramRepository {
 			const description = bodyDescription ?? frontmatter.description;
 
 			return {
-				id: getIdFromPath(file.path),
+				id: programId,
 				name: frontmatter.name,
 				description,
 				workouts,
@@ -190,6 +223,20 @@ export class ProgramRepository {
 		} catch {
 			return null;
 		}
+	}
+
+	/**
+	 * Gets an inline workout from cache (for programs with embedded workouts)
+	 */
+	getInlineWorkout(programId: string, workoutId: string): Workout | null {
+		return this.inlineWorkoutCache.get(programId)?.get(workoutId) ?? null;
+	}
+
+	/**
+	 * Checks if a program has inline workouts
+	 */
+	hasInlineWorkouts(programId: string): boolean {
+		return this.inlineWorkoutCache.has(programId);
 	}
 
 	/**

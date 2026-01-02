@@ -94,14 +94,23 @@ export class HomeScreen extends BaseScreen {
 			return;
 		}
 
-		// Get workouts data for display
+		// Get workouts data for display (file-based workouts)
 		const allWorkouts = await this.ctx.workoutRepo.list();
 		if (signal.aborted) return;
 		const workoutMap = new Map(allWorkouts.map(w => [w.id, w]));
 
+		// Helper to get workout from either inline cache or file-based map
+		const getWorkout = (workoutId: string): Workout | undefined => {
+			// Try inline workout first (for programs with embedded workouts)
+			const inline = this.ctx.programRepo.getInlineWorkout(program.id, workoutId);
+			if (inline) return inline;
+			// Fall back to file-based workout
+			return workoutMap.get(workoutId);
+		};
+
 		const currentIndex = settings.programWorkoutIndex % program.workouts.length;
 		const nextWorkoutId = program.workouts[currentIndex];
-		const nextWorkout = nextWorkoutId ? workoutMap.get(nextWorkoutId) : undefined;
+		const nextWorkout = nextWorkoutId ? getWorkout(nextWorkoutId) : undefined;
 
 		// Show next workout header if no resume card
 		if (!hasResumeCard && nextWorkout) {
@@ -122,7 +131,7 @@ export class HomeScreen extends BaseScreen {
 			const workoutId = program.workouts[workoutIndex];
 			if (!workoutId) continue;
 
-			const workout = workoutMap.get(workoutId);
+			const workout = getWorkout(workoutId);
 
 			const card = grid.createDiv({
 				cls: 'fit-program-workout-card'

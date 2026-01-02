@@ -2379,25 +2379,19 @@
 	white-space: nowrap;
 }
 
+.fit-timer-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
 .fit-program-workout-time {
 	font-size: 13px;
 	font-weight: 500;
 	white-space: nowrap;
 	flex-shrink: 0;
 	color: black;
-}
-
-.fit-program-workout-time.fit-timer-clickable {
-	cursor: pointer;
-	padding: 4px 8px;
-	margin: -4px -8px;
-	border-radius: 6px;
-	position: relative;
-	z-index: 10;
-}
-
-.fit-program-workout-time.fit-timer-clickable:active {
-	background: rgba(0, 0, 0, 0.1);
 }
 
 .fit-program-workout-time.fit-set-timer {
@@ -2409,21 +2403,25 @@
 	color: white;
 }
 
-/* Rest timer pill when clickable */
-.fit-program-workout-time.fit-timer-clickable.fit-timer-rest {
-	background: rgba(255, 255, 255, 0.2);
-	padding: 4px 10px;
-	margin: -4px 0;
-	border-radius: 12px;
+/* +15s button for adding time during rest */
+.fit-add-time-btn {
+	display: none;
+	background: rgba(255, 255, 255, 0.25);
+	color: white;
+	font-size: 12px;
 	font-weight: 600;
+	padding: 4px 10px;
+	border-radius: 12px;
+	cursor: pointer;
+	flex-shrink: 0;
 }
 
-.fit-program-workout-time.fit-timer-clickable.fit-timer-rest:hover {
-	background: rgba(255, 255, 255, 0.3);
+.fit-add-time-btn:hover {
+	background: rgba(255, 255, 255, 0.35);
 }
 
-.fit-program-workout-time.fit-timer-clickable.fit-timer-rest:active {
-	background: rgba(255, 255, 255, 0.4);
+.fit-add-time-btn:active {
+	background: rgba(255, 255, 255, 0.45);
 }
 
 .fit-program-workout-meta {

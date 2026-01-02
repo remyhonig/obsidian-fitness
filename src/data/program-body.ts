@@ -3,6 +3,17 @@
  */
 
 import { parseSimpleYaml } from './yaml-utils';
+import { parseWorkoutBody, type WorkoutExerciseRow } from './workout-body';
+import { toSlug } from '../domain/identifier';
+
+/**
+ * Inline workout parsed from a program file
+ */
+export interface InlineWorkout {
+	id: string;
+	name: string;
+	exercises: WorkoutExerciseRow[];
+}
 
 /**
  * Parses the ## Description section from program body
@@ -72,6 +83,42 @@ export function parseProgramBody(body: string): string[] {
 		if (target) {
 			workouts.push(target);
 		}
+	}
+
+	return workouts;
+}
+
+/**
+ * Parses inline workouts from H3 sections that contain exercise tables
+ * Returns workouts in document order
+ */
+export function parseInlineWorkouts(body: string): InlineWorkout[] {
+	const workouts: InlineWorkout[] = [];
+
+	// Split body into H3 sections
+	const sections = body.split(/(?=^### )/m);
+
+	for (const section of sections) {
+		// Must start with ### to be a workout header
+		if (!section.startsWith('### ')) continue;
+
+		// Extract section name (first line after ###)
+		const headerMatch = section.match(/^### (.+)$/m);
+		if (!headerMatch) continue;
+
+		const sectionName = headerMatch[1]?.trim() ?? '';
+		if (!sectionName) continue;
+
+		// Check if this section contains an exercise table
+		const exercises = parseWorkoutBody(section);
+		if (exercises.length === 0) continue;
+
+		// This is an inline workout
+		workouts.push({
+			id: toSlug(sectionName),
+			name: sectionName,
+			exercises
+		});
 	}
 
 	return workouts;
