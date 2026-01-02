@@ -188,10 +188,34 @@ export class FitViewModel {
 
 	/**
 	 * Mark the start of a new set (for timing).
+	 * For the first set of each exercise, starts a 5-second countdown before the set timer.
+	 * For subsequent sets, starts the set timer immediately.
 	 */
 	markSetStart(): void {
 		const state = this.getState();
-		this.sessionState.markSetStart(state.currentExerciseIndex);
+		const completedSets = state.exerciseCompletion.completedSets;
+
+		if (completedSets === 0) {
+			// First set of exercise - use countdown
+			this.sessionState.startSetWithCountdown(state.currentExerciseIndex);
+		} else {
+			// Subsequent sets - no countdown
+			this.sessionState.markSetStart(state.currentExerciseIndex);
+		}
+	}
+
+	/**
+	 * Check if countdown is active.
+	 */
+	isCountdownActive(): boolean {
+		return this.sessionState.isCountdownActive();
+	}
+
+	/**
+	 * Get the remaining countdown seconds (null if not counting down).
+	 */
+	getCountdownRemaining(): number | null {
+		return this.sessionState.getCountdownRemaining();
 	}
 
 	// ========== Timer Actions ==========

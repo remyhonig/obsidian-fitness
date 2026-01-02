@@ -12,6 +12,9 @@ export interface SessionSetRow {
 	rpe?: number;
 	timestamp: string;
 	completed: boolean;
+	actualRestSeconds?: number;
+	extraRestSeconds?: number;
+	avgRepDuration?: number;
 }
 
 export interface SessionExerciseBlock {
@@ -80,7 +83,10 @@ export function parseSessionBody(body: string): SessionExerciseBlock[] {
 					reps: parseInt(row['reps'] ?? '0', 10),
 					rpe: row['rpe'] && row['rpe'] !== '-' ? parseInt(row['rpe'], 10) : undefined,
 					timestamp: row['time'] ?? '',
-					completed: true // If it's in the table, it's completed
+					completed: true, // If it's in the table, it's completed
+					actualRestSeconds: parseSeconds(row['rest']),
+					extraRestSeconds: parseSeconds(row['+rest']),
+					avgRepDuration: parseSeconds(row['s/rep'])
 				});
 			}
 		}
@@ -134,7 +140,10 @@ export function createSessionBody(exercises: SessionExerciseBlock[]): string {
 			{ key: 'kg', header: 'kg' },
 			{ key: 'reps', header: 'reps' },
 			{ key: 'rpe', header: 'rpe' },
-			{ key: 'time', header: 'time' }
+			{ key: 'time', header: 'time' },
+			{ key: 'rest', header: 'rest' },
+			{ key: 'extraRest', header: '+rest' },
+			{ key: 'avgRep', header: 's/rep' }
 		];
 
 		const setRows = exercise.sets.map((set, idx) => ({
@@ -142,7 +151,10 @@ export function createSessionBody(exercises: SessionExerciseBlock[]): string {
 			kg: set.weight === 0 ? 'body weight' : String(set.weight),
 			reps: String(set.reps),
 			rpe: set.rpe !== undefined ? String(set.rpe) : '-',
-			time: formatTimeFromISO(set.timestamp)
+			time: formatTimeFromISO(set.timestamp),
+			rest: set.actualRestSeconds !== undefined ? `${set.actualRestSeconds}s` : '-',
+			extraRest: set.extraRestSeconds !== undefined ? `+${set.extraRestSeconds}s` : '-',
+			avgRep: set.avgRepDuration !== undefined ? `${set.avgRepDuration}s` : '-'
 		}));
 
 		if (setRows.length > 0) {
@@ -168,6 +180,15 @@ export function createSessionBody(exercises: SessionExerciseBlock[]): string {
 	}
 
 	return lines.join('\n') + blocks.join('\n\n') + '\n';
+}
+
+/**
+ * Parses a seconds value from table column (e.g., "90s", "+30s", "2.5s")
+ */
+function parseSeconds(value: string | undefined): number | undefined {
+	if (!value || value === '-') return undefined;
+	const num = parseFloat(value.replace(/^\+/, '').replace(/s$/, ''));
+	return isNaN(num) ? undefined : num;
 }
 
 /**
@@ -232,7 +253,10 @@ export function createPreviousExercisesBody(
 			{ key: 'kg', header: 'kg' },
 			{ key: 'reps', header: 'reps' },
 			{ key: 'rpe', header: 'rpe' },
-			{ key: 'time', header: 'time' }
+			{ key: 'time', header: 'time' },
+			{ key: 'rest', header: 'rest' },
+			{ key: 'extraRest', header: '+rest' },
+			{ key: 'avgRep', header: 's/rep' }
 		];
 
 		const completedSets = exercise.sets.filter(s => s.completed);
@@ -241,7 +265,10 @@ export function createPreviousExercisesBody(
 			kg: set.weight === 0 ? 'body weight' : String(set.weight),
 			reps: String(set.reps),
 			rpe: set.rpe !== undefined ? String(set.rpe) : '-',
-			time: formatTimeFromISO(set.timestamp)
+			time: formatTimeFromISO(set.timestamp),
+			rest: set.actualRestSeconds !== undefined ? `${set.actualRestSeconds}s` : '-',
+			extraRest: set.extraRestSeconds !== undefined ? `+${set.extraRestSeconds}s` : '-',
+			avgRep: set.avgRepDuration !== undefined ? `${set.avgRepDuration}s` : '-'
 		}));
 
 		if (setRows.length > 0) {

@@ -165,7 +165,10 @@ export class SessionRepository {
 					reps: s.reps,
 					rpe: s.rpe,
 					timestamp: s.timestamp,
-					completed: s.completed
+					completed: s.completed,
+					actualRestSeconds: s.actualRestSeconds,
+					extraRestSeconds: s.extraRestSeconds,
+					avgRepDuration: s.avgRepDuration
 				}))
 			}))
 		);
@@ -198,7 +201,10 @@ export class SessionRepository {
 							reps: s.reps,
 							rpe: s.rpe,
 							timestamp: s.timestamp,
-							completed: s.completed
+							completed: s.completed,
+							actualRestSeconds: s.actualRestSeconds,
+							extraRestSeconds: s.extraRestSeconds,
+							avgRepDuration: s.avgRepDuration
 						}))
 					})),
 					previousSession.date
@@ -409,7 +415,10 @@ export class SessionRepository {
 					reps: s.reps,
 					completed: s.completed,
 					timestamp: s.timestamp,
-					rpe: s.rpe
+					rpe: s.rpe,
+					actualRestSeconds: s.actualRestSeconds,
+					extraRestSeconds: s.extraRestSeconds,
+					avgRepDuration: s.avgRepDuration
 				}))
 			}));
 

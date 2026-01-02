@@ -228,6 +228,9 @@ export function createMockSessionState(activeSession: Session | null = null) {
 		isSetTimerActive: vi.fn().mockReturnValue(false),
 		markSetStart: vi.fn(),
 		getSetStartTime: vi.fn().mockReturnValue(null),
+		startSetWithCountdown: vi.fn(),
+		isCountdownActive: vi.fn().mockReturnValue(false),
+		getCountdownRemaining: vi.fn().mockReturnValue(null),
 		subscribe: vi.fn().mockImplementation((listener: () => void) => {
 			listeners.add(listener);
 			return () => listeners.delete(listener);

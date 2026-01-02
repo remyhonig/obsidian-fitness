@@ -102,6 +102,9 @@ export interface LoggedSet {
 	timestamp: string; // ISO 8601
 	rpe?: number;
 	duration?: number; // Set duration in seconds (from start to completion)
+	actualRestSeconds?: number; // Total rest taken after this set (before next set)
+	extraRestSeconds?: number; // Extra rest added via +15s/+30s buttons
+	avgRepDuration?: number; // Average duration per rep (duration / reps)
 }
 
 // Muscle engagement options

@@ -416,13 +416,36 @@ export class SessionStateManager {
 		// Calculate duration if set start time was marked
 		const duration = this.setTimerManager.getDuration();
 
+		// Calculate average rep duration
+		const avgRepDuration = (duration !== undefined && reps > 0)
+			? Math.round((duration / reps) * 10) / 10
+			: undefined;
+
+		// Record rest data on the previous set (if applicable)
+		const restData = this.restTimerManager.getRestPeriodData();
+		if (restData) {
+			const restExercise = this.session.exercises[restData.exerciseIndex];
+			if (restExercise && restExercise.sets.length > 0) {
+				const previousSet = restExercise.sets[restExercise.sets.length - 1];
+				if (previousSet) {
+					const actualRestSeconds = Math.round((Date.now() - restData.startTime) / 1000);
+					previousSet.actualRestSeconds = actualRestSeconds;
+					if (restData.extraSeconds > 0) {
+						previousSet.extraRestSeconds = restData.extraSeconds;
+					}
+				}
+			}
+			this.restTimerManager.clearRestPeriodData();
+		}
+
 		const set: LoggedSet = {
 			weight,
 			reps,
 			completed: true,
 			timestamp: new Date().toISOString(),
 			rpe,
-			duration
+			duration,
+			avgRepDuration
 		};
 
 		exercise.sets.push(set);
@@ -556,6 +579,14 @@ export class SessionStateManager {
 	}
 
 	/**
+	 * Starts a countdown before the set timer begins.
+	 * Used for the first set of each exercise.
+	 */
+	startSetWithCountdown(exerciseIndex: number): void {
+		this.setTimerManager.startWithCountdown(exerciseIndex, 5);
+	}
+
+	/**
 	 * Gets the current set start time (null if not started)
 	 */
 	getSetStartTime(): number | null {
@@ -567,6 +598,20 @@ export class SessionStateManager {
 	 */
 	isSetTimerActive(): boolean {
 		return this.setTimerManager.isActive();
+	}
+
+	/**
+	 * Checks if countdown is active
+	 */
+	isCountdownActive(): boolean {
+		return this.setTimerManager.isCountdownActive();
+	}
+
+	/**
+	 * Gets the remaining countdown seconds (null if not counting down)
+	 */
+	getCountdownRemaining(): number | null {
+		return this.setTimerManager.getCountdownRemaining();
 	}
 
 	// ========== Rest Timer (delegated) ==========

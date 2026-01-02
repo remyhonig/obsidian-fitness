@@ -2457,6 +2457,23 @@
 	color: white;
 }
 
+.fit-program-workout-time.fit-countdown {
+	color: var(--text-accent);
+	font-weight: bold;
+}
+
+.fit-program-workout-time.fit-timer-clickable {
+	cursor: pointer;
+}
+
+.fit-program-workout-time.fit-timer-clickable:hover {
+	opacity: 0.8;
+}
+
+.fit-program-workout-time.fit-timer-clickable:active {
+	opacity: 0.6;
+}
+
 /* +15s button for adding time during rest */
 .fit-add-time-btn {
 	display: none;
@@ -2476,6 +2493,27 @@
 
 .fit-add-time-btn:active {
 	background: rgba(255, 255, 255, 0.45);
+}
+
+/* Reset button for resetting set timer/countdown */
+.fit-reset-timer-btn {
+	display: none;
+	background: rgba(0, 0, 0, 0.15);
+	color: var(--text-normal);
+	font-size: 12px;
+	font-weight: 600;
+	padding: 4px 10px;
+	border-radius: 12px;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.fit-reset-timer-btn:hover {
+	background: rgba(0, 0, 0, 0.25);
+}
+
+.fit-reset-timer-btn:active {
+	background: rgba(0, 0, 0, 0.35);
 }
 
 .fit-program-workout-meta {

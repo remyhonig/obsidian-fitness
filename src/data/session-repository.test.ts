@@ -520,6 +520,84 @@ Target: 4 × 6-8 | Rest: 180s
 		});
 	});
 
+	describe('roundtrip: rest tracking fields', () => {
+		it('should preserve rest tracking data through save and retrieve', async () => {
+			const sessionId = '2025-12-26-10-00-00-rest-test';
+			const original: Session = {
+				id: sessionId,
+				date: '2025-12-26',
+				startTime: '2025-12-26T10:00:00Z',
+				workout: 'Rest Test',
+				status: 'active',
+				exercises: [
+					{
+						exercise: 'Bench Press',
+						targetSets: 3,
+						targetRepsMin: 8,
+						targetRepsMax: 10,
+						restSeconds: 120,
+						sets: [
+							{
+								weight: 80,
+								reps: 10,
+								completed: true,
+								timestamp: '2025-12-26T10:05:00Z',
+								rpe: 7,
+								duration: 25,
+								actualRestSeconds: 135,
+								extraRestSeconds: 15,
+								avgRepDuration: 2.5
+							},
+							{
+								weight: 80,
+								reps: 9,
+								completed: true,
+								timestamp: '2025-12-26T10:08:00Z',
+								rpe: 8,
+								duration: 27,
+								actualRestSeconds: 120,
+								avgRepDuration: 3.0
+							},
+							{
+								weight: 80,
+								reps: 8,
+								completed: true,
+								timestamp: '2025-12-26T10:11:00Z',
+								rpe: 9,
+								duration: 32,
+								avgRepDuration: 4.0
+							}
+						]
+					}
+				]
+			};
+
+			await repo.saveActive(original);
+			const retrieved = await repo.getActive();
+
+			expect(retrieved).not.toBeNull();
+			expect(retrieved?.exercises[0].sets).toHaveLength(3);
+
+			// First set - has rest extension
+			const set1 = retrieved?.exercises[0].sets[0];
+			expect(set1?.actualRestSeconds).toBe(135);
+			expect(set1?.extraRestSeconds).toBe(15);
+			expect(set1?.avgRepDuration).toBe(2.5);
+
+			// Second set - no extension
+			const set2 = retrieved?.exercises[0].sets[1];
+			expect(set2?.actualRestSeconds).toBe(120);
+			expect(set2?.extraRestSeconds).toBeUndefined();
+			expect(set2?.avgRepDuration).toBe(3.0);
+
+			// Third set - last set, no rest recorded
+			const set3 = retrieved?.exercises[0].sets[2];
+			expect(set3?.actualRestSeconds).toBeUndefined();
+			expect(set3?.extraRestSeconds).toBeUndefined();
+			expect(set3?.avgRepDuration).toBe(4.0);
+		});
+	});
+
 	describe('setBasePath', () => {
 		it('should update the base path', () => {
 			expect(() => repo.setBasePath('NewFitness')).not.toThrow();

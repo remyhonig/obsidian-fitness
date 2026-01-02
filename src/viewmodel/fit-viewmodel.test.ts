@@ -262,13 +262,26 @@ describe('FitViewModel', () => {
 			expect(sessionState.cancelRestTimer).toHaveBeenCalled();
 		});
 
-		it('should mark set start', () => {
+		it('should mark set start with countdown for first set', () => {
 			const { vm, sessionState } = createTestViewModel();
 			const workout = createSampleWorkout();
 
 			vm.startWorkout(workout);
 			vm.markSetStart();
 
+			// First set uses countdown
+			expect(sessionState.startSetWithCountdown).toHaveBeenCalledWith(0);
+		});
+
+		it('should mark set start directly for subsequent sets', async () => {
+			const { vm, sessionState } = createTestViewModel();
+			const workout = createSampleWorkout();
+
+			vm.startWorkout(workout);
+			await vm.logSet(80, 8); // Complete first set
+			vm.markSetStart();
+
+			// Subsequent sets don't use countdown
 			expect(sessionState.markSetStart).toHaveBeenCalledWith(0);
 		});
 	});

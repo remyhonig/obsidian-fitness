@@ -3,6 +3,8 @@ import { TFile, TFolder } from 'obsidian';
 import type { App } from 'obsidian';
 import { SessionRepository } from '../data/session-repository';
 import { SessionStateManager } from '../state/session-state';
+import { FitViewModel } from '../viewmodel/fit-viewmodel';
+import { ProgramRepository } from '../data/program-repository';
 import type { Workout, Question, SessionReview, QuestionAnswer } from '../types';
 import { createMockSettings } from './mocks';
 import { countTotalCompletedSets, calculateTotalVolume } from '../domain/metrics';
@@ -23,6 +25,9 @@ describe('User Journey - Complete Workflow', () => {
 	let mockApp: App;
 	let sessionRepo: SessionRepository;
 	let sessionState: SessionStateManager;
+	let viewModel: FitViewModel;
+	let programRepo: ProgramRepository;
+	let settings: ReturnType<typeof createMockSettings>;
 	const basePath = 'Fitness';
 
 	// Create comprehensive mock vault with full file system simulation
@@ -117,9 +122,18 @@ describe('User Journey - Complete Workflow', () => {
 	beforeEach(() => {
 		mockVault = createMockVault();
 		mockApp = createMockApp(mockVault);
-		sessionState = new SessionStateManager(mockApp, createMockSettings());
+		settings = createMockSettings();
+		sessionState = new SessionStateManager(mockApp, settings);
 		// Access the internal session repository for verification purposes
 		sessionRepo = (sessionState as unknown as { sessionRepo: SessionRepository }).sessionRepo;
+		// Create program repository and viewmodel
+		programRepo = new ProgramRepository(mockApp, basePath);
+		viewModel = new FitViewModel(
+			sessionState,
+			settings,
+			programRepo,
+			async () => { /* saveSettings mock */ }
+		);
 		mockVault._clear();
 	});
 
@@ -155,69 +169,72 @@ describe('User Journey - Complete Workflow', () => {
 				]
 			};
 
-			// ===== STEP 2: Start workout session =====
-			await sessionState.startFromWorkout(workout);
+			// ===== STEP 2: Start workout session via ViewModel =====
+			viewModel.startWorkout(workout);
 
 			// Verify session was created
-			let session = sessionState.getSession();
-			expect(session).toBeDefined();
-			expect(session?.workout).toBe('Upper Body Strength');
-			expect(session?.exercises).toHaveLength(3);
-			expect(session?.status).toBe('active');
+			let state = viewModel.getState();
+			expect(state.session).toBeDefined();
+			expect(state.session?.workout).toBe('Upper Body Strength');
+			expect(state.session?.exercises).toHaveLength(3);
+			expect(state.session?.status).toBe('active');
 
 			// ===== STEP 3: Execute workout - Exercise 1 (Bench Press) =====
-			// Log all 4 sets for Bench Press
-			await sessionState.logSet(0, 80, 8);  // Set 1: 80kg x 8 reps
-			await sessionState.logSet(0, 80, 7);  // Set 2: 80kg x 7 reps
-			await sessionState.logSet(0, 82.5, 6); // Set 3: 82.5kg x 6 reps
-			await sessionState.logSet(0, 82.5, 6); // Set 4: 82.5kg x 6 reps
+			// Exercise 0 is already selected by default
+			// Log all 4 sets for Bench Press via ViewModel
+			await viewModel.logSet(80, 8);  // Set 1: 80kg x 8 reps
+			await viewModel.logSet(80, 7);  // Set 2: 80kg x 7 reps
+			await viewModel.logSet(82.5, 6); // Set 3: 82.5kg x 6 reps
+			await viewModel.logSet(82.5, 6); // Set 4: 82.5kg x 6 reps
 
 			// Verify sets were logged
-			session = sessionState.getSession();
-			expect(session?.exercises[0]?.sets).toHaveLength(4);
-			expect(session?.exercises[0]?.sets[0]?.weight).toBe(80);
-			expect(session?.exercises[0]?.sets[0]?.reps).toBe(8);
-			expect(session?.exercises[0]?.sets[2]?.weight).toBe(82.5);
+			state = viewModel.getState();
+			expect(state.session?.exercises[0]?.sets).toHaveLength(4);
+			expect(state.session?.exercises[0]?.sets[0]?.weight).toBe(80);
+			expect(state.session?.exercises[0]?.sets[0]?.reps).toBe(8);
+			expect(state.session?.exercises[0]?.sets[2]?.weight).toBe(82.5);
 
 			// ===== STEP 4: Post-set questionnaire for Bench Press =====
-			// Answer RPE (Rate of Perceived Exertion)
-			await sessionState.setExerciseRpe(0, 8);
+			// Answer RPE (Rate of Perceived Exertion) via ViewModel
+			await viewModel.setExerciseRpe(8);
 
-			// Answer muscle engagement
-			await sessionState.setExerciseMuscleEngagement(0, 'yes-clearly');
+			// Answer muscle engagement via ViewModel
+			await viewModel.setMuscleEngagement('yes-clearly');
 
 			// Verify post-set data
-			session = sessionState.getSession();
-			expect(session?.exercises[0]?.rpe).toBe(8);
-			expect(session?.exercises[0]?.muscleEngagement).toBe('yes-clearly');
+			state = viewModel.getState();
+			expect(state.session?.exercises[0]?.rpe).toBe(8);
+			expect(state.session?.exercises[0]?.muscleEngagement).toBe('yes-clearly');
 
 			// ===== STEP 5: Execute workout - Exercise 2 (Overhead Press) =====
-			await sessionState.logSet(1, 50, 10); // Set 1: 50kg x 10 reps
-			await sessionState.logSet(1, 50, 9);  // Set 2: 50kg x 9 reps
-			await sessionState.logSet(1, 50, 8);  // Set 3: 50kg x 8 reps
+			viewModel.selectExercise(1);
+			await viewModel.logSet(50, 10); // Set 1: 50kg x 10 reps
+			await viewModel.logSet(50, 9);  // Set 2: 50kg x 9 reps
+			await viewModel.logSet(50, 8);  // Set 3: 50kg x 8 reps
 
-			// Post-set questionnaire
-			await sessionState.setExerciseRpe(1, 7);
-			await sessionState.setExerciseMuscleEngagement(1, 'moderately');
+			// Post-set questionnaire via ViewModel
+			await viewModel.setExerciseRpe(7);
+			await viewModel.setMuscleEngagement('moderately');
 
 			// ===== STEP 6: Execute workout - Exercise 3 (Barbell Row) =====
-			await sessionState.logSet(2, 70, 12); // Set 1: 70kg x 12 reps
-			await sessionState.logSet(2, 70, 10); // Set 2: 70kg x 10 reps
-			await sessionState.logSet(2, 70, 9);  // Set 3: 70kg x 9 reps
+			viewModel.selectExercise(2);
+			await viewModel.logSet(70, 12); // Set 1: 70kg x 12 reps
+			await viewModel.logSet(70, 10); // Set 2: 70kg x 10 reps
+			await viewModel.logSet(70, 9);  // Set 3: 70kg x 9 reps
 
-			// Post-set questionnaire
-			await sessionState.setExerciseRpe(2, 6);
-			await sessionState.setExerciseMuscleEngagement(2, 'yes-clearly');
+			// Post-set questionnaire via ViewModel
+			await viewModel.setExerciseRpe(6);
+			await viewModel.setMuscleEngagement('yes-clearly');
 
-			// ===== STEP 7: Finish the workout =====
-			const finishedSession = await sessionState.finishSession();
+			// ===== STEP 7: Finish the workout via ViewModel =====
+			const finishedSession = await viewModel.finishWorkout();
 
 			expect(finishedSession).toBeDefined();
 			expect(finishedSession?.status).toBe('completed');
 			expect(finishedSession?.endTime).toBeDefined();
 
 			// Verify no more active session
-			expect(sessionState.hasActiveSession()).toBe(false);
+			expect(viewModel.getState().hasActiveSession).toBe(false);
 
 			// ===== STEP 8: Add post-workout questionnaire =====
 			const postWorkoutQuestions: Question[] = [
@@ -377,17 +394,18 @@ describe('User Journey - Complete Workflow', () => {
 				]
 			};
 
-			await sessionState.startFromWorkout(workout);
+			// Start workout via ViewModel
+			viewModel.startWorkout(workout);
 
-			// Log sets
-			await sessionState.logSet(0, 100, 5);
-			await sessionState.logSet(0, 100, 5);
-			await sessionState.logSet(0, 100, 5);
+			// Log sets via ViewModel
+			await viewModel.logSet(100, 5);
+			await viewModel.logSet(100, 5);
+			await viewModel.logSet(100, 5);
 
-			// Finish session
-			const finishedSession = await sessionState.finishSession();
+			// Finish session via ViewModel
+			const finishedSession = await viewModel.finishWorkout();
 
-			// Skip questionnaire
+			// Skip questionnaire (still uses sessionRepo as this is repository-level)
 			const review: SessionReview = {
 				programId: 'test-program',
 				completedAt: new Date().toISOString(),
@@ -420,17 +438,18 @@ describe('User Journey - Complete Workflow', () => {
 				]
 			};
 
-			await sessionState.startFromWorkout(workout);
+			// Start workout via ViewModel
+			viewModel.startWorkout(workout);
 
-			// Log set
-			await sessionState.logSet(0, 140, 5);
+			// Log set via ViewModel
+			await viewModel.logSet(140, 5);
 
-			// Add post-set data
-			await sessionState.setExerciseRpe(0, 9);
-			await sessionState.setExerciseMuscleEngagement(0, 'yes-clearly');
+			// Add post-set data via ViewModel
+			await viewModel.setExerciseRpe(9);
+			await viewModel.setMuscleEngagement('yes-clearly');
 
-			// Finish session without review
-			const finishedSession = await sessionState.finishSession();
+			// Finish session without review via ViewModel
+			const finishedSession = await viewModel.finishWorkout();
 
 			// Verify session file doesn't have review section
 			const sessionContent = mockVault._getContent(`${basePath}/Sessions/${finishedSession!.id}.md`);
@@ -441,6 +460,109 @@ describe('User Journey - Complete Workflow', () => {
 
 			// Should not have review section
 			expect(sessionContent).not.toContain('# Review');
+		});
+
+		it('should track rest times and extensions between sets via ViewModel', async () => {
+			// Use fake timers for this test since we need to control time for countdown
+			vi.useFakeTimers();
+
+			// Define workout with specific rest times
+			const workout: Workout = {
+				id: 'rest-tracking-workout',
+				name: 'Rest Tracking Workout',
+				exercises: [
+					{
+						exercise: 'Squat',
+						targetSets: 3,
+						targetRepsMin: 5,
+						targetRepsMax: 5,
+						restSeconds: 180
+					}
+				]
+			};
+
+			// ===== Start workout via ViewModel =====
+			viewModel.startWorkout(workout);
+			expect(viewModel.getState().hasActiveSession).toBe(true);
+
+			// ===== Set 1: Log first set via ViewModel =====
+			// Mark set as started (this starts a 5-second countdown for first set)
+			viewModel.markSetStart();
+			// Advance past the 5-second countdown so set timer starts
+			vi.advanceTimersByTime(6000);
+			// Simulate some set duration
+			vi.advanceTimersByTime(2000);
+			// Set weight and reps, then log the set
+			viewModel.setWeight(100);
+			viewModel.setReps(5);
+			await viewModel.logSet();
+
+			// Rest timer should auto-start after logging
+			expect(viewModel.getState().restTimer).not.toBeNull();
+
+			// Add extra rest time via ViewModel (simulates user pressing +15s button)
+			viewModel.addRestTime(15);
+			viewModel.addRestTime(15); // Total +30s extra
+
+			// ===== Set 2: Log second set (records rest on first set) =====
+			// Second set doesn't have countdown (since there's already a completed set)
+			viewModel.markSetStart();
+			vi.advanceTimersByTime(2000);
+			await viewModel.logSet(100, 5);
+
+			// Verify first set now has rest data recorded
+			let state = viewModel.getState();
+			const set0 = state.session?.exercises[0]?.sets[0];
+			expect(set0?.actualRestSeconds).toBeDefined();
+			expect(set0?.extraRestSeconds).toBe(30);
+			expect(set0?.avgRepDuration).toBeDefined();
+
+			// Add some extra rest for second set
+			viewModel.addRestTime(15);
+
+			// ===== Set 3: Log third set (records rest on second set) =====
+			viewModel.markSetStart();
+			vi.advanceTimersByTime(2000);
+			await viewModel.logSet(100, 5);
+
+			// Verify second set has rest data
+			state = viewModel.getState();
+			const set1 = state.session?.exercises[0]?.sets[1];
+			expect(set1?.actualRestSeconds).toBeDefined();
+			expect(set1?.extraRestSeconds).toBe(15);
+			expect(set1?.avgRepDuration).toBeDefined();
+
+			// Third set has no rest after it (last set)
+			const set2 = state.session?.exercises[0]?.sets[2];
+			expect(set2?.actualRestSeconds).toBeUndefined();
+			expect(set2?.extraRestSeconds).toBeUndefined();
+			// But should still have avg rep duration
+			expect(set2?.avgRepDuration).toBeDefined();
+
+			// ===== Finish and verify persistence via ViewModel =====
+			const finishedSession = await viewModel.finishWorkout();
+			expect(finishedSession).not.toBeNull();
+			const sessionContent = mockVault._getContent(`${basePath}/Sessions/${finishedSession!.id}.md`);
+
+			// Verify new columns in table header
+			expect(sessionContent).toContain('| # | kg | reps | rpe | time | rest | +rest | s/rep |');
+
+			// Verify first set has rest extension recorded
+			expect(sessionContent).toContain('+30s');
+
+			// Verify second set has rest extension recorded
+			expect(sessionContent).toContain('+15s');
+
+			// ===== Verify data survives roundtrip =====
+			const retrievedSession = await sessionRepo.get(finishedSession!.id);
+
+			expect(retrievedSession?.exercises[0]?.sets[0]?.extraRestSeconds).toBe(30);
+			expect(retrievedSession?.exercises[0]?.sets[0]?.avgRepDuration).toBeDefined();
+			expect(retrievedSession?.exercises[0]?.sets[1]?.extraRestSeconds).toBe(15);
+			expect(retrievedSession?.exercises[0]?.sets[2]?.avgRepDuration).toBeDefined();
+
+			// Restore real timers
+			vi.useRealTimers();
 		});
 
 		it('should handle editing sets during workout', async () => {
@@ -459,31 +581,33 @@ describe('User Journey - Complete Workflow', () => {
 				]
 			};
 
-			await sessionState.startFromWorkout(workout);
+			// Start workout via ViewModel
+			viewModel.startWorkout(workout);
 
-			// Log sets
-			await sessionState.logSet(0, 60, 10);
-			await sessionState.logSet(0, 60, 9);
-			await sessionState.logSet(0, 60, 8);
+			// Log sets via ViewModel
+			await viewModel.logSet(60, 10);
+			await viewModel.logSet(60, 9);
+			await viewModel.logSet(60, 8);
 
-			// Edit the second set
-			await sessionState.editSet(0, 1, { reps: 10 }); // Change from 9 to 10 reps
+			// Edit the second set via ViewModel
+			await viewModel.editSet(1, { reps: 10 }); // Change from 9 to 10 reps
 
 			// Verify edit
-			const session = sessionState.getSession();
-			expect(session?.exercises[0]?.sets[1]?.reps).toBe(10);
+			let state = viewModel.getState();
+			expect(state.session?.exercises[0]?.sets[1]?.reps).toBe(10);
 
-			// Delete the last set
-			await sessionState.deleteSet(0, 2);
+			// Delete the last set via ViewModel
+			await viewModel.deleteSet(2);
 
 			// Verify deletion
-			expect(session?.exercises[0]?.sets).toHaveLength(2);
+			state = viewModel.getState();
+			expect(state.session?.exercises[0]?.sets).toHaveLength(2);
 
-			// Log a new set to replace the deleted one
-			await sessionState.logSet(0, 62.5, 8);
+			// Log a new set to replace the deleted one via ViewModel
+			await viewModel.logSet(62.5, 8);
 
-			// Finish and verify
-			const finishedSession = await sessionState.finishSession();
+			// Finish and verify via ViewModel
+			const finishedSession = await viewModel.finishWorkout();
 			const sessionContent = mockVault._getContent(`${basePath}/Sessions/${finishedSession!.id}.md`);
 
 			expect(sessionContent).toContain('| 1 | 60 | 10 |');

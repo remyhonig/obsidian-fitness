@@ -189,7 +189,8 @@ export class ExerciseScreen extends BaseScreen {
 			// Complete set button right after reps
 			const actionArea = inputsSection.createDiv({ cls: 'fit-exercise-action' });
 			const nextSetNumber = completedSets + 1;
-			createPrimaryAction(actionArea, `Complete set ${nextSetNumber} of ${exercise.targetSets}`, () => void this.completeSet());
+			const isCountingDown = this.ctx.sessionState.isCountdownActive();
+			createPrimaryAction(actionArea, `Complete set ${nextSetNumber} of ${exercise.targetSets}`, () => void this.completeSet(), isCountingDown);
 
 			// Create containers in correct order (coach cue is async)
 			const coachCueContainer = scrollContent.createDiv({ cls: 'fit-coach-cue-container' });
@@ -232,6 +233,10 @@ export class ExerciseScreen extends BaseScreen {
 		// RPE/muscle events - re-render
 		this.subscribe(state.on('rpe.changed', reRenderIfNotPicking));
 		this.subscribe(state.on('muscle.changed', reRenderIfNotPicking));
+
+		// Countdown events - re-render to update button state and timer display
+		this.subscribe(state.on('countdown.tick', reRenderIfNotPicking));
+		this.subscribe(state.on('countdown.complete', reRenderIfNotPicking));
 	}
 
 	private renderExerciseExplanation(exerciseName: string, parent: HTMLElement): void {
@@ -334,10 +339,23 @@ export class ExerciseScreen extends BaseScreen {
 				for (let i = 0; i < currentExercise.targetSets; i++) {
 					const set = completedSets[i];
 					if (set) {
+						// Build pill text with annotations
+						let pillText = `${set.reps}×${set.weight}kg`;
+						const annotations: string[] = [];
+						if (set.extraRestSeconds) {
+							annotations.push(`+${set.extraRestSeconds}s`);
+						}
+						if (set.avgRepDuration) {
+							annotations.push(`${set.avgRepDuration}s/rep`);
+						}
+						if (annotations.length > 0) {
+							pillText += ` (${annotations.join(', ')})`;
+						}
+
 						// Completed set (tappable to delete)
 						const pill = setsRow.createSpan({
 							cls: 'fit-feedback-set-pill fit-feedback-set-completed fit-feedback-set-tappable',
-							text: `${set.reps}×${set.weight}kg`
+							text: pillText
 						});
 						// Find the actual index in the sets array
 						const setIndex = currentExercise.sets.findIndex(s => s === set);
@@ -378,9 +396,22 @@ export class ExerciseScreen extends BaseScreen {
 			if (previousExercise) {
 				const setsRow = content.createDiv({ cls: 'fit-feedback-sets-row' });
 				for (const set of previousExercise.sets.filter(s => s.completed)) {
+					// Build pill text with annotations
+					let pillText = `${set.reps}×${set.weight}kg`;
+					const annotations: string[] = [];
+					if (set.extraRestSeconds) {
+						annotations.push(`+${set.extraRestSeconds}s`);
+					}
+					if (set.avgRepDuration) {
+						annotations.push(`${set.avgRepDuration}s/rep`);
+					}
+					if (annotations.length > 0) {
+						pillText += ` (${annotations.join(', ')})`;
+					}
+
 					setsRow.createSpan({
 						cls: 'fit-feedback-set-pill fit-feedback-set-previous',
-						text: `${set.reps}×${set.weight}kg`
+						text: pillText
 					});
 				}
 			}

@@ -22,6 +22,10 @@ export interface RestTimerManagerCallbacks {
 export class RestTimerManager {
 	private restTimer: RestTimerState | null = null;
 	private restTimerInterval: number | null = null;
+	// Track rest period for recording on next set
+	private restStartTime: number | null = null;
+	private extraSecondsAdded = 0;
+	private restExerciseIndex: number | null = null;
 
 	constructor(private callbacks: RestTimerManagerCallbacks) {}
 
@@ -36,6 +40,11 @@ export class RestTimerManager {
 			duration: seconds,
 			exerciseIndex
 		};
+
+		// Track rest period start for recording on next set
+		this.restStartTime = Date.now();
+		this.extraSecondsAdded = 0;
+		this.restExerciseIndex = exerciseIndex;
 
 		// Update every second
 		this.restTimerInterval = window.setInterval(() => {
@@ -76,6 +85,7 @@ export class RestTimerManager {
 
 		this.restTimer.endTime += seconds * 1000;
 		this.restTimer.duration += seconds;
+		this.extraSecondsAdded += seconds;
 		this.callbacks.emit('timer.extended', { additionalSeconds: seconds });
 		this.callbacks.notifyListeners();
 	}
@@ -126,10 +136,35 @@ export class RestTimerManager {
 	}
 
 	/**
+	 * Gets the current rest period data for recording on the next set.
+	 * Returns null if no rest period is active or was recently active.
+	 */
+	getRestPeriodData(): { startTime: number; extraSeconds: number; exerciseIndex: number } | null {
+		if (this.restStartTime === null || this.restExerciseIndex === null) {
+			return null;
+		}
+		return {
+			startTime: this.restStartTime,
+			extraSeconds: this.extraSecondsAdded,
+			exerciseIndex: this.restExerciseIndex
+		};
+	}
+
+	/**
+	 * Clears the rest period tracking data after it has been recorded.
+	 */
+	clearRestPeriodData(): void {
+		this.restStartTime = null;
+		this.extraSecondsAdded = 0;
+		this.restExerciseIndex = null;
+	}
+
+	/**
 	 * Cleanup
 	 */
 	destroy(): void {
 		this.stopInterval();
 		this.restTimer = null;
+		this.clearRestPeriodData();
 	}
 }

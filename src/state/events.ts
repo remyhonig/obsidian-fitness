@@ -24,6 +24,10 @@ export interface SessionEvents {
 	'set.edited': { exerciseIndex: number; setIndex: number };
 	'set.deleted': { exerciseIndex: number; setIndex: number };
 
+	// Countdown (before first set of each exercise)
+	'countdown.tick': { remaining: number; exerciseIndex: number };
+	'countdown.complete': { exerciseIndex: number };
+
 	// Exercise metrics
 	'rpe.changed': { exerciseIndex: number; rpe: number };
 	'muscle.changed': { exerciseIndex: number };

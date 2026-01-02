@@ -125,13 +125,35 @@ export class SessionDetailScreen extends BaseScreen {
 			// Sets as pills (same style as exercise screen)
 			const setsContainer = exerciseCard.createDiv({ cls: 'fit-session-detail-sets' });
 			for (const set of completedSets) {
-				const pillText = `${set.reps}×${set.weight}${unit}`;
+				// Build pill text with annotations
+				let pillText = `${set.reps}×${set.weight}${unit}`;
+				const annotations: string[] = [];
+				if (set.extraRestSeconds) {
+					annotations.push(`+${set.extraRestSeconds}s`);
+				}
+				if (set.avgRepDuration) {
+					annotations.push(`${set.avgRepDuration}s/rep`);
+				}
+				if (annotations.length > 0) {
+					pillText += ` (${annotations.join(', ')})`;
+				}
+
 				const pill = setsContainer.createSpan({
 					cls: 'fit-feedback-set-pill fit-feedback-set-completed',
 					text: pillText
 				});
-				if (set.rpe !== undefined) {
-					pill.setAttribute('title', `RPE ${set.rpe}`);
+
+				// Build detailed tooltip
+				const tooltipParts: string[] = [];
+				if (set.rpe !== undefined) tooltipParts.push(`RPE ${set.rpe}`);
+				if (set.duration !== undefined) tooltipParts.push(`${set.duration}s set`);
+				if (set.actualRestSeconds !== undefined) {
+					let restText = `${set.actualRestSeconds}s rest`;
+					if (set.extraRestSeconds) restText += ` (+${set.extraRestSeconds}s extra)`;
+					tooltipParts.push(restText);
+				}
+				if (tooltipParts.length > 0) {
+					pill.setAttribute('title', tooltipParts.join(' | '));
 				}
 			}
 
