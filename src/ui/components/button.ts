@@ -1,3 +1,5 @@
+import { setIcon } from 'obsidian';
+
 /**
  * Button variants
  */
@@ -24,7 +26,8 @@ export function createButton(parent: HTMLElement, options: ButtonOptions): HTMLB
 	});
 
 	if (options.icon) {
-		btn.createSpan({ cls: 'fit-button-icon', text: options.icon });
+		const iconSpan = btn.createSpan({ cls: 'fit-button-icon' });
+		setIcon(iconSpan, options.icon);
 		btn.createSpan({ text: options.text });
 	}
 

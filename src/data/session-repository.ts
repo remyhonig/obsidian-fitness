@@ -15,7 +15,6 @@ import {
 	parseCoachFeedbackBody,
 	extractWikiLinkName
 } from './file-utils';
-import { toSlug } from '../domain/identifier';
 
 const ACTIVE_SESSION_FILENAME = '.active-session.md';
 
@@ -139,11 +138,6 @@ export class SessionRepository {
 		// Use session ID for filename (e.g., "2025-12-27-10-30-00-push-day.md")
 		const path = `${this.basePath}/${session.id}.md`;
 
-		// Store workout as internal link to the workout file
-		const workoutLink = session.workout
-			? `[[Workouts/${toSlug(session.workout)}]]`
-			: undefined;
-
 		// Frontmatter: metadata only (no review, coach feedback - those go in body)
 		const frontmatter: Record<string, unknown> = {
 			date: session.date,
@@ -151,7 +145,7 @@ export class SessionRepository {
 			startTimeFormatted: formatTimeHHMMSS(session.startTime),
 			endTime: session.endTime,
 			endTimeFormatted: session.endTime ? formatTimeHHMMSS(session.endTime) : undefined,
-			workout: workoutLink,
+			workout: session.workout,
 			status: session.status,
 			notes: session.notes
 		};

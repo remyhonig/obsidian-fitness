@@ -891,7 +891,8 @@
 }
 
 /* ========== Workout Editor ========== */
-.fit-workout-exercise-list {
+.fit-workout-exercise-list,
+.fit-workout-editor-exercises {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
@@ -922,6 +923,59 @@
 }
 
 .fit-exercise-delete .svg-icon {
+	width: 16px;
+	height: 16px;
+}
+
+/* Workout editor exercise image */
+.fit-workout-exercise-img {
+	width: 48px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: 6px;
+	flex-shrink: 0;
+}
+
+/* Workout editor exercise info */
+.fit-workout-exercise-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.fit-workout-exercise-name {
+	font-weight: 500;
+	margin-bottom: 2px;
+	cursor: pointer;
+	padding: 2px 4px;
+	margin: -2px -4px;
+	border-radius: 4px;
+}
+
+.fit-workout-exercise-name:hover {
+	background: var(--background-modifier-hover);
+}
+
+.fit-workout-exercise-details {
+	font-size: 13px;
+	color: var(--text-muted);
+}
+
+.fit-workout-exercise-delete {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 4px;
+}
+
+.fit-workout-exercise-delete:hover {
+	color: var(--text-error);
+	background: var(--background-modifier-hover);
+}
+
+.fit-workout-exercise-delete .svg-icon {
 	width: 16px;
 	height: 16px;
 }

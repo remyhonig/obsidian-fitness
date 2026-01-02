@@ -114,26 +114,6 @@ export default class MainPlugin extends Plugin {
 		}
 	}
 
-	/**
-	 * Migrates workout files to use correct exercise reference format
-	 * Database exercises become plain text, custom exercises keep wikilinks
-	 */
-	async migrateWorkouts(): Promise<{ updated: number; skipped: number }> {
-		const { WorkoutRepository } = await import('./data/workout-repository');
-		const workoutRepo = new WorkoutRepository(this.app, this.settings.basePath);
-
-		new Notice('Migrating workouts...');
-		try {
-			const result = await workoutRepo.migrateExerciseReferences(this.databaseExerciseRepo);
-			new Notice(`Migration complete: Updated ${result.updated} workouts, ${result.skipped} already correct`);
-			return result;
-		} catch (error) {
-			console.error('[Fit] Workout migration failed:', error);
-			new Notice(`Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-			return { updated: 0, skipped: 0 };
-		}
-	}
-
 	onunload() {
 		// Views are automatically cleaned up by Obsidian
 	}

@@ -179,8 +179,8 @@ describe('SessionRepository', () => {
 			await repo.saveActive(session);
 
 			const content = mockVault._getContent(`Fitness/Sessions/${sessionId}.md`);
-			// Metadata in frontmatter - workout is stored as an internal link
-			expect(content).toContain('workout: "[[Workouts/push-day]]"');
+			// Metadata in frontmatter - workout name is stored directly
+			expect(content).toContain('workout: Push Day');
 			// Exercises in body as markdown blocks
 			expect(content).toContain('## Bench Press');
 			expect(content).toContain('Target: 4 × 6-8 | Rest: 180s');

@@ -6,12 +6,10 @@ import {
 	getIdFromPath,
 	parseFrontmatter,
 	createFileContent,
-	parseProgramBody,
-	createProgramBody,
 	parseDescriptionSection
 } from './file-utils';
 import { parseInlineWorkouts } from './program-body';
-import { toSlug } from '../domain/identifier';
+import { createWorkoutBody } from './workout-body';
 
 // Frontmatter only contains metadata, not workouts
 interface ProgramMetadata {
@@ -86,38 +84,16 @@ export class ProgramRepository {
 
 	/**
 	 * Creates a new program
+	 * Note: Programs are created by editing markdown files directly.
+	 * This method is not currently used.
 	 */
-	async create(program: Omit<Program, 'id'>): Promise<Program> {
-		await this.ensureFolder();
-
-		const id = toSlug(program.name);
-		const path = `${this.basePath}/${id}.md`;
-
-		// Check if already exists
-		if (this.app.vault.getFileByPath(path)) {
-			throw new Error(`Program already exists: ${program.name}`);
-		}
-
-		// Frontmatter: metadata only
-		const frontmatter: Record<string, unknown> = {
-			name: program.name,
-			description: program.description
-		};
-
-		// Body: workouts + optional review section
-		let body = createProgramBody(program.workouts);
-		if (program.questions && program.questions.length > 0) {
-			body += this.createReviewSection(program.questions);
-		}
-
-		const content = createFileContent(frontmatter, body);
-		await this.app.vault.create(path, content);
-
-		return { id, ...program };
+	create(_program: Omit<Program, 'id'>): Promise<Program> {
+		throw new Error('Program creation via API is not supported. Edit program files directly.');
 	}
 
 	/**
-	 * Updates an existing program
+	 * Updates an existing program's metadata and review questions.
+	 * Inline workouts are preserved from the cache.
 	 */
 	async update(id: string, updates: Partial<Omit<Program, 'id'>>): Promise<void> {
 		const path = `${this.basePath}/${id}.md`;
@@ -139,14 +115,42 @@ export class ProgramRepository {
 			description: updated.description
 		};
 
-		// Body: workouts + optional review section
-		let body = createProgramBody(updated.workouts);
+		// Body: inline workouts + optional review section
+		let body = this.createInlineWorkoutsSection(id);
 		if (updated.questions && updated.questions.length > 0) {
 			body += this.createReviewSection(updated.questions);
 		}
 
 		const content = createFileContent(frontmatter, body);
 		await this.app.vault.modify(file, content);
+	}
+
+	/**
+	 * Creates inline workouts section from cached workout data
+	 */
+	private createInlineWorkoutsSection(programId: string): string {
+		const workoutMap = this.inlineWorkoutCache.get(programId);
+		if (!workoutMap || workoutMap.size === 0) {
+			return '';
+		}
+
+		const lines: string[] = ['', '## Workouts', ''];
+		for (const workout of workoutMap.values()) {
+			lines.push(`### ${workout.name}`);
+			// Convert WorkoutExercise to WorkoutExerciseRow format
+			const rows = workout.exercises.map(e => ({
+				exercise: e.exercise,
+				exerciseId: e.exerciseId,
+				sets: e.targetSets,
+				repsMin: e.targetRepsMin,
+				repsMax: e.targetRepsMax,
+				restSeconds: e.restSeconds,
+				source: e.source
+			}));
+			lines.push(createWorkoutBody(rows));
+			lines.push('');
+		}
+		return lines.join('\n');
 	}
 
 	/**
@@ -173,37 +177,28 @@ export class ProgramRepository {
 			}
 
 			const programId = getIdFromPath(file.path);
-			let workouts: string[];
 
-			// Try inline workouts first (H2 sections with exercise tables)
+			// Parse inline workouts (H3 sections with exercise tables)
 			const inlineWorkouts = parseInlineWorkouts(body);
-			if (inlineWorkouts.length > 0) {
-				// Convert and cache inline workouts
-				const workoutMap = new Map<string, Workout>();
-				for (const inline of inlineWorkouts) {
-					const exercises: WorkoutExercise[] = inline.exercises.map(e => ({
-						exercise: e.exercise,
-						exerciseId: e.exerciseId,
-						targetSets: e.sets,
-						targetRepsMin: e.repsMin,
-						targetRepsMax: e.repsMax,
-						restSeconds: e.restSeconds,
-						source: e.source
-					}));
-					workoutMap.set(inline.id, {
-						id: inline.id,
-						name: inline.name,
-						exercises
-					});
-				}
-				this.inlineWorkoutCache.set(programId, workoutMap);
-				workouts = inlineWorkouts.map(w => w.id);
-			} else {
-				// Fall back to linked workouts (## Workouts with wikilinks)
-				workouts = parseProgramBody(body);
-				// Clear any cached inline workouts for this program
-				this.inlineWorkoutCache.delete(programId);
+			const workoutMap = new Map<string, Workout>();
+			for (const inline of inlineWorkouts) {
+				const exercises: WorkoutExercise[] = inline.exercises.map(e => ({
+					exercise: e.exercise,
+					exerciseId: e.exerciseId,
+					targetSets: e.sets,
+					targetRepsMin: e.repsMin,
+					targetRepsMax: e.repsMax,
+					restSeconds: e.restSeconds,
+					source: e.source
+				}));
+				workoutMap.set(inline.id, {
+					id: inline.id,
+					name: inline.name,
+					exercises
+				});
 			}
+			this.inlineWorkoutCache.set(programId, workoutMap);
+			const workouts = inlineWorkouts.map(w => w.id);
 
 			// Parse review questions from body
 			const questions = this.parseReviewSection(body);

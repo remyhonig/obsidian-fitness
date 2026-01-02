@@ -104,44 +104,108 @@ const STARTER_EXERCISES = [
 ];
 
 /**
- * Starter workouts
+ * Templates - files users can copy and customize
+ * Prefixed with underscore to sort to top and indicate they're templates
  */
-const STARTER_WORKOUTS = [
-	{
-		id: 'full-body-a',
-		name: 'Full Body A',
-		description: 'Squat-focused full body workout',
-		exercises: [
-			{ exercise: 'barbell-squat', sets: 4, repsMin: 6, repsMax: 8, rest: 180 },
-			{ exercise: 'bench-press', sets: 3, repsMin: 8, repsMax: 10, rest: 120 },
-			{ exercise: 'barbell-row', sets: 3, repsMin: 8, repsMax: 10, rest: 120 },
-			{ exercise: 'lateral-raise', sets: 3, repsMin: 12, repsMax: 15, rest: 60 },
-			{ exercise: 'dumbbell-curl', sets: 2, repsMin: 10, repsMax: 12, rest: 60 }
-		]
+const TEMPLATES = {
+	exercise: {
+		id: '_template-exercise',
+		content: `---
+name: My Exercise Name
+category: Strength
+equipment: Barbell
+muscleGroups: [Primary Muscle, Secondary Muscle]
+---
+
+Describe how to perform this exercise. Include:
+- Starting position
+- Movement pattern
+- Key form cues
+- Common mistakes to avoid
+
+**Copy this file and rename it to create your own exercise.**
+`
 	},
-	{
-		id: 'full-body-b',
-		name: 'Full Body B',
-		description: 'Deadlift-focused full body workout',
-		exercises: [
-			{ exercise: 'deadlift', sets: 4, repsMin: 5, repsMax: 6, rest: 180 },
-			{ exercise: 'overhead-press', sets: 3, repsMin: 8, repsMax: 10, rest: 120 },
-			{ exercise: 'pull-up', sets: 3, repsMin: 6, repsMax: 10, rest: 120 },
-			{ exercise: 'leg-curl', sets: 3, repsMin: 10, repsMax: 12, rest: 60 },
-			{ exercise: 'tricep-pushdown', sets: 2, repsMin: 10, repsMax: 12, rest: 60 }
-		]
+	program: {
+		id: '_template-program',
+		content: `---
+name: My Program Name
+description: Brief description of this training program
+---
+
+## Workouts
+
+### Workout A
+| Exercise | Sets | Reps | Rest |
+| -------- | ---- | ---- | ---- |
+| [[exercise-name]] | 3 | 8-10 | 120s |
+| exercise-from-database | 3 | 10-12 | 90s |
+
+### Workout B
+| Exercise | Sets | Reps | Rest |
+| -------- | ---- | ---- | ---- |
+| [[another-exercise]] | 4 | 6-8 | 180s |
+
+**Notes:**
+- Define workouts as ### sections with exercise tables
+- The plugin cycles through workouts in order
+- Use [[wikilinks]] for custom exercises in the Exercises folder
+- Use plain text for exercises from the downloaded database
+
+## Review
+
+### energy-level
+**How was your energy during the workout?**
+- high: High energy, felt great
+- normal: Normal, adequate
+- low: Low energy, struggled
+
+### progress-feeling
+**Do you feel you made progress?**
+- yes: Yes, definitely
+- maybe: Maybe, not sure
+- no: No, felt stuck
+
+### notes
+**Any additional notes?**
+- no: No additional notes
+- yes: Yes, I have notes | freeText: 200
+
+**Copy this file and rename it to create your own program.**
+`
 	}
-];
+};
 
 /**
- * Starter programs with embedded review questions
+ * Starter programs with inline workouts and review questions
  */
 const STARTER_PROGRAMS = [
 	{
 		id: 'full-body-2x',
 		name: 'Full Body 2x',
 		description: 'Simple 2-day full body program for beginners',
-		workouts: ['full-body-a', 'full-body-b'],
+		workouts: [
+			{
+				name: 'Full Body A',
+				exercises: [
+					{ exercise: 'barbell-squat', sets: 4, repsMin: 6, repsMax: 8, rest: 180 },
+					{ exercise: 'bench-press', sets: 3, repsMin: 8, repsMax: 10, rest: 120 },
+					{ exercise: 'barbell-row', sets: 3, repsMin: 8, repsMax: 10, rest: 120 },
+					{ exercise: 'lateral-raise', sets: 3, repsMin: 12, repsMax: 15, rest: 60 },
+					{ exercise: 'dumbbell-curl', sets: 2, repsMin: 10, repsMax: 12, rest: 60 }
+				]
+			},
+			{
+				name: 'Full Body B',
+				exercises: [
+					{ exercise: 'deadlift', sets: 4, repsMin: 5, repsMax: 6, rest: 180 },
+					{ exercise: 'overhead-press', sets: 3, repsMin: 8, repsMax: 10, rest: 120 },
+					{ exercise: 'pull-up', sets: 3, repsMin: 6, repsMax: 10, rest: 120 },
+					{ exercise: 'leg-curl', sets: 3, repsMin: 10, repsMax: 12, rest: 60 },
+					{ exercise: 'tricep-pushdown', sets: 2, repsMin: 10, repsMax: 12, rest: 60 }
+				]
+			}
+		],
 		questions: [
 			{
 				id: 'training-effectiveness',
@@ -221,28 +285,7 @@ function createExerciseContent(exercise: typeof STARTER_EXERCISES[0]): string {
 }
 
 /**
- * Creates workout markdown content
- */
-function createWorkoutContent(workout: typeof STARTER_WORKOUTS[0]): string {
-	const lines = ['---'];
-	lines.push(`name: ${workout.name}`);
-	if (workout.description) lines.push(`description: ${workout.description}`);
-	lines.push('---');
-	lines.push('');
-	lines.push('## Exercises');
-	lines.push('');
-	lines.push('| Exercise | Sets | Reps | Rest |');
-	lines.push('| -------- | ---- | ---- | ---- |');
-	for (const ex of workout.exercises) {
-		const reps = ex.repsMin === ex.repsMax ? `${ex.repsMin}` : `${ex.repsMin}-${ex.repsMax}`;
-		lines.push(`| [[${ex.exercise}]] | ${ex.sets} | ${reps} | ${ex.rest}s |`);
-	}
-	lines.push('');
-	return lines.join('\n');
-}
-
-/**
- * Creates program markdown content with embedded review questions
+ * Creates program markdown content with inline workouts and review questions
  */
 function createProgramContent(program: typeof STARTER_PROGRAMS[0]): string {
 	const lines = ['---'];
@@ -252,10 +295,18 @@ function createProgramContent(program: typeof STARTER_PROGRAMS[0]): string {
 	lines.push('');
 	lines.push('## Workouts');
 	lines.push('');
-	for (const workoutId of program.workouts) {
-		lines.push(`- [[${workoutId}]]`);
+
+	// Add inline workouts as H3 sections with exercise tables
+	for (const workout of program.workouts) {
+		lines.push(`### ${workout.name}`);
+		lines.push('| Exercise | Sets | Reps | Rest |');
+		lines.push('| -------- | ---- | ---- | ---- |');
+		for (const ex of workout.exercises) {
+			const reps = ex.repsMin === ex.repsMax ? `${ex.repsMin}` : `${ex.repsMin}-${ex.repsMax}`;
+			lines.push(`| ${ex.exercise} | ${ex.sets} | ${reps} | ${ex.rest}s |`);
+		}
+		lines.push('');
 	}
-	lines.push('');
 
 	// Add Review section if questions exist
 	if (program.questions && program.questions.length > 0) {
@@ -279,32 +330,39 @@ function createProgramContent(program: typeof STARTER_PROGRAMS[0]): string {
 }
 
 /**
- * Bootstraps the data folder structure and starter content
+ * Bootstraps the data folder structure and starter content.
+ * Recreates missing directories, templates, and starter programs on every startup.
+ * Existing files are never overwritten.
  */
 export async function bootstrapDataFolder(app: App, basePath: string): Promise<void> {
 	const exercisesPath = `${basePath}/Exercises`;
-	const workoutsPath = `${basePath}/Workouts`;
 	const programsPath = `${basePath}/Programs`;
 	const sessionsPath = `${basePath}/Sessions`;
 
-	// Check if this looks like an existing setup
-	const exercisesFolder = app.vault.getFolderByPath(exercisesPath);
-	const workoutsFolder = app.vault.getFolderByPath(workoutsPath);
-	const hasExistingContent = exercisesFolder !== null || workoutsFolder !== null;
-
 	// Always ensure folders exist
 	await ensureFolder(app, exercisesPath);
-	await ensureFolder(app, workoutsPath);
 	await ensureFolder(app, programsPath);
 	await ensureFolder(app, sessionsPath);
 
-	// If there's already content, don't create starter files
-	if (hasExistingContent) {
-		console.debug('[Fit] Existing content found, skipping starter content creation');
-		return;
+	// Always create templates if missing
+	let templatesCreated = 0;
+	const templatePaths = [
+		{ path: `${exercisesPath}/${TEMPLATES.exercise.id}.md`, content: TEMPLATES.exercise.content },
+		{ path: `${programsPath}/${TEMPLATES.program.id}.md`, content: TEMPLATES.program.content }
+	];
+	for (const template of templatePaths) {
+		if (!app.vault.getFileByPath(template.path)) {
+			try {
+				await app.vault.create(template.path, template.content);
+				templatesCreated++;
+			} catch {
+				// File might already exist (cache miss), skip
+			}
+		}
 	}
-
-	console.debug('[Fit] Creating starter content...');
+	if (templatesCreated > 0) {
+		new Notice(`Created ${templatesCreated} template file(s)`);
+	}
 
 	// Create starter exercises (only if file doesn't exist)
 	let exercisesCreated = 0;
@@ -320,21 +378,7 @@ export async function bootstrapDataFolder(app: App, basePath: string): Promise<v
 		}
 	}
 
-	// Create starter workouts
-	let workoutsCreated = 0;
-	for (const workout of STARTER_WORKOUTS) {
-		const path = `${workoutsPath}/${workout.id}.md`;
-		if (!app.vault.getFileByPath(path)) {
-			try {
-				await app.vault.create(path, createWorkoutContent(workout));
-				workoutsCreated++;
-			} catch {
-				// File might already exist (cache miss), skip
-			}
-		}
-	}
-
-	// Create starter programs
+	// Create starter programs (with inline workouts)
 	let programsCreated = 0;
 	for (const program of STARTER_PROGRAMS) {
 		const path = `${programsPath}/${program.id}.md`;
@@ -348,8 +392,8 @@ export async function bootstrapDataFolder(app: App, basePath: string): Promise<v
 		}
 	}
 
-	if (exercisesCreated > 0 || workoutsCreated > 0 || programsCreated > 0) {
-		new Notice(`Created starter content: ${exercisesCreated} exercises, ${workoutsCreated} workouts, ${programsCreated} programs`);
+	if (exercisesCreated > 0 || programsCreated > 0) {
+		new Notice(`Created starter content: ${exercisesCreated} exercises, ${programsCreated} programs`);
 	}
 }
 

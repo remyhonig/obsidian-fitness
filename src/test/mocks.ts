@@ -13,7 +13,10 @@ export function createMockSettings(): PluginSettings {
 		defaultRestSeconds: 120,
 		autoStartRestTimer: true,
 		weightIncrementsKg: [10, 2.5, 0.5, 0.25],
-		weightIncrementsLbs: [45, 10, 5, 2.5]
+		weightIncrementsLbs: [45, 10, 5, 2.5],
+		programWorkoutIndex: 0,
+		topPadding: 20,
+		bottomPadding: 100
 	};
 }
 
@@ -43,30 +46,6 @@ export function createMockExerciseRepo(exercises: Exercise[] = []) {
 		delete: vi.fn().mockResolvedValue(undefined),
 		search: vi.fn().mockImplementation((query: string) =>
 			Promise.resolve(exercises.filter(e => e.name.toLowerCase().includes(query.toLowerCase())))
-		),
-		ensureFolder: vi.fn().mockResolvedValue(undefined),
-		setBasePath: vi.fn()
-	};
-}
-
-// Mock workout repository
-export function createMockWorkoutRepo(workouts: Workout[] = []) {
-	return {
-		list: vi.fn().mockResolvedValue(workouts),
-		get: vi.fn().mockImplementation((id: string) =>
-			Promise.resolve(workouts.find(w => w.id === id) ?? null)
-		),
-		getByName: vi.fn().mockImplementation((name: string) =>
-			Promise.resolve(workouts.find(w => w.name.toLowerCase() === name.toLowerCase()) ?? null)
-		),
-		create: vi.fn().mockImplementation((workout: Omit<Workout, 'id'>) =>
-			Promise.resolve({ id: workout.name.toLowerCase().replace(/\s+/g, '-'), ...workout })
-		),
-		update: vi.fn().mockResolvedValue(undefined),
-		delete: vi.fn().mockResolvedValue(undefined),
-		duplicate: vi.fn().mockResolvedValue(undefined),
-		search: vi.fn().mockImplementation((query: string) =>
-			Promise.resolve(workouts.filter(w => w.name.toLowerCase().includes(query.toLowerCase())))
 		),
 		ensureFolder: vi.fn().mockResolvedValue(undefined),
 		setBasePath: vi.fn()
@@ -286,7 +265,9 @@ export function createMockProgramRepo(programs: Program[] = []) {
 		update: vi.fn().mockResolvedValue(undefined),
 		delete: vi.fn().mockResolvedValue(undefined),
 		ensureFolder: vi.fn().mockResolvedValue(undefined),
-		setBasePath: vi.fn()
+		setBasePath: vi.fn(),
+		getInlineWorkout: vi.fn().mockReturnValue(null),
+		hasInlineWorkouts: vi.fn().mockReturnValue(false)
 	};
 }
 
@@ -367,7 +348,6 @@ export function createMockView() {
 // Create full screen context
 export function createMockScreenContext(options: {
 	exercises?: Exercise[];
-	workouts?: Workout[];
 	sessions?: Session[];
 	programs?: Program[];
 	activeSession?: Session | null;
@@ -384,7 +364,6 @@ export function createMockScreenContext(options: {
 		view: createMockView() as unknown as ScreenContext['view'],
 		plugin: createMockPlugin() as unknown as ScreenContext['plugin'],
 		exerciseRepo: createMockExerciseRepo(options.exercises ?? []) as unknown as ScreenContext['exerciseRepo'],
-		workoutRepo: createMockWorkoutRepo(options.workouts ?? []) as unknown as ScreenContext['workoutRepo'],
 		sessionRepo: createMockSessionRepo(options.sessions ?? []) as unknown as ScreenContext['sessionRepo'],
 		programRepo: createMockProgramRepo(options.programs ?? []) as unknown as ScreenContext['programRepo'],
 		sessionState: createMockSessionState(options.activeSession ?? null) as unknown as ScreenContext['sessionState'],

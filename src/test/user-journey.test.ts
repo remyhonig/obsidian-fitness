@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TFile, TFolder } from 'obsidian';
 import type { App } from 'obsidian';
-import { WorkoutRepository } from '../data/workout-repository';
 import { SessionRepository } from '../data/session-repository';
 import { SessionStateManager } from '../state/session-state';
-import type { Workout, Session, Question, SessionReview, QuestionAnswer } from '../types';
+import type { Workout, Question, SessionReview, QuestionAnswer } from '../types';
 import { createMockSettings } from './mocks';
 import { countTotalCompletedSets, calculateTotalVolume } from '../domain/metrics';
 
@@ -22,7 +21,6 @@ import { countTotalCompletedSets, calculateTotalVolume } from '../domain/metrics
 describe('User Journey - Complete Workflow', () => {
 	let mockVault: ReturnType<typeof createMockVault>;
 	let mockApp: App;
-	let workoutRepo: WorkoutRepository;
 	let sessionRepo: SessionRepository;
 	let sessionState: SessionStateManager;
 	const basePath = 'Fitness';
@@ -119,7 +117,6 @@ describe('User Journey - Complete Workflow', () => {
 	beforeEach(() => {
 		mockVault = createMockVault();
 		mockApp = createMockApp(mockVault);
-		workoutRepo = new WorkoutRepository(mockApp, basePath);
 		sessionState = new SessionStateManager(mockApp, createMockSettings());
 		// Access the internal session repository for verification purposes
 		sessionRepo = (sessionState as unknown as { sessionRepo: SessionRepository }).sessionRepo;
@@ -127,9 +124,10 @@ describe('User Journey - Complete Workflow', () => {
 	});
 
 	describe('Complete user journey', () => {
-		it('should handle the full workflow from workout creation to session completion with questionnaires', async () => {
-			// ===== STEP 1: Create a workout =====
-			const newWorkout: Omit<Workout, 'id'> = {
+		it('should handle the full workflow from workout to session completion with questionnaires', async () => {
+			// ===== STEP 1: Define a workout (inline in program, defined directly for test) =====
+			const workout: Workout = {
+				id: 'upper-body-strength',
 				name: 'Upper Body Strength',
 				description: 'Focus on compound movements',
 				exercises: [
@@ -146,38 +144,7 @@ describe('User Journey - Complete Workflow', () => {
 						targetRepsMin: 8,
 						targetRepsMax: 10,
 						restSeconds: 120
-					}
-				]
-			};
-
-			const createdWorkout = await workoutRepo.create(newWorkout);
-
-			// Verify workout was created
-			expect(createdWorkout).toBeDefined();
-			expect(createdWorkout.id).toBe('upper-body-strength');
-			expect(createdWorkout.name).toBe('Upper Body Strength');
-			expect(createdWorkout.exercises).toHaveLength(2);
-
-			// Verify workout file exists
-			const workoutFilePath = `${basePath}/Workouts/upper-body-strength.md`;
-			const workoutContent = mockVault._getContent(workoutFilePath);
-			expect(workoutContent).toBeDefined();
-			expect(workoutContent).toContain('name: Upper Body Strength');
-			expect(workoutContent).toContain('## Exercises');
-			expect(workoutContent).toContain('bench-press');
-			expect(workoutContent).toContain('overhead-press');
-
-			// Verify we can retrieve the workout
-			const retrievedWorkout = await workoutRepo.get('upper-body-strength');
-			expect(retrievedWorkout).toBeDefined();
-			expect(retrievedWorkout?.name).toBe('Upper Body Strength');
-
-			// ===== STEP 2: Edit the workout (add an exercise) =====
-			await workoutRepo.update('upper-body-strength', {
-				name: 'Upper Body Strength',
-				description: 'Focus on compound movements',
-				exercises: [
-					...newWorkout.exercises,
+					},
 					{
 						exercise: 'Barbell Row',
 						targetSets: 3,
@@ -186,20 +153,10 @@ describe('User Journey - Complete Workflow', () => {
 						restSeconds: 120
 					}
 				]
-			});
+			};
 
-			// Verify workout was updated
-			const updatedWorkout = await workoutRepo.get('upper-body-strength');
-			expect(updatedWorkout).toBeDefined();
-			expect(updatedWorkout?.exercises).toHaveLength(3);
-			// Exercise names are stored as IDs (slugified) in the table
-			expect(updatedWorkout?.exercises[2]?.exercise).toBe('barbell-row');
-
-			const updatedContent = mockVault._getContent(workoutFilePath);
-			expect(updatedContent).toContain('barbell-row');
-
-			// ===== STEP 3: Start workout session =====
-			await sessionState.startFromWorkout(updatedWorkout!);
+			// ===== STEP 2: Start workout session =====
+			await sessionState.startFromWorkout(workout);
 
 			// Verify session was created
 			let session = sessionState.getSession();
@@ -208,7 +165,7 @@ describe('User Journey - Complete Workflow', () => {
 			expect(session?.exercises).toHaveLength(3);
 			expect(session?.status).toBe('active');
 
-			// ===== STEP 4: Execute workout - Exercise 1 (Bench Press) =====
+			// ===== STEP 3: Execute workout - Exercise 1 (Bench Press) =====
 			// Log all 4 sets for Bench Press
 			await sessionState.logSet(0, 80, 8);  // Set 1: 80kg x 8 reps
 			await sessionState.logSet(0, 80, 7);  // Set 2: 80kg x 7 reps
@@ -222,7 +179,7 @@ describe('User Journey - Complete Workflow', () => {
 			expect(session?.exercises[0]?.sets[0]?.reps).toBe(8);
 			expect(session?.exercises[0]?.sets[2]?.weight).toBe(82.5);
 
-			// ===== STEP 5: Post-set questionnaire for Bench Press =====
+			// ===== STEP 4: Post-set questionnaire for Bench Press =====
 			// Answer RPE (Rate of Perceived Exertion)
 			await sessionState.setExerciseRpe(0, 8);
 
@@ -234,7 +191,7 @@ describe('User Journey - Complete Workflow', () => {
 			expect(session?.exercises[0]?.rpe).toBe(8);
 			expect(session?.exercises[0]?.muscleEngagement).toBe('yes-clearly');
 
-			// ===== STEP 6: Execute workout - Exercise 2 (Overhead Press) =====
+			// ===== STEP 5: Execute workout - Exercise 2 (Overhead Press) =====
 			await sessionState.logSet(1, 50, 10); // Set 1: 50kg x 10 reps
 			await sessionState.logSet(1, 50, 9);  // Set 2: 50kg x 9 reps
 			await sessionState.logSet(1, 50, 8);  // Set 3: 50kg x 8 reps
@@ -243,7 +200,7 @@ describe('User Journey - Complete Workflow', () => {
 			await sessionState.setExerciseRpe(1, 7);
 			await sessionState.setExerciseMuscleEngagement(1, 'moderately');
 
-			// ===== STEP 7: Execute workout - Exercise 3 (Barbell Row) =====
+			// ===== STEP 6: Execute workout - Exercise 3 (Barbell Row) =====
 			await sessionState.logSet(2, 70, 12); // Set 1: 70kg x 12 reps
 			await sessionState.logSet(2, 70, 10); // Set 2: 70kg x 10 reps
 			await sessionState.logSet(2, 70, 9);  // Set 3: 70kg x 9 reps
@@ -252,7 +209,7 @@ describe('User Journey - Complete Workflow', () => {
 			await sessionState.setExerciseRpe(2, 6);
 			await sessionState.setExerciseMuscleEngagement(2, 'yes-clearly');
 
-			// ===== STEP 8: Finish the workout =====
+			// ===== STEP 7: Finish the workout =====
 			const finishedSession = await sessionState.finishSession();
 
 			expect(finishedSession).toBeDefined();
@@ -262,7 +219,7 @@ describe('User Journey - Complete Workflow', () => {
 			// Verify no more active session
 			expect(sessionState.hasActiveSession()).toBe(false);
 
-			// ===== STEP 9: Add post-workout questionnaire =====
+			// ===== STEP 8: Add post-workout questionnaire =====
 			const postWorkoutQuestions: Question[] = [
 				{
 					id: 'energy-level',
@@ -313,7 +270,7 @@ describe('User Journey - Complete Workflow', () => {
 
 			await sessionRepo.addReview(finishedSession!.id, review);
 
-			// ===== STEP 10: Verify session file contents =====
+			// ===== STEP 9: Verify session file contents =====
 			const sessionFilePath = `${basePath}/Sessions/${finishedSession!.id}.md`;
 			const sessionContent = mockVault._getContent(sessionFilePath);
 
@@ -321,14 +278,14 @@ describe('User Journey - Complete Workflow', () => {
 
 			// Verify frontmatter
 			expect(sessionContent).toContain('status: completed');
-			expect(sessionContent).toContain('workout: "[[Workouts/upper-body-strength]]"');
+			expect(sessionContent).toContain('workout: Upper Body Strength');
 			expect(sessionContent).toMatch(/startTime: "\d{4}-\d{2}-\d{2}T/);
 			expect(sessionContent).toMatch(/endTime: "\d{4}-\d{2}-\d{2}T/);
 			expect(sessionContent).toMatch(/startTimeFormatted: "\d{2}:\d{2}:\d{2}"/);
 			expect(sessionContent).toMatch(/endTimeFormatted: "\d{2}:\d{2}:\d{2}"/);
 
 			// Verify Exercise 1: Bench Press
-			expect(sessionContent).toContain('## bench-press');
+			expect(sessionContent).toContain('## Bench Press');
 			expect(sessionContent).toContain('Target: 4 × 6-8 | Rest: 180s');
 			expect(sessionContent).toContain('| # | kg | reps | rpe | time |');
 			expect(sessionContent).toContain('| 1 | 80 | 8 |');
@@ -337,14 +294,14 @@ describe('User Journey - Complete Workflow', () => {
 			expect(sessionContent).toContain('| 4 | 82.5 | 6 |');
 
 			// Verify Exercise 2: Overhead Press
-			expect(sessionContent).toContain('## overhead-press');
+			expect(sessionContent).toContain('## Overhead Press');
 			expect(sessionContent).toContain('Target: 3 × 8-10 | Rest: 120s');
 			expect(sessionContent).toContain('| 1 | 50 | 10 |');
 			expect(sessionContent).toContain('| 2 | 50 | 9 |');
 			expect(sessionContent).toContain('| 3 | 50 | 8 |');
 
 			// Verify Exercise 3: Barbell Row
-			expect(sessionContent).toContain('## barbell-row');
+			expect(sessionContent).toContain('## Barbell Row');
 			expect(sessionContent).toContain('Target: 3 × 8-12 | Rest: 120s');
 			expect(sessionContent).toContain('| 1 | 70 | 12 |');
 			expect(sessionContent).toContain('| 2 | 70 | 10 |');
@@ -364,7 +321,7 @@ describe('User Journey - Complete Workflow', () => {
 			expect(sessionContent).toContain('**How was your energy level during this workout?** High - felt great');
 			expect(sessionContent).toContain('**How well recovered did you feel?** Still tired from last session (Had trouble sleeping last night)');
 
-			// ===== STEP 11: Verify session can be retrieved and parsed correctly =====
+			// ===== STEP 10: Verify session can be retrieved and parsed correctly =====
 			const retrievedSession = await sessionRepo.get(finishedSession!.id);
 
 			expect(retrievedSession).toBeDefined();
@@ -392,7 +349,7 @@ describe('User Journey - Complete Workflow', () => {
 			expect(retrievedSession?.review?.answers[0]?.selectedOptionLabel).toBe('High - felt great');
 			expect(retrievedSession?.review?.answers[1]?.freeText).toBe('Had trouble sleeping last night');
 
-			// ===== STEP 12: Verify session statistics =====
+			// ===== STEP 11: Verify session statistics =====
 			const totalSets = countTotalCompletedSets(retrievedSession!);
 			expect(totalSets).toBe(10); // 4 + 3 + 3
 
@@ -405,8 +362,9 @@ describe('User Journey - Complete Workflow', () => {
 		});
 
 		it('should handle skipped post-workout questionnaire', async () => {
-			// Create and start a simple workout
-			const workout: Omit<Workout, 'id'> = {
+			// Define a simple workout
+			const workout: Workout = {
+				id: 'quick-workout',
 				name: 'Quick Workout',
 				exercises: [
 					{
@@ -419,8 +377,7 @@ describe('User Journey - Complete Workflow', () => {
 				]
 			};
 
-			const createdWorkout = await workoutRepo.create(workout);
-			await sessionState.startFromWorkout(createdWorkout);
+			await sessionState.startFromWorkout(workout);
 
 			// Log sets
 			await sessionState.logSet(0, 100, 5);
@@ -448,8 +405,9 @@ describe('User Journey - Complete Workflow', () => {
 		});
 
 		it('should handle workout without post-workout questionnaire', async () => {
-			// Create and execute workout
-			const workout: Omit<Workout, 'id'> = {
+			// Define workout
+			const workout: Workout = {
+				id: 'no-questions-workout',
 				name: 'No Questions Workout',
 				exercises: [
 					{
@@ -462,8 +420,7 @@ describe('User Journey - Complete Workflow', () => {
 				]
 			};
 
-			const createdWorkout = await workoutRepo.create(workout);
-			await sessionState.startFromWorkout(createdWorkout);
+			await sessionState.startFromWorkout(workout);
 
 			// Log set
 			await sessionState.logSet(0, 140, 5);
@@ -487,8 +444,9 @@ describe('User Journey - Complete Workflow', () => {
 		});
 
 		it('should handle editing sets during workout', async () => {
-			// Create workout
-			const workout: Omit<Workout, 'id'> = {
+			// Define workout
+			const workout: Workout = {
+				id: 'edit-test-workout',
 				name: 'Edit Test Workout',
 				exercises: [
 					{
@@ -501,8 +459,7 @@ describe('User Journey - Complete Workflow', () => {
 				]
 			};
 
-			const createdWorkout = await workoutRepo.create(workout);
-			await sessionState.startFromWorkout(createdWorkout);
+			await sessionState.startFromWorkout(workout);
 
 			// Log sets
 			await sessionState.logSet(0, 60, 10);

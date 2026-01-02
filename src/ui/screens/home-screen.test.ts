@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { HomeScreen } from './home-screen';
+import type { Program, Workout } from '../../types';
 import {
 	createMockScreenContext,
-	createSampleWorkout,
 	createSampleSession,
 	flushPromises,
 	click
@@ -53,46 +53,64 @@ describe('HomeScreen', () => {
 		});
 	});
 
-	describe('quick start', () => {
-		it('should render recent workouts when no active program', async () => {
-			const workouts = [
-				createSampleWorkout({ id: 'push', name: 'Push Day' }),
-				createSampleWorkout({ id: 'pull', name: 'Pull Day' }),
-				createSampleWorkout({ id: 'legs', name: 'Leg Day' })
-			];
-			const ctx = createMockScreenContext({ workouts });
+	describe('program section', () => {
+		it('should show message when no active program', async () => {
+			const ctx = createMockScreenContext();
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
 			await flushPromises();
 
-			const workoutCards = container.querySelectorAll('.fit-workout-card');
-			expect(workoutCards.length).toBe(3);
+			// Should show message to select a program
+			const message = container.querySelector('.fit-empty-message');
+			expect(message).not.toBeNull();
+			expect(message?.textContent).toContain('Select a training program');
 		});
 
-		it('should start session from workout when workout card is clicked', async () => {
-			const workout = createSampleWorkout({ id: 'push', name: 'Push Day' });
-			const ctx = createMockScreenContext({ workouts: [workout] });
+		it('should show program workouts when active program exists', async () => {
+			// Create a program with inline workouts
+			const program: Program = {
+				id: 'full-body',
+				name: 'Full Body Program',
+				workouts: ['workout-a', 'workout-b']
+			};
+
+			const workout: Workout = {
+				id: 'workout-a',
+				name: 'Full Body A',
+				exercises: [
+					{ exercise: 'Squat', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, restSeconds: 120 }
+				]
+			};
+
+			const ctx = createMockScreenContext({
+				programs: [program],
+				settings: { activeProgram: 'full-body' }
+			});
+
+			// Mock getInlineWorkout to return the workout
+			ctx.programRepo.getInlineWorkout = () => workout;
+
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
 			await flushPromises();
 
-			const workoutCard = container.querySelector('.fit-workout-card') as HTMLElement;
-			expect(workoutCard).not.toBeNull();
-			click(workoutCard);
-
-			// Now calls viewModel.startWorkout() instead of sessionState.startFromWorkout()
-			expect(ctx.viewModel.startWorkout).toHaveBeenCalledWith(workout);
-			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session');
+			// Should show program section
+			const programSection = container.querySelector('.fit-program-section');
+			expect(programSection).not.toBeNull();
 		});
 
-		it('should show "view all" link when more than 3 workouts exist', async () => {
-			const workouts = [
-				createSampleWorkout({ id: 'push', name: 'Push Day' }),
-				createSampleWorkout({ id: 'pull', name: 'Pull Day' }),
-				createSampleWorkout({ id: 'legs', name: 'Leg Day' }),
-				createSampleWorkout({ id: 'upper', name: 'Upper Body' })
-			];
-			const ctx = createMockScreenContext({ workouts });
+		it('should show "view all" link in program section', async () => {
+			const program: Program = {
+				id: 'full-body',
+				name: 'Full Body Program',
+				workouts: ['workout-a', 'workout-b']
+			};
+
+			const ctx = createMockScreenContext({
+				programs: [program],
+				settings: { activeProgram: 'full-body' }
+			});
+
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
 			await flushPromises();
@@ -103,13 +121,17 @@ describe('HomeScreen', () => {
 		});
 
 		it('should navigate to workout-picker when view all is clicked', async () => {
-			const workouts = [
-				createSampleWorkout({ id: 'push', name: 'Push Day' }),
-				createSampleWorkout({ id: 'pull', name: 'Pull Day' }),
-				createSampleWorkout({ id: 'legs', name: 'Leg Day' }),
-				createSampleWorkout({ id: 'upper', name: 'Upper Body' })
-			];
-			const ctx = createMockScreenContext({ workouts });
+			const program: Program = {
+				id: 'full-body',
+				name: 'Full Body Program',
+				workouts: ['workout-a']
+			};
+
+			const ctx = createMockScreenContext({
+				programs: [program],
+				settings: { activeProgram: 'full-body' }
+			});
+
 			const screen = new HomeScreen(container, ctx);
 			screen.render();
 			await flushPromises();

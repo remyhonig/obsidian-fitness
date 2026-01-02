@@ -43,20 +43,16 @@ export class SessionScreen extends BaseScreen {
 	}
 
 	/**
-	 * Syncs session exercises with the workout file
+	 * Syncs session exercises with the workout definition
 	 * Preserves logged sets while updating exercise definitions
 	 */
-	private async syncSessionWithWorkout(workoutId: string, signal: AbortSignal): Promise<void> {
-		// Try inline workout first (for programs with embedded workouts)
+	private syncSessionWithWorkout(workoutId: string, signal: AbortSignal): void {
+		// Get inline workout from active program
 		const activeProgram = this.ctx.settings.activeProgram;
-		let workout = activeProgram
+		const workout = activeProgram
 			? this.ctx.programRepo.getInlineWorkout(activeProgram, workoutId)
 			: null;
 
-		// Fall back to file-based workout
-		if (!workout) {
-			workout = await this.ctx.workoutRepo.get(workoutId);
-		}
 		if (signal.aborted || !workout) return;
 
 		const session = this.ctx.sessionState.getSession();

@@ -173,13 +173,6 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 				buttonText: 'Clean up',
 				onClick: () => this.plugin.migrateExercises()
 			});
-
-			createButtonSetting(containerEl, {
-				name: 'Update workout references',
-				desc: 'Updates workout files to use plain text for database exercises and wikilinks for custom exercises. Run this after downloading the database.',
-				buttonText: 'Update workouts',
-				onClick: () => this.plugin.migrateWorkouts()
-			});
 		}
 	}
 }

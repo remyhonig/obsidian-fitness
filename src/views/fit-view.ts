@@ -4,7 +4,6 @@ import type { ScreenType, ScreenParams } from '../types';
 import type { PluginSettings } from '../settings';
 import { SessionStateManager } from '../state/session-state';
 import { ExerciseRepository } from '../data/exercise-repository';
-import { WorkoutRepository } from '../data/workout-repository';
 import { SessionRepository } from '../data/session-repository';
 import { ProgramRepository } from '../data/program-repository';
 import { FitViewModel } from '../viewmodel';
@@ -47,7 +46,6 @@ export interface ScreenContext {
 	/** ViewModel for testable application behavior. Screens can gradually migrate to use this. */
 	viewModel: FitViewModel;
 	exerciseRepo: ExerciseRepository;
-	workoutRepo: WorkoutRepository;
 	sessionRepo: SessionRepository;
 	programRepo: ProgramRepository;
 	// Facade properties - prefer these over ctx.plugin.*
@@ -76,7 +74,6 @@ export class FitView extends ItemView {
 	sessionState: SessionStateManager;
 	viewModel: FitViewModel;
 	exerciseRepo: ExerciseRepository;
-	workoutRepo: WorkoutRepository;
 	sessionRepo: SessionRepository;
 	programRepo: ProgramRepository;
 
@@ -99,13 +96,11 @@ export class FitView extends ItemView {
 
 		// Initialize repositories
 		this.exerciseRepo = new ExerciseRepository(this.app, plugin.settings.basePath);
-		this.workoutRepo = new WorkoutRepository(this.app, plugin.settings.basePath);
 		this.sessionRepo = new SessionRepository(this.app, plugin.settings.basePath);
 		this.programRepo = new ProgramRepository(this.app, plugin.settings.basePath);
 
 		// Connect database repository to repositories that need exercise lookups
 		this.exerciseRepo.setDatabaseRepository(plugin.databaseExerciseRepo);
-		this.workoutRepo.setDatabaseRepository(plugin.databaseExerciseRepo);
 
 		// Initialize session state
 		this.sessionState = new SessionStateManager(this.app, plugin.settings);
@@ -251,7 +246,6 @@ export class FitView extends ItemView {
 
 		// Update repository paths
 		this.exerciseRepo.setBasePath(basePath);
-		this.workoutRepo.setBasePath(basePath);
 		this.sessionRepo.setBasePath(basePath);
 		this.programRepo.setBasePath(basePath);
 
@@ -361,7 +355,6 @@ export class FitView extends ItemView {
 			sessionState: this.sessionState,
 			viewModel: this.viewModel,
 			exerciseRepo: this.exerciseRepo,
-			workoutRepo: this.workoutRepo,
 			sessionRepo: this.sessionRepo,
 			programRepo: this.programRepo,
 			// Facade properties

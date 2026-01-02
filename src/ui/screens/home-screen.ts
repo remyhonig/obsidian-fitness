@@ -1,9 +1,8 @@
 import { setIcon } from 'obsidian';
 import type { ScreenContext } from '../../views/fit-view';
 import { BaseScreen } from './base-screen';
-import { createWorkoutCard, createSessionCard } from '../components/card';
+import { createSessionCard } from '../components/card';
 import { createScreenHeader } from '../components/screen-header';
-import { toSlug } from '../../domain/identifier';
 import { findFirstUnfinishedExerciseIndex } from '../../domain/session';
 import type { Workout, Session } from '../../types';
 
@@ -60,7 +59,7 @@ export class HomeScreen extends BaseScreen {
 			await this.renderActiveProgram(parent, isInProgress, signal);
 		} else {
 			// Show quick start when no program is active
-			await this.renderQuickStart(parent, signal);
+			this.renderQuickStart(parent, signal);
 		}
 	}
 
@@ -90,22 +89,13 @@ export class HomeScreen extends BaseScreen {
 		if (signal.aborted) return;
 		if (!program || program.workouts.length === 0) {
 			// Program not found or empty, fall back to quick start
-			await this.renderQuickStart(parent, signal);
+			this.renderQuickStart(parent, signal);
 			return;
 		}
 
-		// Get workouts data for display (file-based workouts)
-		const allWorkouts = await this.ctx.workoutRepo.list();
-		if (signal.aborted) return;
-		const workoutMap = new Map(allWorkouts.map(w => [w.id, w]));
-
-		// Helper to get workout from either inline cache or file-based map
+		// Helper to get workout from program's inline workouts
 		const getWorkout = (workoutId: string): Workout | undefined => {
-			// Try inline workout first (for programs with embedded workouts)
-			const inline = this.ctx.programRepo.getInlineWorkout(program.id, workoutId);
-			if (inline) return inline;
-			// Fall back to file-based workout
-			return workoutMap.get(workoutId);
+			return this.ctx.programRepo.getInlineWorkout(program.id, workoutId) ?? undefined;
 		};
 
 		const currentIndex = settings.programWorkoutIndex % program.workouts.length;
@@ -175,44 +165,21 @@ export class HomeScreen extends BaseScreen {
 		});
 	}
 
-	private async renderQuickStart(parent: HTMLElement, signal: AbortSignal): Promise<void> {
-		const workouts = await this.ctx.workoutRepo.list();
-		if (signal.aborted || workouts.length === 0) return;
-
+	private renderQuickStart(parent: HTMLElement, _signal: AbortSignal): void {
+		// No active program - show message to select one
 		const section = parent.createDiv({ cls: 'fit-section' });
 
 		// Section header
 		const header = section.createDiv({ cls: 'fit-section-header' });
-		header.createEl('h2', { text: 'Quick start', cls: 'fit-section-title' });
+		header.createEl('h2', { text: 'Get started', cls: 'fit-section-title' });
 
-		const grid = section.createDiv({ cls: 'fit-workout-grid' });
-
-		// Show up to 3 recent workouts
-		const recent = workouts.slice(0, 3);
-		for (const workout of recent) {
-			createWorkoutCard(grid, {
-				name: workout.name,
-				description: workout.description,
-				exerciseCount: workout.exercises.length,
-				onClick: () => { void this.startFromWorkout(workout); }
-			});
-		}
-
-		// View all link at bottom (only if more workouts exist)
-		if (workouts.length > 3) {
-			const viewAllLink = section.createEl('a', { cls: 'fit-section-footer-link', text: 'View all workouts' });
-			viewAllLink.addEventListener('click', () => this.ctx.view.navigateTo('workout-picker'));
-		}
+		const message = section.createDiv({ cls: 'fit-empty-message' });
+		message.createEl('p', { text: 'Select a training program in settings to start tracking your workouts.' });
 	}
 
 	private async renderRecentSessions(parent: HTMLElement, signal: AbortSignal): Promise<void> {
 		const sessions = await this.ctx.sessionRepo.getRecent(5);
 		if (signal.aborted || sessions.length === 0) return;
-
-		// Build workout lookup map to get actual names
-		const workouts = await this.ctx.workoutRepo.list();
-		if (signal.aborted) return;
-		const workoutById = new Map(workouts.map(w => [w.id, w]));
 
 		const section = parent.createDiv({ cls: 'fit-section' });
 
@@ -223,19 +190,10 @@ export class HomeScreen extends BaseScreen {
 		const list = section.createDiv({ cls: 'fit-session-list' });
 
 		for (const session of sessions) {
-			// Look up actual workout name by converting session.workout to slug
-			let workoutName = session.workout;
-			if (session.workout) {
-				const workoutSlug = toSlug(session.workout);
-				const workout = workoutById.get(workoutSlug);
-				if (workout) {
-					workoutName = workout.name;
-				}
-			}
-
+			// Session stores the workout name directly
 			createSessionCard(list, {
 				date: session.date,
-				workoutName,
+				workoutName: session.workout,
 				onClick: () => this.ctx.view.navigateTo('session-detail', { sessionId: session.id })
 			});
 		}

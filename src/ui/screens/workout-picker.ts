@@ -6,7 +6,7 @@ import { createWorkoutCard } from '../components/card';
 import type { Workout } from '../../types';
 
 /**
- * Workout picker screen for starting a workout
+ * Workout picker screen for starting a workout from the active program
  */
 export class WorkoutPickerScreen extends BaseScreen {
 	private workouts: Workout[] = [];
@@ -32,6 +32,15 @@ export class WorkoutPickerScreen extends BaseScreen {
 			onBack: () => this.ctx.view.goBack()
 		});
 
+		// Check for active program
+		const activeProgram = this.ctx.settings.activeProgram;
+		if (!activeProgram) {
+			// No active program - show message
+			const message = this.containerEl.createDiv({ cls: 'fit-empty-message' });
+			message.createEl('p', { text: 'Select a training program in settings to see available workouts.' });
+			return;
+		}
+
 		// Search bar
 		const searchContainer = this.containerEl.createDiv({ cls: 'fit-search-container' });
 		const searchInput = searchContainer.createEl('input', {
@@ -47,11 +56,8 @@ export class WorkoutPickerScreen extends BaseScreen {
 			this.renderResults();
 		});
 
-		// Load workouts
-		void this.ctx.workoutRepo.list().then(workouts => {
-			this.workouts = workouts;
-			this.renderResults();
-		});
+		// Load workouts from active program
+		void this.loadWorkoutsFromProgram(activeProgram);
 
 		// Results container
 		this.resultsEl = this.containerEl.createDiv({ cls: 'fit-workout-list' });
@@ -64,14 +70,19 @@ export class WorkoutPickerScreen extends BaseScreen {
 			fullWidth: true,
 			onClick: () => { void this.startEmptyWorkout(); }
 		});
+	}
 
-		// Create workout link
-		const createLink = this.containerEl.createDiv({ cls: 'fit-create-workout-link' });
-		createButton(createLink, {
-			text: 'Create new workout',
-			variant: 'ghost',
-			onClick: () => this.ctx.view.navigateTo('workout-editor', { isNew: true })
-		});
+	private async loadWorkoutsFromProgram(programId: string): Promise<void> {
+		// Get program to get workout IDs
+		const program = await this.ctx.programRepo.get(programId);
+		if (!program) return;
+
+		// Get inline workouts
+		this.workouts = program.workouts
+			.map(id => this.ctx.programRepo.getInlineWorkout(programId, id))
+			.filter((w): w is Workout => w !== null);
+
+		this.renderResults();
 	}
 
 	private renderResults(): void {
@@ -97,7 +108,7 @@ export class WorkoutPickerScreen extends BaseScreen {
 			} else {
 				this.resultsEl.createDiv({
 					cls: 'fit-empty-state',
-					text: 'No workouts yet. Create your first workout!'
+					text: 'No workouts defined in this program.'
 				});
 			}
 			return;

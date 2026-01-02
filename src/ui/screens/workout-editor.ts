@@ -1,33 +1,25 @@
 import { Notice, setIcon } from 'obsidian';
 import type { ScreenContext } from '../../views/fit-view';
-import type { ScreenParams, Workout, WorkoutExercise } from '../../types';
+import type { ScreenParams, WorkoutExercise, Exercise } from '../../types';
 import { BaseScreen } from './base-screen';
 import { createScreenHeader } from '../components/screen-header';
 import { createButton } from '../components/button';
 import { createExerciseAutocomplete } from '../components/autocomplete';
 
 /**
- * Workout editor screen - create/edit workouts or session exercises
+ * Workout editor screen - edit session exercises
  *
  * Modes:
- * - isNew=true: Create a new workout template
- * - isNew=false, editSession=false: Edit an existing workout template
- * - isNew=false, editSession=true: Edit session exercises only (doesn't modify template)
+ * - editSession=true: Edit session exercises only (doesn't modify program)
+ * - editSession=false/undefined: Not supported (edit program files directly)
  */
 export class WorkoutEditorScreen extends BaseScreen {
-	private isNew: boolean;
-	private workoutId: string | null;
-	private workout: Workout | null = null;
 	private editSession: boolean;
 
 	// Form state
-	private name = '';
-	private description = '';
 	private exercises: WorkoutExercise[] = [];
 
 	// Original state for change detection
-	private originalName = '';
-	private originalDescription = '';
 	private originalExercises: WorkoutExercise[] = [];
 
 	// Save button reference
@@ -36,8 +28,8 @@ export class WorkoutEditorScreen extends BaseScreen {
 	// Drag state
 	private draggedIndex: number | null = null;
 
-	// File watcher cleanup
-	private unsubscribeFileWatch: (() => void) | null = null;
+	// Exercise lookup map for images
+	private exerciseMap = new Map<string, Exercise>();
 
 	constructor(
 		parentEl: HTMLElement,
@@ -45,40 +37,7 @@ export class WorkoutEditorScreen extends BaseScreen {
 		params: ScreenParams
 	) {
 		super(parentEl, ctx, 'fit-workout-editor-screen');
-		this.isNew = params.isNew ?? true;
-		this.workoutId = params.workoutId ?? null;
 		this.editSession = params.editSession ?? false;
-
-		// Subscribe to file changes when editing an existing workout template (not session)
-		if (!this.isNew && this.workoutId && !this.editSession) {
-			const workoutPath = `${ctx.settings.basePath}/Workouts/${this.workoutId}.md`;
-			this.unsubscribeFileWatch = ctx.watchFile(workoutPath, () => {
-				void this.reloadWorkout();
-			});
-		}
-	}
-
-	/**
-	 * Reloads workout data from file and re-renders
-	 */
-	private async reloadWorkout(): Promise<void> {
-		if (!this.workoutId) return;
-
-		const workout = await this.ctx.workoutRepo.get(this.workoutId);
-		if (workout) {
-			this.workout = workout;
-			this.name = workout.name;
-			this.description = workout.description ?? '';
-			this.exercises = workout.exercises.map(e => ({ ...e }));
-
-			// Update original state
-			this.originalName = workout.name;
-			this.originalDescription = workout.description ?? '';
-			this.originalExercises = workout.exercises.map(e => ({ ...e }));
-
-			// Re-render the form
-			this.renderForm();
-		}
 	}
 
 	render(): void {
@@ -88,176 +47,81 @@ export class WorkoutEditorScreen extends BaseScreen {
 			// Session edit mode - load from session state
 			this.loadFromSession();
 			this.renderForm();
-		} else if (!this.isNew && this.workoutId) {
-			// Edit existing workout template
-			void this.loadWorkout().then(() => {
-				this.renderForm();
-			});
 		} else {
-			// New workout - render empty form immediately
-			this.renderForm();
+			// Editing program workouts not supported through UI
+			this.renderNotSupported();
 		}
 	}
 
-	/**
-	 * Loads exercise data from current session state
-	 */
+	private renderNotSupported(): void {
+		// Header
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'back',
+			fallbackWorkoutName: 'Edit Workout',
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onBack: () => this.ctx.view.goBack()
+		});
+
+		const content = this.containerEl.createDiv({ cls: 'fit-content' });
+		const message = content.createDiv({ cls: 'fit-empty-message' });
+		message.createEl('p', { text: 'Workout templates are defined inline within program files.' });
+		message.createEl('p', { text: 'To edit a workout, open the program file in your vault and modify the workout section directly.' });
+	}
+
 	private loadFromSession(): void {
 		const session = this.ctx.sessionState.getSession();
-		if (!session) return;
-
-		this.name = session.workout ?? 'Workout';
-		this.description = '';
-		this.exercises = session.exercises.map(se => ({
-			exercise: se.exercise,
-			targetSets: se.targetSets,
-			targetRepsMin: se.targetRepsMin,
-			targetRepsMax: se.targetRepsMax,
-			restSeconds: se.restSeconds
-		}));
-
-		// Store original state for change detection
-		this.originalName = this.name;
-		this.originalDescription = '';
-		this.originalExercises = this.exercises.map(e => ({ ...e }));
-	}
-
-	private async loadWorkout(): Promise<void> {
-		if (!this.workoutId) return;
-
-		// Try by ID first, then fall back to name lookup
-		let workout = await this.ctx.workoutRepo.get(this.workoutId);
-		if (!workout) {
-			// workoutId might be a slugified name, try looking up by name
-			workout = await this.ctx.workoutRepo.getByName(this.workoutId);
-		}
-
-		if (workout) {
-			this.workout = workout;
-			this.workoutId = workout.id; // Update to actual ID for saving
-			this.name = workout.name;
-			this.description = workout.description ?? '';
-			this.exercises = workout.exercises.map(e => ({ ...e }));
-
-			// Store original state for change detection
-			this.originalName = workout.name;
-			this.originalDescription = workout.description ?? '';
-			this.originalExercises = workout.exercises.map(e => ({ ...e }));
+		if (session) {
+			this.exercises = session.exercises.map(e => ({
+				exercise: e.exercise,
+				targetSets: e.targetSets,
+				targetRepsMin: e.targetRepsMin,
+				targetRepsMax: e.targetRepsMax,
+				restSeconds: e.restSeconds
+			}));
+			this.originalExercises = this.exercises.map(e => ({ ...e }));
 		}
 	}
 
 	private renderForm(): void {
-		// Clear and re-render content area (not header)
-		const existingForm = this.containerEl.querySelector('.fit-form');
-		const existingActions = this.containerEl.querySelector('.fit-bottom-actions');
-		existingForm?.remove();
-		existingActions?.remove();
+		// Clear and re-render (preserve container)
+		this.containerEl.empty();
 
-		// Determine header title based on mode
-		let headerTitle: string;
-		if (this.editSession) {
-			headerTitle = 'Edit exercises';
-		} else if (this.isNew) {
-			headerTitle = 'New workout';
-		} else {
-			headerTitle = 'Edit workout';
-		}
+		// Header
+		this.headerRefs = createScreenHeader(this.containerEl, {
+			leftElement: 'back',
+			fallbackWorkoutName: 'Edit Session',
+			view: this.ctx.view,
+			sessionState: this.ctx.sessionState,
+			onBack: () => this.ctx.view.goBack()
+		});
 
-		// Header (only render if not already present)
-		if (!this.containerEl.querySelector('.fit-section')) {
-			this.headerRefs = createScreenHeader(this.containerEl, {
-				leftElement: 'back',
-				fallbackWorkoutName: headerTitle,
-				view: this.ctx.view,
-				sessionState: this.ctx.sessionState,
-				onBack: () => this.ctx.view.goBack()
-			});
-		}
-
-		// Form
-		const form = this.containerEl.createDiv({ cls: 'fit-form' });
-
-		// Name and description inputs - only show for workout template editing (not session)
-		if (!this.editSession) {
-			// Name input
-			const nameGroup = form.createDiv({ cls: 'fit-form-group' });
-			nameGroup.createEl('label', { text: 'Workout name', cls: 'fit-form-label' });
-			const nameInput = nameGroup.createEl('input', {
-				cls: 'fit-form-input',
-				attr: {
-					type: 'text',
-					placeholder: 'Push day',
-					value: this.name
-				}
-			});
-			nameInput.addEventListener('input', (e) => {
-				this.name = (e.target as HTMLInputElement).value;
-				this.updateSaveButton();
-			});
-
-			// Description input
-			const descGroup = form.createDiv({ cls: 'fit-form-group' });
-			descGroup.createEl('label', { text: 'Description (optional)', cls: 'fit-form-label' });
-			const descInput = descGroup.createEl('textarea', {
-				cls: 'fit-form-textarea',
-				attr: {
-					placeholder: 'Describe this workout...',
-					rows: '2'
-				}
-			});
-			descInput.value = this.description;
-			descInput.addEventListener('input', (e) => {
-				this.description = (e.target as HTMLTextAreaElement).value;
-				this.updateSaveButton();
-			});
-		}
+		// Content
+		const content = this.containerEl.createDiv({ cls: 'fit-content' });
 
 		// Exercises section
-		const exercisesSection = form.createDiv({ cls: 'fit-form-section' });
-		exercisesSection.createEl('h2', { text: 'Exercises', cls: 'fit-section-title' });
-
-		const exerciseList = exercisesSection.createDiv({ cls: 'fit-workout-exercise-list' });
-		this.renderExerciseList(exerciseList);
+		const exercisesSection = content.createDiv({ cls: 'fit-workout-editor-exercises' });
+		this.renderExerciseList(exercisesSection);
 
 		// Add exercise button
-		createButton(exercisesSection, {
+		const addExerciseBtn = content.createDiv({ cls: 'fit-add-exercise-btn' });
+		createButton(addExerciseBtn, {
 			text: 'Add exercise',
 			variant: 'secondary',
+			icon: 'plus',
 			fullWidth: true,
-			onClick: () => { this.addExercise(); }
+			onClick: () => this.showExerciseAutocomplete()
 		});
 
-		// Actions
-		const actions = this.containerEl.createDiv({ cls: 'fit-bottom-actions' });
-
-		// Delete button - only show for existing workout templates (not new or session edit)
-		if (!this.isNew && !this.editSession) {
-			createButton(actions, {
-				text: 'Delete',
-				variant: 'danger',
-				onClick: () => {
-					this.deleteWorkout().catch((err: unknown) => {
-						console.error('Unhandled error in deleteWorkout:', err);
-					});
-				}
-			});
-		}
-
-		// Save button (disabled when no changes for existing workouts)
-		const saveButtonText = this.editSession ? 'Save exercises' : 'Save workout';
-		this.saveBtn = actions.createEl('button', {
-			cls: 'fit-button fit-button-primary fit-button-full fit-button-large',
-			text: saveButtonText
+		// Save button at bottom
+		const saveContainer = content.createDiv({ cls: 'fit-workout-editor-save' });
+		this.saveBtn = createButton(saveContainer, {
+			text: 'Save changes',
+			variant: 'primary',
+			fullWidth: true,
+			disabled: !this.hasChanges(),
+			onClick: () => this.save()
 		});
-		this.saveBtn.addEventListener('click', () => {
-			this.saveWorkout().catch((err: unknown) => {
-				console.error('Unhandled error in saveWorkout:', err);
-				new Notice('An unexpected error occurred while saving');
-			});
-		});
-
-		// Update save button state
-		this.updateSaveButton();
 	}
 
 	private renderExerciseList(container: HTMLElement): void {
@@ -266,13 +130,32 @@ export class WorkoutEditorScreen extends BaseScreen {
 		if (this.exercises.length === 0) {
 			container.createDiv({
 				cls: 'fit-empty-state',
-				text: 'No exercises added yet'
+				text: 'No exercises yet. Add exercises to get started.'
 			});
 			return;
 		}
 
+		// Load exercise details asynchronously for images
+		void this.loadExerciseDetails().then(() => {
+			container.empty();
+			for (let i = 0; i < this.exercises.length; i++) {
+				this.renderExerciseRow(container, i);
+			}
+		});
+
+		// Render immediately without images (will be replaced when loaded)
 		for (let i = 0; i < this.exercises.length; i++) {
 			this.renderExerciseRow(container, i);
+		}
+	}
+
+	private async loadExerciseDetails(): Promise<void> {
+		const exercises = await this.ctx.exerciseRepo.list();
+		this.exerciseMap.clear();
+		for (const ex of exercises) {
+			// Store by both name and slug for flexible lookup
+			this.exerciseMap.set(ex.name.toLowerCase(), ex);
+			this.exerciseMap.set(ex.id.toLowerCase(), ex);
 		}
 	}
 
@@ -280,9 +163,14 @@ export class WorkoutEditorScreen extends BaseScreen {
 		const exercise = this.exercises[index];
 		if (!exercise) return;
 
+		// Look up exercise details for image
+		const exerciseLower = exercise.exercise.toLowerCase();
+		const exerciseSlug = exerciseLower.replace(/\s+/g, '-');
+		const exerciseDetails = this.exerciseMap.get(exerciseLower) ?? this.exerciseMap.get(exerciseSlug);
+
 		const row = container.createDiv({
 			cls: 'fit-workout-exercise-row',
-			attr: { draggable: 'true', 'data-index': String(index) }
+			attr: { draggable: 'true' }
 		});
 
 		// Drag handle
@@ -290,25 +178,21 @@ export class WorkoutEditorScreen extends BaseScreen {
 		setIcon(dragHandle, 'grip-vertical');
 
 		// Drag events
-		row.addEventListener('dragstart', (e) => {
+		row.addEventListener('dragstart', () => {
 			this.draggedIndex = index;
 			row.addClass('fit-dragging');
-			if (e.dataTransfer) {
-				e.dataTransfer.effectAllowed = 'move';
-			}
 		});
 
 		row.addEventListener('dragend', () => {
 			this.draggedIndex = null;
 			row.removeClass('fit-dragging');
-			// Remove all drag-over classes
-			container.querySelectorAll('.fit-drag-over').forEach(el => el.removeClass('fit-drag-over'));
 		});
 
 		row.addEventListener('dragover', (e) => {
 			e.preventDefault();
-			if (this.draggedIndex === null || this.draggedIndex === index) return;
-			row.addClass('fit-drag-over');
+			if (this.draggedIndex !== null && this.draggedIndex !== index) {
+				row.addClass('fit-drag-over');
+			}
 		});
 
 		row.addEventListener('dragleave', () => {
@@ -318,288 +202,176 @@ export class WorkoutEditorScreen extends BaseScreen {
 		row.addEventListener('drop', (e) => {
 			e.preventDefault();
 			row.removeClass('fit-drag-over');
-			if (this.draggedIndex === null || this.draggedIndex === index) return;
-
-			// Reorder exercises
-			const draggedExercise = this.exercises[this.draggedIndex];
-			if (!draggedExercise) return;
-			this.exercises.splice(this.draggedIndex, 1);
-			this.exercises.splice(index, 0, draggedExercise);
-
-			// Re-render and update save button
-			this.renderExerciseList(container);
-			this.updateSaveButton();
-		});
-
-		// Exercise name with autocomplete
-		createExerciseAutocomplete(row, {
-			placeholder: 'Exercise name',
-			value: exercise.exercise,
-			getItems: () => this.ctx.exerciseRepo.list(),
-			onSelect: (selectedExercise, text) => {
-				const ex = this.exercises[index];
-				if (ex) {
-					if (selectedExercise) {
-						// Selected from dropdown - use proper name, id, and source
-						ex.exercise = selectedExercise.name;
-						ex.exerciseId = selectedExercise.id;
-						ex.source = selectedExercise.source;
-					} else {
-						// Free text entry
-						ex.exercise = text;
-						ex.exerciseId = undefined;
-						ex.source = undefined;
-					}
-				}
-				this.updateSaveButton();
-			},
-			onChange: (text) => {
-				const ex = this.exercises[index];
-				if (ex) ex.exercise = text;
-				this.updateSaveButton();
+			if (this.draggedIndex !== null && this.draggedIndex !== index) {
+				this.moveExercise(this.draggedIndex, index);
 			}
 		});
 
-		// Sets input
-		const setsGroup = row.createDiv({ cls: 'fit-inline-group' });
-		setsGroup.createEl('label', { text: 'Sets' });
-		const setsInput = setsGroup.createEl('input', {
-			cls: 'fit-form-input fit-small-input',
-			attr: { type: 'number', min: '1', max: '10', value: String(exercise.targetSets) }
-		});
-		setsInput.addEventListener('input', (e) => {
-			const ex = this.exercises[index];
-			if (ex) ex.targetSets = parseInt((e.target as HTMLInputElement).value) || 3;
-			this.updateSaveButton();
+		// Exercise image (thumbnail)
+		if (exerciseDetails?.image1) {
+			row.createEl('img', {
+				cls: 'fit-workout-exercise-img',
+				attr: { src: exerciseDetails.image1, alt: exercise.exercise }
+			});
+		}
+
+		// Exercise info (clickable to change exercise)
+		const info = row.createDiv({ cls: 'fit-workout-exercise-info' });
+		const nameEl = info.createDiv({ cls: 'fit-workout-exercise-name', text: exerciseDetails?.name ?? exercise.exercise });
+		nameEl.addEventListener('click', () => {
+			this.showExerciseAutocompleteForEdit(index);
 		});
 
-		// Reps range inputs
-		const repsGroup = row.createDiv({ cls: 'fit-inline-group' });
-		repsGroup.createEl('label', { text: 'Reps' });
-		const minInput = repsGroup.createEl('input', {
-			cls: 'fit-form-input fit-small-input',
-			attr: { type: 'number', min: '1', max: '50', value: String(exercise.targetRepsMin) }
-		});
-		repsGroup.createSpan({ text: '-' });
-		const maxInput = repsGroup.createEl('input', {
-			cls: 'fit-form-input fit-small-input',
-			attr: { type: 'number', min: '1', max: '50', value: String(exercise.targetRepsMax) }
-		});
-		minInput.addEventListener('input', (e) => {
-			const ex = this.exercises[index];
-			if (ex) ex.targetRepsMin = parseInt((e.target as HTMLInputElement).value) || 8;
-			this.updateSaveButton();
-		});
-		maxInput.addEventListener('input', (e) => {
-			const ex = this.exercises[index];
-			if (ex) ex.targetRepsMax = parseInt((e.target as HTMLInputElement).value) || 12;
-			this.updateSaveButton();
-		});
-
-		// Rest input
-		const restGroup = row.createDiv({ cls: 'fit-inline-group' });
-		// eslint-disable-next-line obsidianmd/ui/sentence-case
-		restGroup.createEl('label', { text: 'rest' });
-		const restInput = restGroup.createEl('input', {
-			cls: 'fit-form-input fit-small-input',
-			attr: { type: 'number', min: '0', max: '600', value: String(exercise.restSeconds) }
-		});
-		restInput.addEventListener('input', (e) => {
-			const ex = this.exercises[index];
-			if (ex) ex.restSeconds = parseInt((e.target as HTMLInputElement).value) || 120;
-			this.updateSaveButton();
+		const reps = exercise.targetRepsMin === exercise.targetRepsMax
+			? `${exercise.targetRepsMin}`
+			: `${exercise.targetRepsMin}-${exercise.targetRepsMax}`;
+		info.createDiv({
+			cls: 'fit-workout-exercise-details',
+			text: `${exercise.targetSets} sets × ${reps} reps • ${exercise.restSeconds}s rest`
 		});
 
 		// Delete button
-		const deleteBtn = row.createEl('button', {
-			cls: 'fit-button fit-button-ghost fit-exercise-delete',
-			attr: { 'aria-label': 'Remove exercise' }
-		});
+		const deleteBtn = row.createDiv({ cls: 'fit-workout-exercise-delete' });
 		setIcon(deleteBtn, 'trash-2');
 		deleteBtn.addEventListener('click', () => {
 			this.exercises.splice(index, 1);
-			this.renderExerciseList(container);
 			this.updateSaveButton();
+			this.renderExerciseList(container);
 		});
 	}
 
-	private addExercise(): void {
-		// Add a blank exercise
-		this.exercises.push({
-			exercise: '',
-			targetSets: 3,
-			targetRepsMin: 8,
-			targetRepsMax: 12,
-			restSeconds: this.ctx.settings.defaultRestSeconds
-		});
-
-		// Re-render
-		const list = this.containerEl.querySelector('.fit-workout-exercise-list');
-		if (list) {
-			this.renderExerciseList(list as HTMLElement);
+	private moveExercise(fromIndex: number, toIndex: number): void {
+		const [moved] = this.exercises.splice(fromIndex, 1);
+		if (moved) {
+			this.exercises.splice(toIndex, 0, moved);
+			this.updateSaveButton();
+			// Re-render the list
+			const container = this.containerEl.querySelector('.fit-workout-editor-exercises') as HTMLElement;
+			if (container) {
+				this.renderExerciseList(container);
+			}
 		}
-		this.updateSaveButton();
 	}
 
-	/**
-	 * Checks if the current form state differs from the original
-	 */
+	private showExerciseAutocomplete(): void {
+		createExerciseAutocomplete(this.containerEl, {
+			autoOpen: true,
+			getItems: () => this.ctx.exerciseRepo.list(),
+			onSelect: (exercise) => {
+				if (!exercise) return;
+				// Add exercise with default values
+				this.exercises.push({
+					exercise: exercise.name,
+					targetSets: 3,
+					targetRepsMin: 8,
+					targetRepsMax: 12,
+					restSeconds: 120
+				});
+				// Update exercise map with selected exercise for immediate image display
+				this.exerciseMap.set(exercise.name.toLowerCase(), exercise);
+				this.exerciseMap.set(exercise.id.toLowerCase(), exercise);
+				this.updateSaveButton();
+				// Re-render the list
+				const container = this.containerEl.querySelector('.fit-workout-editor-exercises') as HTMLElement;
+				if (container) {
+					this.renderExerciseList(container);
+				}
+			}
+		});
+	}
+
+	private showExerciseAutocompleteForEdit(index: number): void {
+		const existing = this.exercises[index];
+		if (!existing) return;
+
+		// Look up proper display name from exercise map
+		const exerciseLower = existing.exercise.toLowerCase();
+		const exerciseSlug = exerciseLower.replace(/\s+/g, '-');
+		const exerciseDetails = this.exerciseMap.get(exerciseLower) ?? this.exerciseMap.get(exerciseSlug);
+		const currentName = exerciseDetails?.name ?? existing.exercise;
+
+		createExerciseAutocomplete(this.containerEl, {
+			value: currentName,
+			autoOpen: true,
+			getItems: () => this.ctx.exerciseRepo.list(),
+			onSelect: (exercise) => {
+				if (!exercise) return;
+				// Update the exercise name, keep other properties
+				existing.exercise = exercise.name;
+				// Update exercise map with selected exercise for immediate image display
+				this.exerciseMap.set(exercise.name.toLowerCase(), exercise);
+				this.exerciseMap.set(exercise.id.toLowerCase(), exercise);
+				this.updateSaveButton();
+				// Re-render the list
+				const container = this.containerEl.querySelector('.fit-workout-editor-exercises') as HTMLElement;
+				if (container) {
+					this.renderExerciseList(container);
+				}
+			}
+		});
+	}
+
 	private hasChanges(): boolean {
-		// For new workouts, always allow save if there's a name
-		if (this.isNew) {
-			return this.name.trim().length > 0;
+		if (this.exercises.length !== this.originalExercises.length) {
+			return true;
 		}
 
-		// For session edit mode, only check exercises
-		if (this.editSession) {
-			return this.exercisesChanged();
-		}
-
-		// Check name
-		if (this.name !== this.originalName) return true;
-
-		// Check description
-		if (this.description !== this.originalDescription) return true;
-
-		return this.exercisesChanged();
-	}
-
-	/**
-	 * Checks if exercises have changed from original
-	 */
-	private exercisesChanged(): boolean {
-		// Check exercises count
-		if (this.exercises.length !== this.originalExercises.length) return true;
-
-		// Check each exercise
 		for (let i = 0; i < this.exercises.length; i++) {
 			const current = this.exercises[i];
 			const original = this.originalExercises[i];
 			if (!current || !original) return true;
 
-			if (current.exercise !== original.exercise) return true;
-			if (current.targetSets !== original.targetSets) return true;
-			if (current.targetRepsMin !== original.targetRepsMin) return true;
-			if (current.targetRepsMax !== original.targetRepsMax) return true;
-			if (current.restSeconds !== original.restSeconds) return true;
+			if (
+				current.exercise !== original.exercise ||
+				current.targetSets !== original.targetSets ||
+				current.targetRepsMin !== original.targetRepsMin ||
+				current.targetRepsMax !== original.targetRepsMax ||
+				current.restSeconds !== original.restSeconds
+			) {
+				return true;
+			}
 		}
 
 		return false;
 	}
 
-	/**
-	 * Updates the save button enabled/disabled state
-	 */
 	private updateSaveButton(): void {
-		if (!this.saveBtn) return;
-
-		const canSave = this.hasChanges();
-		this.saveBtn.disabled = !canSave;
-		this.saveBtn.classList.toggle('fit-button-disabled', !canSave);
+		if (this.saveBtn) {
+			this.saveBtn.disabled = !this.hasChanges();
+		}
 	}
 
-	private async saveWorkout(): Promise<void> {
-		// Filter out empty exercises
-		const validExercises = this.exercises.filter(e => e.exercise.trim());
+	private save(): void {
+		if (!this.hasChanges()) return;
 
-		try {
-			if (this.editSession) {
-				// Session edit mode - update session exercises only
-				this.saveToSession(validExercises);
-				new Notice('Exercises updated');
-				this.ctx.view.goBack();
-				return;
-			}
+		if (this.editSession) {
+			// Get current session to preserve logged sets
+			const session = this.ctx.sessionState.getSession();
+			if (!session) return;
 
-			// Validate name for workout template
-			if (!this.name.trim()) {
-				new Notice('Please enter a workout name');
-				return;
-			}
+			// Build a map of existing sets by exercise name
+			const existingSets = new Map(
+				session.exercises.map(e => [e.exercise, e.sets])
+			);
 
-			if (this.isNew) {
-				await this.ctx.workoutRepo.create({
-					name: this.name.trim(),
-					description: this.description.trim() || undefined,
-					exercises: validExercises
-				});
-				new Notice(`Workout "${this.name}" created`);
-			} else if (this.workoutId) {
-				await this.ctx.workoutRepo.update(this.workoutId, {
-					name: this.name.trim(),
-					description: this.description.trim() || undefined,
-					exercises: validExercises
-				});
-				new Notice(`Workout "${this.name}" updated`);
-			} else {
-				// Invalid state: not new and no workout ID
-				new Notice('Unable to save: invalid workout state');
-				console.error('saveWorkout called with isNew=false and no workoutId');
-				return;
-			}
+			// Create session exercises with preserved sets
+			const sessionExercises = this.exercises.map(e => ({
+				exercise: e.exercise,
+				targetSets: e.targetSets,
+				targetRepsMin: e.targetRepsMin,
+				targetRepsMax: e.targetRepsMax,
+				restSeconds: e.restSeconds,
+				sets: existingSets.get(e.exercise) ?? []
+			}));
 
+			// Update session exercises
+			this.ctx.sessionState.updateExercises(sessionExercises);
+			new Notice('Session exercises updated');
 			this.ctx.view.goBack();
-		} catch (error) {
-			console.error('Failed to save workout:', error);
-			new Notice(`Failed to save workout: ${error instanceof Error ? error.message : 'Unknown error'}`);
-		}
-	}
-
-	/**
-	 * Saves exercises to the current session state
-	 * Preserves logged sets while updating exercise definitions
-	 */
-	private saveToSession(exercises: WorkoutExercise[]): void {
-		const session = this.ctx.sessionState.getSession();
-		if (!session) return;
-
-		// Build a map of existing exercises to preserve logged sets
-		const existingSets = new Map<string, typeof session.exercises[0]['sets']>();
-		const existingRpe = new Map<string, number | undefined>();
-		const existingEngagement = new Map<string, typeof session.exercises[0]['muscleEngagement']>();
-
-		for (const ex of session.exercises) {
-			existingSets.set(ex.exercise.toLowerCase(), ex.sets);
-			existingRpe.set(ex.exercise.toLowerCase(), ex.rpe);
-			existingEngagement.set(ex.exercise.toLowerCase(), ex.muscleEngagement);
-		}
-
-		// Convert workout exercises to session exercises, preserving logged data
-		const sessionExercises = exercises.map(we => {
-			const key = we.exercise.toLowerCase();
-			return {
-				exercise: we.exercise,
-				targetSets: we.targetSets,
-				targetRepsMin: we.targetRepsMin,
-				targetRepsMax: we.targetRepsMax,
-				restSeconds: we.restSeconds,
-				sets: existingSets.get(key) ?? [],
-				rpe: existingRpe.get(key),
-				muscleEngagement: existingEngagement.get(key)
-			};
-		});
-
-		// Update session state
-		this.ctx.sessionState.updateExercises(sessionExercises);
-	}
-
-	private async deleteWorkout(): Promise<void> {
-		if (!this.workoutId) return;
-
-		try {
-			await this.ctx.workoutRepo.delete(this.workoutId);
-			new Notice('Workout deleted');
-			this.ctx.view.navigateTo('home');
-		} catch (error) {
-			console.error('Failed to delete workout:', error);
-			new Notice(`Failed to delete workout: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
 	}
 
 	destroy(): void {
-		// Clean up file watcher
-		this.unsubscribeFileWatch?.();
-		this.unsubscribeFileWatch = null;
 		super.destroy();
 	}
 }

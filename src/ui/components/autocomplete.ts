@@ -14,6 +14,7 @@ export interface AutocompleteOptions {
 	getItems: () => Promise<Exercise[]>;
 	onSelect: (exercise: Exercise | null, text: string) => void;
 	onChange?: (text: string) => void;
+	autoOpen?: boolean;
 }
 
 /**
@@ -110,6 +111,11 @@ export function createExerciseAutocomplete(
 
 			// Update main input with final value
 			input.value = finalValue;
+		}
+
+		// If autoOpen was used, remove the wrapper too since it was just a trigger
+		if (options.autoOpen) {
+			wrapper.remove();
 		}
 
 		return finalValue;
@@ -265,6 +271,11 @@ export function createExerciseAutocomplete(
 	input.addEventListener('focus', () => {
 		openOverlay().catch(console.error);
 	});
+
+	// Auto-open overlay if requested
+	if (options.autoOpen) {
+		openOverlay().catch(console.error);
+	}
 
 	return wrapper;
 }

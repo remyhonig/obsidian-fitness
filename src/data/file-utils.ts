@@ -41,8 +41,7 @@ export {
 
 export {
 	parseDescriptionSection,
-	parseProgramBody,
-	createProgramBody,
+	parseInlineWorkouts,
 	createCoachFeedbackBody,
 	parseCoachFeedbackBody
 } from './program-body';
