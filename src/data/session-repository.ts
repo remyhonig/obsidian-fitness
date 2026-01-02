@@ -70,7 +70,6 @@ export class SessionRepository {
 	 * Gets all completed sessions (excludes active/paused sessions)
 	 */
 	async list(): Promise<Session[]> {
-		await this.ensureFolder();
 		const files = getFilesInFolder(this.app, this.basePath);
 		const sessions: Session[] = [];
 

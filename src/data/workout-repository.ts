@@ -55,7 +55,6 @@ export class WorkoutRepository {
 	 * Gets all workouts
 	 */
 	async list(): Promise<Workout[]> {
-		await this.ensureFolder();
 		const files = getFilesInFolder(this.app, this.basePath);
 		const workouts: Workout[] = [];
 

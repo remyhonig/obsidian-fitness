@@ -49,7 +49,6 @@ export class ProgramRepository {
 	 * Gets all programs
 	 */
 	async list(): Promise<Program[]> {
-		await this.ensureFolder();
 		const files = getFilesInFolder(this.app, this.basePath);
 		const programs: Program[] = [];
 

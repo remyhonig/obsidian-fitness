@@ -46,8 +46,6 @@ export class ExerciseRepository {
 	 * Gets all exercises (custom + database, custom takes precedence)
 	 */
 	async list(): Promise<Exercise[]> {
-		await this.ensureFolder();
-
 		// Get custom exercises from files
 		const files = getFilesInFolder(this.app, this.basePath);
 		const customExercises: Exercise[] = [];
