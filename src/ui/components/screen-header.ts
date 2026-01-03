@@ -78,6 +78,7 @@ export function createScreenHeader(
 	const isWorkoutInProgress = options.sessionState.isInProgress();
 
 	// Get workout name from session state, or use fallback
+	// Note: session.workout is already extracted by extractWikiLinkName in session-repository
 	const workoutName = session?.workout ?? options.fallbackWorkoutName ?? 'Workout';
 
 	// Use exercise name if provided, otherwise workout name

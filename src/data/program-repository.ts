@@ -194,7 +194,8 @@ export class ProgramRepository {
 				workoutMap.set(inline.id, {
 					id: inline.id,
 					name: inline.name,
-					exercises
+					exercises,
+					programId
 				});
 			}
 			this.inlineWorkoutCache.set(programId, workoutMap);

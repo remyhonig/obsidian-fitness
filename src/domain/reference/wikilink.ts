@@ -41,7 +41,8 @@ export function extractExerciseId(value: string): string {
  * Extracts the display name from a wiki-link or returns plain text as-is
  * [[target]] -> target (or title-cased if slug)
  * [[target|display]] -> display
- * plain text -> plain text
+ * [[path/file#anchor]] -> anchor (for section links)
+ * plain text -> plain text (or title-cased if slug)
  */
 export function extractWikiLinkName(value: string): string {
 	// Match wiki-link: [[target]] or [[target|display]]
@@ -60,6 +61,12 @@ export function extractWikiLinkName(value: string): string {
 			target = target.split('/').pop() ?? target;
 		}
 
+		// If there's an anchor (#), extract the part after it
+		// e.g., "full-body-rotation#Hypertrophy A" -> "Hypertrophy A"
+		if (target.includes('#')) {
+			target = target.split('#')[1] ?? target;
+		}
+
 		// If target looks like a slug (lowercase with hyphens), convert to title case
 		if (target.includes('-') && target === target.toLowerCase()) {
 			return slugToTitleCase(target);
@@ -69,8 +76,12 @@ export function extractWikiLinkName(value: string): string {
 		return target;
 	}
 
-	// Plain text - return as-is (caller should look up by ID for proper name)
-	return value.trim();
+	// Plain text - if it looks like a slug, convert to title case
+	const trimmed = value.trim();
+	if (trimmed.includes('-') && trimmed === trimmed.toLowerCase()) {
+		return slugToTitleCase(trimmed);
+	}
+	return trimmed;
 }
 
 /**

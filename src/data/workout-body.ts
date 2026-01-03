@@ -77,8 +77,8 @@ export function createWorkoutBody(exercises: WorkoutExerciseRow[]): string {
 	const rows = exercises.map(e => {
 		const slug = e.exerciseId ?? toSlug(e.exercise);
 		// Only use wikilink for explicitly custom exercises (files that exist)
-		// Default to plain text for database exercises or unknown source
-		const exerciseRef = e.source === 'custom' ? `[[${slug}]]` : slug;
+		// Database exercises save as plain text name (not slug)
+		const exerciseRef = e.source === 'custom' ? `[[${slug}]]` : e.exercise;
 		return {
 			exercise: exerciseRef,
 			sets: String(e.sets),

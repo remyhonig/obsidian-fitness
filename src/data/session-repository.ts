@@ -18,6 +18,36 @@ import {
 
 const ACTIVE_SESSION_FILENAME = '.active-session.md';
 
+/**
+ * Normalizes workout name for comparison by extracting the actual name from various formats:
+ * - "Hypertrophy A" → "hypertrophy a"
+ * - "[[Programs/full-body-rotation#Hypertrophy A]]" → "hypertrophy a"
+ * - "full-body-rotation#Hypertrophy A" → "hypertrophy a"
+ */
+function normalizeWorkoutName(workoutName: string | undefined): string {
+	if (!workoutName) return '';
+
+	let name = workoutName;
+
+	// Handle wikilink format: [[path#anchor]] or [[path]]
+	if (name.startsWith('[[') && name.endsWith(']]')) {
+		name = name.slice(2, -2); // Remove [[ and ]]
+		// If there's an anchor (#), take the part after it
+		if (name.includes('#')) {
+			name = name.split('#')[1] ?? name;
+		} else {
+			// Otherwise take the last path segment
+			name = name.split('/').pop() ?? name;
+		}
+	}
+	// Handle programId#workoutName format (without wikilink)
+	else if (name.includes('#')) {
+		name = name.split('#')[1] ?? name;
+	}
+
+	return name.toLowerCase().trim();
+}
+
 // Frontmatter only contains metadata, not exercises, review, or coach feedback
 interface SessionMetadata {
 	date: string;
@@ -138,6 +168,12 @@ export class SessionRepository {
 		// Use session ID for filename (e.g., "2025-12-27-10-30-00-push-day.md")
 		const path = `${this.basePath}/${session.id}.md`;
 
+		// Generate wikilink for workout if programId is available
+		// Format: [[Programs/programId#Workout Name]]
+		const workoutRef = session.programId && session.workout
+			? `[[Programs/${session.programId}#${session.workout}]]`
+			: session.workout;
+
 		// Frontmatter: metadata only (no review, coach feedback - those go in body)
 		const frontmatter: Record<string, unknown> = {
 			date: session.date,
@@ -145,7 +181,7 @@ export class SessionRepository {
 			startTimeFormatted: formatTimeHHMMSS(session.startTime),
 			endTime: session.endTime,
 			endTimeFormatted: session.endTime ? formatTimeHHMMSS(session.endTime) : undefined,
-			workout: session.workout,
+			workout: workoutRef,
 			status: session.status,
 			notes: session.notes
 		};
@@ -366,11 +402,13 @@ export class SessionRepository {
 
 	/**
 	 * Gets sessions that used a specific workout
+	 * Handles legacy formats like "[[Programs/full-body-rotation#Hypertrophy A]]"
 	 */
 	async getByWorkout(workoutName: string): Promise<Session[]> {
 		const sessions = await this.list();
+		const normalizedTarget = normalizeWorkoutName(workoutName);
 		return sessions.filter(s =>
-			s.workout?.toLowerCase() === workoutName.toLowerCase()
+			normalizeWorkoutName(s.workout) === normalizedTarget
 		);
 	}
 
@@ -422,10 +460,20 @@ export class SessionRepository {
 				}))
 			}));
 
-			// Extract workout name from wikilink if present
+			// Extract workout name and programId from wikilink if present
+			// Format: [[Programs/programId#Workout Name]]
 			const workoutName = frontmatter.workout
 				? extractWikiLinkName(frontmatter.workout)
 				: undefined;
+
+			// Extract programId from wikilink path
+			let programId: string | undefined;
+			if (frontmatter.workout) {
+				const wikiMatch = frontmatter.workout.match(/^\[\[Programs\/([^#\]]+)/);
+				if (wikiMatch) {
+					programId = wikiMatch[1];
+				}
+			}
 
 			// Parse review and coach feedback from body (not frontmatter)
 			const review = parseSessionReviewBody(body);
@@ -437,6 +485,7 @@ export class SessionRepository {
 				startTime: frontmatter.startTime,
 				endTime: frontmatter.endTime,
 				workout: workoutName,
+				programId,
 				status: frontmatter.status ?? 'completed',
 				exercises,
 				notes: frontmatter.notes,

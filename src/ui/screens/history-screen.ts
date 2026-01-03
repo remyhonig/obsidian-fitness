@@ -47,6 +47,7 @@ export class HistoryScreen extends BaseScreen {
 				const list = section.createDiv({ cls: 'fit-session-list' });
 
 				for (const session of weekSessions) {
+					// session.workout is already extracted by extractWikiLinkName in session-repository
 					createSessionCard(list, {
 						date: session.date,
 						workoutName: session.workout,

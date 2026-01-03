@@ -55,10 +55,13 @@ export class SessionDetailScreen extends BaseScreen {
 	}
 
 	private renderContent(session: Session): void {
+		// session.workout is already extracted by extractWikiLinkName in session-repository
+		const workoutName = session.workout;
+
 		// Header with consistent screen-header component
 		this.headerRefs = createScreenHeader(this.containerEl, {
 			leftElement: 'back',
-			fallbackWorkoutName: session.workout ?? 'Workout',
+			fallbackWorkoutName: workoutName ?? 'Workout',
 			view: this.ctx.view,
 			sessionState: this.ctx.sessionState,
 			onBack: () => this.ctx.view.goBack()

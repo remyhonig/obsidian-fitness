@@ -107,7 +107,8 @@ export class SessionStateManager {
 			id: generateSessionId(now, workout.name),
 			date: dateStr,
 			startTime: now.toISOString(),
-			workout: workout.name,
+			workout: workout.name, // Display name only
+			programId: workout.programId, // For generating wikilink when saving
 			status: 'active',
 			exercises
 		};

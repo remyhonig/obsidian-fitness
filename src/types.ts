@@ -50,6 +50,7 @@ export interface Workout {
 	description?: string;
 	estimatedDuration?: number;
 	exercises: WorkoutExercise[];
+	programId?: string; // Program ID for inline workouts (used to create wikilinks)
 }
 
 // Program definition (stored in Programs/ folder)
@@ -131,7 +132,8 @@ export interface Session {
 	date: string; // ISO 8601 date
 	startTime: string; // ISO 8601 datetime
 	endTime?: string; // ISO 8601 datetime
-	workout?: string; // Workout name used
+	workout?: string; // Workout name (display name, not wikilink)
+	programId?: string; // Program ID for generating wikilink to workout
 	status: SessionStatus;
 	exercises: SessionExercise[];
 	notes?: string;

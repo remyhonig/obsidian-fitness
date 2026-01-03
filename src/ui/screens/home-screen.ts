@@ -190,7 +190,7 @@ export class HomeScreen extends BaseScreen {
 		const list = section.createDiv({ cls: 'fit-session-list' });
 
 		for (const session of sessions) {
-			// Session stores the workout name directly
+			// session.workout is already extracted by extractWikiLinkName in session-repository
 			createSessionCard(list, {
 				date: session.date,
 				workoutName: session.workout,
