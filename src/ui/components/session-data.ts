@@ -1,3 +1,4 @@
+import { setIcon } from 'obsidian';
 import type { SessionExercise, LoggedSet, MuscleEngagement } from '../../types';
 import type { ExerciseFeedback } from '../../data/coach-feedback-types';
 
@@ -22,24 +23,17 @@ export interface SessionDataOptions {
  * Used in both exercise detail screen and exercise card expandable section
  */
 export function createSessionData(parent: HTMLElement, options: SessionDataOptions): HTMLElement {
-	const { currentExercise, previousExercise, feedback, weightUnit = 'kg' } = options;
+	const { currentExercise, feedback } = options;
 
 	const container = parent.createDiv({ cls: 'fit-session-data' });
 
 	// Check if we have content to show
 	const hasThisTimeContent = feedback?.coach_cue_volgende_sessie || feedback?.aanpak_volgende_sessie;
 	const hasThisTimeSets = currentExercise.targetSets > 0;
-	const hasLastTimeContent = feedback?.stimulus || feedback?.set_degradatie_en_vermoeidheid || feedback?.progressie_tov_vorige;
-	const hasLastTimeSets = previousExercise && previousExercise.sets.some(s => s.completed);
 
 	// THIS TIME section
 	if (hasThisTimeContent || hasThisTimeSets) {
 		renderThisTimeSection(container, options);
-	}
-
-	// LAST TIME section (only if there's previous data)
-	if (hasLastTimeContent || hasLastTimeSets) {
-		renderLastTimeSection(container, options);
 	}
 
 	return container;
@@ -91,8 +85,8 @@ function formatSetChip(options: FormatSetChipOptions): string {
 function renderThisTimeSection(parent: HTMLElement, options: SessionDataOptions): void {
 	const { currentExercise, previousExercise, feedback, weightUnit = 'kg', onSetClick } = options;
 
-	const section = parent.createDiv({ cls: 'fit-session-data-section fit-session-data-this-time' });
-	section.createDiv({ cls: 'fit-session-data-label', text: 'This time' });
+	// No box styling, no label - content renders directly
+	const section = parent.createDiv({ cls: 'fit-session-data-inline' });
 
 	// Set chips - one per target set
 	const chipsContainer = section.createDiv({ cls: 'fit-session-data-chips' });
@@ -141,59 +135,24 @@ function renderThisTimeSection(parent: HTMLElement, options: SessionDataOptions)
 		}
 	}
 
-	// Rest time (no label)
-	section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: `${currentExercise.restSeconds}s` });
+	// Coaching tips section (styled like general coaching tips)
+	const hasTips = feedback?.aanpak_volgende_sessie || feedback?.coach_cue_volgende_sessie;
+	if (hasTips) {
+		const tipsContainer = section.createDiv({ cls: 'fit-exercise-coaching-tips' });
 
-	// Approach (no label) - shown before coach cue
-	if (feedback?.aanpak_volgende_sessie) {
-		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.aanpak_volgende_sessie });
-	}
+		const header = tipsContainer.createDiv({ cls: 'fit-exercise-coaching-tips-header' });
+		const iconEl = header.createDiv({ cls: 'fit-exercise-coaching-tips-icon' });
+		setIcon(iconEl, 'target');
+		header.createDiv({ cls: 'fit-exercise-coaching-tips-title', text: 'Target' });
 
-	// Coach cue (no label)
-	if (feedback?.coach_cue_volgende_sessie) {
-		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.coach_cue_volgende_sessie });
-	}
-}
+		const content = tipsContainer.createDiv({ cls: 'fit-exercise-coaching-tips-content' });
 
-/**
- * Renders the LAST TIME section with previous session data and analysis
- */
-function renderLastTimeSection(parent: HTMLElement, options: SessionDataOptions): void {
-	const { previousExercise, feedback, weightUnit = 'kg' } = options;
-
-	const section = parent.createDiv({ cls: 'fit-session-data-section fit-session-data-last-time' });
-	section.createDiv({ cls: 'fit-session-data-label', text: 'Last time' });
-
-	// Set chips from previous session
-	if (previousExercise) {
-		const completedSets = previousExercise.sets.filter(s => s.completed);
-		if (completedSets.length > 0) {
-			const chipsContainer = section.createDiv({ cls: 'fit-session-data-chips' });
-			for (const set of completedSets) {
-				chipsContainer.createSpan({
-					cls: 'fit-session-data-chip',
-					text: formatSetChip({
-						set,
-						weightUnit,
-						muscleEngagement: previousExercise.muscleEngagement
-					})
-				});
-			}
+		if (feedback?.aanpak_volgende_sessie) {
+			content.createDiv({ cls: 'fit-exercise-coaching-tips-item', text: feedback.aanpak_volgende_sessie });
 		}
-	}
 
-	// Set analysis (no label)
-	if (feedback?.set_degradatie_en_vermoeidheid) {
-		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.set_degradatie_en_vermoeidheid });
-	}
-
-	// Progress (no label)
-	if (feedback?.progressie_tov_vorige) {
-		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.progressie_tov_vorige });
-	}
-
-	// Stimulus (no label) - at the bottom
-	if (feedback?.stimulus) {
-		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.stimulus });
+		if (feedback?.coach_cue_volgende_sessie) {
+			content.createDiv({ cls: 'fit-exercise-coaching-tips-item', text: feedback.coach_cue_volgende_sessie });
+		}
 	}
 }

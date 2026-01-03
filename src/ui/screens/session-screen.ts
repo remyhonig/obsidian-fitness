@@ -141,8 +141,11 @@ export class SessionScreen extends BaseScreen {
 			}
 		});
 
+		// Scrollable content area (header stays fixed, content scrolls)
+		const scrollContent = this.containerEl.createDiv({ cls: 'fit-session-scroll-content' });
+
 		// Exercise list container
-		const exerciseList = this.containerEl.createDiv({ cls: 'fit-exercise-list' });
+		const exerciseList = scrollContent.createDiv({ cls: 'fit-exercise-list' });
 
 		if (session.exercises.length === 0) {
 			exerciseList.createDiv({
@@ -155,7 +158,7 @@ export class SessionScreen extends BaseScreen {
 		}
 
 		// Bottom actions
-		const actions = this.containerEl.createDiv({ cls: 'fit-bottom-actions' });
+		const actions = scrollContent.createDiv({ cls: 'fit-bottom-actions' });
 
 		createButton(actions, {
 			text: 'Add exercise this session',
@@ -237,11 +240,14 @@ export class SessionScreen extends BaseScreen {
 	private renderGeneralCoachingTips(parent: HTMLElement, tips: { actie: string }[]): void {
 		const container = parent.createDiv({ cls: 'fit-general-coaching-tips' });
 
-		container.createDiv({ cls: 'fit-general-coaching-tips-title', text: 'Training tips' });
+		const header = container.createDiv({ cls: 'fit-general-coaching-tips-header' });
+		const iconEl = header.createDiv({ cls: 'fit-general-coaching-tips-icon' });
+		setIcon(iconEl, 'lightbulb');
+		header.createDiv({ cls: 'fit-general-coaching-tips-title', text: 'Training tips' });
 
-		const list = container.createEl('ul', { cls: 'fit-general-coaching-tips-list' });
+		const content = container.createDiv({ cls: 'fit-general-coaching-tips-content' });
 		for (const tip of tips) {
-			list.createEl('li', { text: tip.actie });
+			content.createDiv({ cls: 'fit-general-coaching-tips-item', text: tip.actie });
 		}
 	}
 

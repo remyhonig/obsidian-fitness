@@ -187,6 +187,10 @@ export class ExerciseScreen extends BaseScreen {
 				}, !questionnaireComplete);
 			}
 		} else {
+			// Target section at top (pills + coaching tips)
+			const coachCueContainer = scrollContent.createDiv({ cls: 'fit-coach-cue-container' });
+			void this.renderCoachCue(exercise.exercise, coachCueContainer);
+
 			// Weight/reps inputs
 			const inputsSection = scrollContent.createDiv({ cls: 'fit-exercise-inputs-section' });
 
@@ -212,14 +216,8 @@ export class ExerciseScreen extends BaseScreen {
 			const isCountingDown = this.ctx.sessionState.isCountdownActive();
 			createPrimaryAction(actionArea, `Complete set ${nextSetNumber} of ${exercise.targetSets}`, () => void this.completeSet(), isCountingDown);
 
-			// Create containers in correct order (coach cue is async)
-			const coachCueContainer = scrollContent.createDiv({ cls: 'fit-coach-cue-container' });
-			const explanationContainer = scrollContent.createDiv({ cls: 'fit-explanation-container' });
-
-			// Coaching tips (renders into container)
-			void this.renderCoachCue(exercise.exercise, coachCueContainer);
-
 			// Exercise details at the bottom (always shown)
+			const explanationContainer = scrollContent.createDiv({ cls: 'fit-explanation-container' });
 			this.renderExerciseExplanation(exercise.exercise, explanationContainer);
 		}
 

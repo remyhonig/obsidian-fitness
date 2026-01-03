@@ -118,16 +118,13 @@ function renderCard(
 ): void {
 	const { exercise, index } = options;
 
-	// Top row: (drag handle OR done badge) + image + number + title + expand button
+	// Top row: image + title + number badge (top-right) + expand button
 	const topRow = card.createDiv({ cls: 'fit-exercise-card-top' });
 
-	// Show checkmark for completed exercises, drag handle for incomplete
+	// Show checkmark for completed exercises (left side)
 	if (isComplete) {
 		const badge = topRow.createSpan({ cls: 'fit-exercise-card-done-badge' });
 		setIcon(badge, 'check');
-	} else if (options.draggable) {
-		const dragHandle = topRow.createDiv({ cls: 'fit-drag-handle' });
-		setIcon(dragHandle, 'grip-vertical');
 	}
 
 	// Image
@@ -138,9 +135,11 @@ function renderCard(
 		});
 	}
 
-	// Exercise number and name
-	topRow.createSpan({ cls: 'fit-exercise-card-number', text: String(index + 1) });
+	// Exercise name
 	topRow.createSpan({ cls: 'fit-exercise-card-name', text: options.displayName ?? exercise.exercise });
+
+	// Exercise number in top-right corner
+	topRow.createSpan({ cls: 'fit-exercise-card-number', text: String(index + 1) });
 
 	// Expand/collapse button
 	const expandBtn = topRow.createEl('button', {
@@ -148,13 +147,6 @@ function renderCard(
 		attr: { 'aria-label': 'Show details' }
 	});
 	setIcon(expandBtn, startExpanded ? 'chevron-up' : 'chevron-down');
-
-	// Progress bar (for incomplete exercises only)
-	if (!isComplete) {
-		const progressBar = card.createDiv({ cls: 'fit-exercise-card-progress-bar' });
-		const progressFill = progressBar.createDiv({ cls: 'fit-exercise-card-progress-fill' });
-		progressFill.style.width = `${(completedSets / targetSets) * 100}%`;
-	}
 
 	// Expandable details section
 	const details = card.createDiv({ cls: 'fit-exercise-card-details' });
