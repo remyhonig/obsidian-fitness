@@ -42,11 +42,12 @@ export function createWeightInput(
 	const inputWrapper = container.createDiv({ cls: 'fit-weight-input-wrapper' });
 	const input = inputWrapper.createEl('input', {
 		cls: 'fit-weight-input',
-		type: 'number',
-		value: String(currentWeight)
+		type: 'number'
 	});
 	input.setAttribute('step', String(smallInc));
 	input.setAttribute('min', '0');
+	// Set value property directly (not just attribute) for cross-environment compatibility
+	input.value = String(currentWeight);
 
 	inputWrapper.createSpan({ cls: 'fit-weight-unit', text: unit });
 

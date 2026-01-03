@@ -458,4 +458,134 @@ describe('ExerciseScreen', () => {
 			screen.destroy();
 		});
 	});
+
+	describe('weight prefilling from history', () => {
+		it('should prefill weight from the correct exercise in history, not the first exercise', async () => {
+			// BUG: Weight was being prefilled from the first exercise instead of the matching exercise
+			//
+			// Setup: Previous session has two exercises with different weights
+			// - Bench Press at 80kg
+			// - Squat at 100kg
+			// When opening Squat in a new session, weight should be 100kg, NOT 80kg
+
+			const previousSession = {
+				id: 'prev-session',
+				date: '2025-01-01',
+				startTime: '2025-01-01T10:00:00Z',
+				endTime: '2025-01-01T11:00:00Z',
+				workout: 'Full Body',
+				status: 'completed' as const,
+				exercises: [
+					{
+						exercise: 'Bench Press',
+						targetSets: 3,
+						targetRepsMin: 8,
+						targetRepsMax: 10,
+						restSeconds: 120,
+						sets: [
+							{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:05:00Z' },
+							{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:10:00Z' },
+							{ weight: 80, reps: 7, completed: true, timestamp: '2025-01-01T10:15:00Z' }
+						]
+					},
+					{
+						exercise: 'Squat',
+						targetSets: 3,
+						targetRepsMin: 6,
+						targetRepsMax: 8,
+						restSeconds: 180,
+						sets: [
+							{ weight: 100, reps: 6, completed: true, timestamp: '2025-01-01T10:25:00Z' },
+							{ weight: 100, reps: 6, completed: true, timestamp: '2025-01-01T10:30:00Z' },
+							{ weight: 100, reps: 5, completed: true, timestamp: '2025-01-01T10:35:00Z' }
+						]
+					}
+				]
+			};
+
+			// Current session with same exercises, no sets logged yet
+			const currentExercises = [
+				createSampleSessionExercise({ exercise: 'Bench Press', sets: [] }),
+				createSampleSessionExercise({ exercise: 'Squat', sets: [], targetRepsMin: 6, targetRepsMax: 8 })
+			];
+			const activeSession = createSampleSession({
+				status: 'active',
+				exercises: currentExercises
+			});
+
+			// Create context with previous session in history
+			const ctx = createMockScreenContext({
+				activeSession,
+				sessions: [previousSession]
+			});
+
+			// Open the SECOND exercise (Squat) - exerciseIndex = 1
+			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 1 });
+			screen.render();
+
+			// Wait for async loadFromHistory to complete and re-render
+			await flushPromises();
+			await flushPromises();
+
+			// Verify sessionRepo.list was called (loadFromHistory triggers this)
+			expect(ctx.sessionRepo.list).toHaveBeenCalled();
+
+			// The weight input should show 100kg (from Squat history), NOT 80kg (from Bench Press)
+			const weightInput = container.querySelector('.fit-weight-input') as HTMLInputElement;
+			expect(weightInput).not.toBeNull();
+			expect(weightInput.value).toBe('100'); // Should be 100 from Squat, not 80 from Bench Press
+		});
+
+		it('should prefill weight from the last set of the matching exercise', async () => {
+			// The previous session has Squat with increasing weights: 90 -> 95 -> 100
+			// The weight should be prefilled from set 1 (90kg) since we're logging set 1
+			const previousSession = {
+				id: 'prev-session',
+				date: '2025-01-01',
+				startTime: '2025-01-01T10:00:00Z',
+				endTime: '2025-01-01T11:00:00Z',
+				workout: 'Full Body',
+				status: 'completed' as const,
+				exercises: [
+					{
+						exercise: 'Squat',
+						targetSets: 3,
+						targetRepsMin: 6,
+						targetRepsMax: 8,
+						restSeconds: 180,
+						sets: [
+							{ weight: 90, reps: 8, completed: true, timestamp: '2025-01-01T10:05:00Z' },
+							{ weight: 95, reps: 7, completed: true, timestamp: '2025-01-01T10:10:00Z' },
+							{ weight: 100, reps: 5, completed: true, timestamp: '2025-01-01T10:15:00Z' }
+						]
+					}
+				]
+			};
+
+			const currentExercises = [
+				createSampleSessionExercise({ exercise: 'Squat', sets: [], targetRepsMin: 6, targetRepsMax: 8 })
+			];
+			const activeSession = createSampleSession({
+				status: 'active',
+				exercises: currentExercises
+			});
+
+			const ctx = createMockScreenContext({
+				activeSession,
+				sessions: [previousSession]
+			});
+
+			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
+			screen.render();
+
+			// Wait for async loadFromHistory to complete and re-render
+			await flushPromises();
+			await flushPromises();
+
+			// For set 1, should use set 1 from history (90kg)
+			const weightInput = container.querySelector('.fit-weight-input') as HTMLInputElement;
+			expect(weightInput).not.toBeNull();
+			expect(weightInput.value).toBe('90');
+		});
+	});
 });
