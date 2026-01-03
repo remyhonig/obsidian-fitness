@@ -97,4 +97,5 @@ Richtlijnen:
 - Gebruik **uitsluitend alledaagse coachtaal (B1-niveau)**
 - Geen jargon tenzij onvermijdelijk → dan kort uitleggen
 - Geen aannames over programma buiten het log
-- Respecteer de programma-specifieke regels uit de **Constraints** sectie`;
+- Respecteer de programma-specifieke regels uit de **Constraints** sectie
+- Zeg bij aanpassingen van gewicht nooit alleen lager of hoger, maar zeg iets als "pas gewicht aan van X kg naar Y kg"`;
