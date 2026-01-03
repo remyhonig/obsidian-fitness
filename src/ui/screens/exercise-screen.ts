@@ -7,6 +7,7 @@ import { createHorizontalRepsSelector } from '../components/reps-grid';
 import { createRpeSelector } from '../components/rpe-selector';
 import { createMuscleEngagementSelector } from '../components/muscle-engagement-selector';
 import { createScreenHeader } from '../components/screen-header';
+import { createSessionData } from '../components/session-data';
 import { ExerciseFormState } from './exercise-form-state';
 import {
 	createWeightInput,
@@ -132,38 +133,51 @@ export class ExerciseScreen extends BaseScreen {
 		const scrollContent = this.containerEl.createDiv({ cls: 'fit-exercise-scroll-content' });
 
 		if (isExerciseComplete) {
+			const lastSetIndex = exercise.sets.length - 1;
+			const lastSet = exercise.sets[lastSetIndex];
+
+			// Check if all exercises are done (for showing Complete session button)
+			const allStatuses = this.getAllExerciseStatuses();
+			const allExercisesComplete = allStatuses.every(s => s.isComplete);
+
+			// Helper to check if both questions answered and auto-navigate
+			const checkAndNavigate = () => {
+				// Get fresh exercise data after update
+				const updatedExercise = this.ctx.sessionState.getExercise(this.exerciseIndex);
+				const updatedLastSet = updatedExercise?.sets[lastSetIndex];
+				const bothAnswered = updatedExercise?.muscleEngagement !== undefined && updatedLastSet?.rpe !== undefined;
+
+				if (bothAnswered && !allExercisesComplete) {
+					// Auto-navigate to overview after short delay
+					setTimeout(() => {
+						this.ctx.view.navigateTo('session');
+					}, 400);
+				}
+			};
+
 			// Show muscle engagement selector first
 			createMuscleEngagementSelector(scrollContent, {
 				selectedValue: exercise.muscleEngagement,
 				onSelect: (value: MuscleEngagement) => {
-					void this.ctx.viewModel.setMuscleEngagement(value);
+					void this.ctx.viewModel.setMuscleEngagement(value).then(checkAndNavigate);
 				}
 			});
 
 			// Show RPE selector below
-			const lastSetIndex = exercise.sets.length - 1;
-			const lastSet = exercise.sets[lastSetIndex];
 			createRpeSelector(scrollContent, {
 				selectedValue: lastSet?.rpe,
 				onSelect: (value) => {
 					// Save RPE to the last set
-					void this.ctx.viewModel.editSet(lastSetIndex, { rpe: value });
+					void this.ctx.viewModel.editSet(lastSetIndex, { rpe: value }).then(checkAndNavigate);
 				}
 			});
 
-			// Action button
-			const actionArea = scrollContent.createDiv({ cls: 'fit-exercise-action' });
-			const allStatuses = this.getAllExerciseStatuses();
-			const allExercisesComplete = allStatuses.every(s => s.isComplete);
-			const questionnaireComplete = exercise.muscleEngagement !== undefined && lastSet?.rpe !== undefined;
-
+			// Only show Complete session button when ALL exercises are done
 			if (allExercisesComplete) {
+				const actionArea = scrollContent.createDiv({ cls: 'fit-exercise-action' });
+				const questionnaireComplete = exercise.muscleEngagement !== undefined && lastSet?.rpe !== undefined;
 				createPrimaryAction(actionArea, 'Complete session', () => {
 					void this.finishWorkout();
-				}, !questionnaireComplete);
-			} else {
-				createPrimaryAction(actionArea, 'Next exercise', () => {
-					this.ctx.view.navigateTo('session');
 				}, !questionnaireComplete);
 			}
 		} else {
@@ -294,6 +308,7 @@ export class ExerciseScreen extends BaseScreen {
 		if (!session?.workout) return;
 
 		const currentExercise = this.getExercise();
+		if (!currentExercise) return;
 
 		// Get previous session for this workout
 		const previousSession = await this.ctx.sessionRepo.getPreviousSession(
@@ -312,128 +327,18 @@ export class ExerciseScreen extends BaseScreen {
 			: null;
 		const exerciseFeedback = structured
 			? findExerciseFeedback(structured, exerciseName)
-			: null;
+			: undefined;
 
-		// Check if we have any "This time" content
-		const hasThisTimeContent = exerciseFeedback?.coach_cue_volgende_sessie || exerciseFeedback?.aanpak_volgende_sessie;
-		const hasThisTimeSets = currentExercise && currentExercise.targetSets > 0;
-
-		// Check if we have any "Last time" content
-		const hasLastTimeContent = exerciseFeedback?.stimulus ||
-			exerciseFeedback?.set_degradatie_en_vermoeidheid ||
-			exerciseFeedback?.progressie_tov_vorige;
-		const hasLastTimeSets = previousExercise && previousExercise.sets.length > 0;
-
-		// Render "This time" callout (current session sets + coach cue)
-		if (hasThisTimeContent || hasThisTimeSets) {
-			const thisTimeContainer = parent.createDiv({ cls: 'fit-exercise-feedback-callout fit-exercise-feedback-this-time' });
-			thisTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-title', text: 'This time' });
-
-			const content = thisTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-content' });
-
-			// Current session set pills (with placeholders for incomplete sets)
-			if (currentExercise) {
-				const setsRow = content.createDiv({ cls: 'fit-feedback-sets-row' });
-				const completedSets = currentExercise.sets.filter(s => s.completed);
-
-				for (let i = 0; i < currentExercise.targetSets; i++) {
-					const set = completedSets[i];
-					if (set) {
-						// Build pill text with annotations
-						let pillText = `${set.reps}×${set.weight}kg`;
-						const annotations: string[] = [];
-						if (set.extraRestSeconds) {
-							annotations.push(`+${set.extraRestSeconds}s`);
-						}
-						if (set.avgRepDuration) {
-							annotations.push(`${set.avgRepDuration}s/rep`);
-						}
-						if (annotations.length > 0) {
-							pillText += ` (${annotations.join(', ')})`;
-						}
-
-						// Completed set (tappable to delete)
-						const pill = setsRow.createSpan({
-							cls: 'fit-feedback-set-pill fit-feedback-set-completed fit-feedback-set-tappable',
-							text: pillText
-						});
-						// Find the actual index in the sets array
-						const setIndex = currentExercise.sets.findIndex(s => s === set);
-						pill.addEventListener('click', () => {
-							void this.deleteSet(setIndex);
-						});
-					} else {
-						// Placeholder for incomplete set
-						setsRow.createSpan({
-							cls: 'fit-feedback-set-pill fit-feedback-set-pending',
-							text: '?×?kg'
-						});
-					}
-				}
+		// Use the shared session data component
+		createSessionData(parent, {
+			currentExercise,
+			previousExercise,
+			feedback: exerciseFeedback,
+			weightUnit: this.ctx.settings.weightUnit,
+			onSetClick: (setIndex) => {
+				void this.deleteSet(setIndex);
 			}
-
-			if (exerciseFeedback?.coach_cue_volgende_sessie) {
-				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Coach cue: ' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.coach_cue_volgende_sessie });
-			}
-
-			if (exerciseFeedback?.aanpak_volgende_sessie) {
-				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Approach: ' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.aanpak_volgende_sessie });
-			}
-		}
-
-		// Render "Last time" callout (previous session sets + feedback)
-		if (hasLastTimeContent || hasLastTimeSets) {
-			const lastTimeContainer = parent.createDiv({ cls: 'fit-exercise-feedback-callout fit-exercise-feedback-last-time' });
-			lastTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-title', text: 'Last time' });
-
-			const content = lastTimeContainer.createDiv({ cls: 'fit-exercise-feedback-callout-content' });
-
-			// Previous session set pills
-			if (previousExercise) {
-				const setsRow = content.createDiv({ cls: 'fit-feedback-sets-row' });
-				for (const set of previousExercise.sets.filter(s => s.completed)) {
-					// Build pill text with annotations
-					let pillText = `${set.reps}×${set.weight}kg`;
-					const annotations: string[] = [];
-					if (set.extraRestSeconds) {
-						annotations.push(`+${set.extraRestSeconds}s`);
-					}
-					if (set.avgRepDuration) {
-						annotations.push(`${set.avgRepDuration}s/rep`);
-					}
-					if (annotations.length > 0) {
-						pillText += ` (${annotations.join(', ')})`;
-					}
-
-					setsRow.createSpan({
-						cls: 'fit-feedback-set-pill fit-feedback-set-previous',
-						text: pillText
-					});
-				}
-			}
-
-			if (exerciseFeedback?.stimulus) {
-				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Stimulus: ' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.stimulus });
-			}
-
-			if (exerciseFeedback?.set_degradatie_en_vermoeidheid) {
-				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Set analysis: ' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.set_degradatie_en_vermoeidheid });
-			}
-
-			if (exerciseFeedback?.progressie_tov_vorige) {
-				const item = content.createDiv({ cls: 'fit-exercise-feedback-callout-item' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-label', text: 'Progress: ' });
-				item.createSpan({ cls: 'fit-exercise-feedback-callout-value', text: exerciseFeedback.progressie_tov_vorige });
-			}
-		}
+		});
 	}
 
 	private getExercise(): SessionExercise | null {

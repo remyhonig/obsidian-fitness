@@ -93,7 +93,16 @@ export function parseSessionBody(body: string): SessionExerciseBlock[] {
 
 		// Parse muscle engagement question/answer after table
 		const muscleEngagementMatch = block.match(/\*\*Did you feel the correct muscle working\?\*\*\s*(.*)/i);
-		const muscleEngagement = muscleEngagementMatch?.[1]?.trim();
+		const rawMuscleEngagement = muscleEngagementMatch?.[1]?.trim();
+		// Convert human-readable label back to enum value
+		const muscleEngagementMap: Record<string, string> = {
+			'Yes, clearly': 'yes-clearly',
+			'Moderately': 'moderately',
+			'Not really': 'not-really'
+		};
+		const muscleEngagement = rawMuscleEngagement
+			? (muscleEngagementMap[rawMuscleEngagement] ?? rawMuscleEngagement)
+			: undefined;
 
 		exercises.push({
 			exercise: exerciseName,

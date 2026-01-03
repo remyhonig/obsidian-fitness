@@ -1,14 +1,15 @@
-import { setIcon, MarkdownRenderer } from 'obsidian';
+import { setIcon } from 'obsidian';
 import type { ScreenContext } from '../../views/fit-view';
 import { BaseScreen } from './base-screen';
-import type { Session, Exercise } from '../../types';
+import type { Session, Exercise, SessionExercise } from '../../types';
 import { createButton, createPrimaryAction } from '../components/button';
 import { createExerciseCard } from '../components/card';
 import { createExerciseAutocomplete } from '../components/autocomplete';
 import { createScreenHeader } from '../components/screen-header';
 import { toSlug } from '../../domain/identifier';
 import { parseCoachFeedbackYaml } from '../../data/coach-feedback-parser';
-import type { StructuredCoachFeedback } from '../../data/coach-feedback-types';
+import type { StructuredCoachFeedback, ExerciseFeedback } from '../../data/coach-feedback-types';
+import { normalizeExerciseName } from '../../domain/feedback/normalize';
 // Note: toSlug is still needed for syncSessionWithWorkout; program advancement is now in ViewModel
 
 /**
@@ -140,13 +141,7 @@ export class SessionScreen extends BaseScreen {
 			}
 		});
 
-		// Placeholder for coach feedback notice (filled asynchronously)
-		const feedbackContainer = this.containerEl.createDiv({ cls: 'fit-feedback-notice-container' });
-		if (session.workout) {
-			void this.renderFeedbackNotice(session, feedbackContainer);
-		}
-
-		// Exercise list
+		// Exercise list container
 		const exerciseList = this.containerEl.createDiv({ cls: 'fit-exercise-list' });
 
 		if (session.exercises.length === 0) {
@@ -155,8 +150,8 @@ export class SessionScreen extends BaseScreen {
 				text: 'No exercises yet. Add your first exercise!'
 			});
 		} else {
-			// Render exercise cards with images loaded asynchronously
-			void this.renderExerciseCards(session, exerciseList);
+			// Render general coaching tips and exercise cards with data from previous session
+			void this.renderExerciseListWithCoachingData(session, exerciseList);
 		}
 
 		// Bottom actions
@@ -196,84 +191,66 @@ export class SessionScreen extends BaseScreen {
 
 	}
 
-	private async renderFeedbackNotice(currentSession: Session, parentContainer: HTMLElement): Promise<void> {
-		if (!currentSession.workout) return;
+	/**
+	 * Renders the exercise list with coaching data from previous session
+	 */
+	private async renderExerciseListWithCoachingData(session: Session, exerciseList: HTMLElement): Promise<void> {
+		// Get previous session data and coach feedback
+		let previousSession: Session | null = null;
+		let coachFeedback: StructuredCoachFeedback | null = null;
 
-		// Get previous session for this workout to check for feedback
-		const previousSession = await this.ctx.sessionRepo.getPreviousSession(
-			currentSession.workout,
-			currentSession.id
-		);
-
-		if (!previousSession?.coachFeedback) return;
-
-		// Try to parse as structured YAML
-		const structured = parseCoachFeedbackYaml(previousSession.coachFeedback);
-
-		// Create collapsible container inside the placeholder
-		const container = parentContainer.createDiv({ cls: 'fit-feedback-notice' });
-
-		// Header row with title and toggle button
-		const header = container.createDiv({ cls: 'fit-feedback-notice-header' });
-
-		const toggleBtn = header.createEl('button', {
-			cls: 'fit-feedback-notice-toggle',
-			attr: { 'aria-label': 'Toggle feedback' }
-		});
-		setIcon(toggleBtn, 'chevron-down');
-
-		header.createDiv({ cls: 'fit-feedback-notice-title', text: 'Coach Feedback' });
-
-		// Content area (collapsible)
-		const content = container.createDiv({ cls: 'fit-feedback-notice-content' });
-
-		if (structured) {
-			// Render structured feedback
-			this.renderStructuredFeedback(structured, content);
-		} else {
-			// Fallback to raw markdown rendering
-			void MarkdownRenderer.render(
-				this.ctx.app,
-				previousSession.coachFeedback,
-				content,
-				'',
-				this.ctx.view
-			);
-		}
-
-		// Toggle collapse/expand (whole header is clickable)
-		let isCollapsed = false;
-		const toggle = () => {
-			isCollapsed = !isCollapsed;
-			container.toggleClass('is-collapsed', isCollapsed);
-			setIcon(toggleBtn, isCollapsed ? 'chevron-right' : 'chevron-down');
-		};
-		header.addEventListener('click', toggle);
-	}
-
-	private renderStructuredFeedback(feedback: StructuredCoachFeedback, parent: HTMLElement): void {
-		// Render gymfloor_acties as training tips
-		if (feedback.gymfloor_acties && feedback.gymfloor_acties.length > 0) {
-			const section = parent.createDiv({ cls: 'fit-structured-feedback-section' });
-			section.createDiv({ cls: 'fit-structured-feedback-title', text: 'Training Tips' });
-			const list = section.createEl('ul', { cls: 'fit-structured-feedback-list' });
-			for (const actie of feedback.gymfloor_acties) {
-				list.createEl('li', { text: actie.actie });
+		if (session.workout) {
+			previousSession = await this.ctx.sessionRepo.getPreviousSession(session.workout, session.id);
+			if (previousSession?.coachFeedback) {
+				coachFeedback = parseCoachFeedbackYaml(previousSession.coachFeedback);
 			}
 		}
 
-		// Render motivation
-		if (feedback.motivatie_boost) {
-			const section = parent.createDiv({ cls: 'fit-structured-feedback-section' });
-			section.createDiv({ cls: 'fit-structured-feedback-title', text: 'Motivation' });
-			section.createDiv({
-				cls: 'fit-structured-feedback-motivation',
-				text: feedback.motivatie_boost.tekst
-			});
+		// Render general coaching tips at the top (if any)
+		if (coachFeedback?.gymfloor_acties && coachFeedback.gymfloor_acties.length > 0) {
+			this.renderGeneralCoachingTips(exerciseList, coachFeedback.gymfloor_acties);
+		}
+
+		// Build maps for previous exercise data and feedback by normalized name
+		const previousExerciseMap = new Map<string, SessionExercise>();
+		const feedbackMap = new Map<string, ExerciseFeedback>();
+
+		if (previousSession) {
+			for (const ex of previousSession.exercises) {
+				previousExerciseMap.set(normalizeExerciseName(ex.exercise), ex);
+			}
+		}
+
+		if (coachFeedback?.analyse_en_context) {
+			for (const feedback of coachFeedback.analyse_en_context) {
+				feedbackMap.set(normalizeExerciseName(feedback.oefening), feedback);
+			}
+		}
+
+		// Render exercise cards
+		await this.renderExerciseCards(session, exerciseList, previousExerciseMap, feedbackMap);
+	}
+
+	/**
+	 * Renders general coaching tips section at the top of the exercise list
+	 */
+	private renderGeneralCoachingTips(parent: HTMLElement, tips: { actie: string }[]): void {
+		const container = parent.createDiv({ cls: 'fit-general-coaching-tips' });
+
+		container.createDiv({ cls: 'fit-general-coaching-tips-title', text: 'Training tips' });
+
+		const list = container.createEl('ul', { cls: 'fit-general-coaching-tips-list' });
+		for (const tip of tips) {
+			list.createEl('li', { text: tip.actie });
 		}
 	}
 
-	private async renderExerciseCards(session: Session, exerciseList: HTMLElement): Promise<void> {
+	private async renderExerciseCards(
+		session: Session,
+		exerciseList: HTMLElement,
+		previousExerciseMap: Map<string, SessionExercise>,
+		feedbackMap: Map<string, ExerciseFeedback>
+	): Promise<void> {
 		// Build maps for exercise lookup by both name and ID (slug)
 		const exerciseByName = new Map<string, Exercise>();
 		const exerciseById = new Map<string, Exercise>();
@@ -283,28 +260,68 @@ export class SessionScreen extends BaseScreen {
 			exerciseById.set(ex.id.toLowerCase(), ex);
 		}
 
-		// Render each exercise card
+		// Separate exercises into pending and completed, preserving original indices
+		const pending: { sessionExercise: typeof session.exercises[0]; originalIndex: number }[] = [];
+		const completed: { sessionExercise: typeof session.exercises[0]; originalIndex: number }[] = [];
+
 		for (let i = 0; i < session.exercises.length; i++) {
 			const sessionExercise = session.exercises[i];
 			if (!sessionExercise) continue;
 
+			const completedSets = sessionExercise.sets.filter(s => s.completed).length;
+			const isComplete = completedSets >= sessionExercise.targetSets;
+
+			if (isComplete) {
+				completed.push({ sessionExercise, originalIndex: i });
+			} else {
+				pending.push({ sessionExercise, originalIndex: i });
+			}
+		}
+
+		// Render pending exercises first, then completed ones at the bottom
+		const sortedExercises = [...pending, ...completed];
+		const weightUnit = this.ctx.settings.weightUnit;
+
+		// Track if we've found the first incomplete exercise (for auto-expand)
+		let isFirstIncomplete = true;
+
+		for (const { sessionExercise, originalIndex } of sortedExercises) {
 			// Look up the exercise to get name and images - try name first, then ID (slug)
 			const exerciseLower = sessionExercise.exercise.toLowerCase();
 			const exerciseSlug = exerciseLower.replace(/\s+/g, '-');
 			const exerciseDetails = exerciseByName.get(exerciseLower) ?? exerciseById.get(exerciseSlug);
 
+			// Get previous session data and feedback for this exercise
+			const normalizedName = normalizeExerciseName(sessionExercise.exercise);
+			const previousExercise = previousExerciseMap.get(normalizedName);
+			const feedback = feedbackMap.get(normalizedName);
+
+			// Check if this is an incomplete exercise
+			const completedSetsCount = sessionExercise.sets.filter(s => s.completed).length;
+			const isIncomplete = completedSetsCount < sessionExercise.targetSets;
+
+			// Auto-expand the first incomplete exercise
+			const autoExpand = isIncomplete && isFirstIncomplete;
+			if (autoExpand) {
+				isFirstIncomplete = false;
+			}
+
 			createExerciseCard(exerciseList, {
 				exercise: sessionExercise,
-				index: i,
+				index: originalIndex,
 				displayName: exerciseDetails?.name, // Use proper name from database
 				image0: exerciseDetails?.image0,
 				image1: exerciseDetails?.image1,
-				onClick: () => this.ctx.view.navigateTo('exercise', { exerciseIndex: i }),
+				onClick: () => this.ctx.view.navigateTo('exercise', { exerciseIndex: originalIndex }),
 				draggable: true,
 				onDrop: (fromIndex, toIndex) => {
 					this.ctx.viewModel.reorderExercises(fromIndex, toIndex);
 					this.render();
-				}
+				},
+				previousExercise,
+				feedback,
+				weightUnit,
+				autoExpand
 			});
 		}
 	}

@@ -133,16 +133,16 @@ describe('ExerciseScreen', () => {
 			screen.render();
 			await flushPromises();
 
-			// Sets are shown in the "This time" coach cue section
-			const setsRow = container.querySelector('.fit-feedback-sets-row');
-			expect(setsRow).not.toBeNull();
+			// Sets are shown in the "This time" session data section
+			const chipsContainer = container.querySelector('.fit-session-data-chips');
+			expect(chipsContainer).not.toBeNull();
 
-			// 2 completed sets + 2 pending placeholder sets = 4 pills total
-			const setChips = container.querySelectorAll('.fit-feedback-set-pill');
+			// 2 completed sets + 2 pending placeholder sets = 4 chips total
+			const setChips = container.querySelectorAll('.fit-session-data-chip');
 			expect(setChips.length).toBe(4);
 
 			// 2 completed sets
-			const completedChips = container.querySelectorAll('.fit-feedback-set-completed');
+			const completedChips = container.querySelectorAll('.fit-session-data-chip-completed');
 			expect(completedChips.length).toBe(2);
 		});
 
@@ -281,7 +281,7 @@ describe('ExerciseScreen', () => {
 			await flushPromises();
 
 			// Completed sets are tappable for deletion
-			const tappableSets = container.querySelectorAll('.fit-feedback-set-tappable');
+			const tappableSets = container.querySelectorAll('.fit-session-data-chip-tappable');
 			expect(tappableSets.length).toBe(1);
 		});
 
@@ -297,7 +297,7 @@ describe('ExerciseScreen', () => {
 			screen.render();
 			await flushPromises();
 
-			const tappableSet = container.querySelector('.fit-feedback-set-tappable') as HTMLElement;
+			const tappableSet = container.querySelector('.fit-session-data-chip-tappable') as HTMLElement;
 			click(tappableSet);
 			await flushPromises();
 
@@ -322,7 +322,7 @@ describe('ExerciseScreen', () => {
 			expect(completeSetBtn).not.toBeNull();
 		});
 
-		it('should show Next exercise button when current exercise is done but others remain', () => {
+		it('should not show action button when current exercise is done but others remain', () => {
 			const exercise1 = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetSets: 2,
@@ -341,8 +341,9 @@ describe('ExerciseScreen', () => {
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const nextExerciseBtn = findButton(container, 'Next exercise');
-			expect(nextExerciseBtn).not.toBeNull();
+			// No action button when not all exercises done - auto-navigates after questionnaire
+			const actionBtn = container.querySelector('.fit-exercise-action button');
+			expect(actionBtn).toBeNull();
 		});
 
 		it('should show Complete session button when all exercises done', () => {
@@ -392,14 +393,15 @@ describe('ExerciseScreen', () => {
 			expect(rpeSelector).not.toBeNull();
 		});
 
-		it('should navigate to session when Next exercise is clicked after filling questionnaire', async () => {
+		it('should auto-navigate to session after answering both questionnaire questions', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			// Pre-fill RPE so we just need to select muscle engagement
 			const exercise1 = createSampleSessionExercise({
 				exercise: 'Bench Press',
 				targetSets: 2,
-				muscleEngagement: 'good', // Pre-filled muscle engagement
 				sets: [
-					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:00:00Z', rpe: 7 },
-					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:05:00Z', rpe: 8 } // Pre-filled RPE
+					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:00:00Z' },
+					{ weight: 80, reps: 8, completed: true, timestamp: '2025-01-01T10:05:00Z', rpe: 8 }
 				]
 			});
 			const exercise2 = createSampleSessionExercise({
@@ -409,16 +411,22 @@ describe('ExerciseScreen', () => {
 			});
 			const activeSession = createSampleSession({ status: 'active', exercises: [exercise1, exercise2] });
 			const ctx = createMockScreenContext({ activeSession });
+
+			// Make setMuscleEngagement update the exercise in mock state
+			ctx.viewModel.setMuscleEngagement = vi.fn().mockImplementation(async (value: string) => {
+				exercise1.muscleEngagement = value as 'yes-clearly' | 'moderately' | 'not-really';
+			});
+
 			const screen = new ExerciseScreen(container, ctx, { exerciseIndex: 0 });
 			screen.render();
 
-			const nextExerciseBtn = findButton(container, 'Next exercise');
-			expect(nextExerciseBtn).not.toBeNull();
-			expect(nextExerciseBtn?.disabled).toBe(false);
-			click(nextExerciseBtn!);
-			await flushPromises();
+			// Select muscle engagement - this should trigger auto-navigation since RPE is pre-filled
+			const muscleItem = container.querySelector('.fit-muscle-engagement-item') as HTMLElement;
+			click(muscleItem);
+			await vi.runAllTimersAsync();
 
 			expect(ctx.view.navigateTo).toHaveBeenCalledWith('session');
+			vi.useRealTimers();
 		});
 	});
 

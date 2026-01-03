@@ -7,9 +7,9 @@ import type { MuscleEngagement } from '../../types';
 import { createSelectableGrid, type SelectableGridOption, type SelectableGridRefs } from './selectable-grid';
 
 const MUSCLE_ENGAGEMENT_OPTIONS: SelectableGridOption<MuscleEngagement>[] = [
-	{ value: 'yes-clearly', label: 'Yes, clearly' },
-	{ value: 'moderately', label: 'Moderately' },
-	{ value: 'not-really', label: 'Not really' }
+	{ value: 'yes-clearly', label: '🟢 Yes, clearly' },
+	{ value: 'moderately', label: '🟡 Moderately' },
+	{ value: 'not-really', label: '🔴 Not really' }
 ];
 
 export interface MuscleEngagementSelectorOptions {

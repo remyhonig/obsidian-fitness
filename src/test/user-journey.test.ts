@@ -354,10 +354,10 @@ describe('User Journey - Complete Workflow', () => {
 			// Verify post-set data is preserved
 			// Note: RPE is stored per-set in the file format, not per-exercise,
 			// so exercise-level RPE isn't persisted when reading back from file.
-			// Muscle engagement is stored as human-readable labels when persisted
-			expect(retrievedSession?.exercises[0]?.muscleEngagement).toBe('Yes, clearly');
-			expect(retrievedSession?.exercises[1]?.muscleEngagement).toBe('Moderately');
-			expect(retrievedSession?.exercises[2]?.muscleEngagement).toBe('Yes, clearly');
+			// Muscle engagement is converted back to enum values when reading from file
+			expect(retrievedSession?.exercises[0]?.muscleEngagement).toBe('yes-clearly');
+			expect(retrievedSession?.exercises[1]?.muscleEngagement).toBe('moderately');
+			expect(retrievedSession?.exercises[2]?.muscleEngagement).toBe('yes-clearly');
 
 			// Verify review is preserved
 			expect(retrievedSession?.review).toBeDefined();

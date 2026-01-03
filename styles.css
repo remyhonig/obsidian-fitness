@@ -22,6 +22,7 @@
 	flex-direction: column;
 	height: 100%;
 	overflow-y: auto;
+	scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
 	padding: 12px;
 	padding-top: calc(12px + var(--fit-top-padding, 0px)); /* Configurable via settings */
 	padding-bottom: var(--fit-bottom-padding, 100px); /* Configurable via settings */
@@ -329,12 +330,41 @@
 	opacity: 0.7;
 }
 
-/* Top row: drag handle + number + title */
+/* Compact layout for completed exercises */
+.fit-exercise-card-compact {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.fit-exercise-card-compact .fit-drag-handle {
+	margin-left: -4px;
+}
+
+.fit-exercise-card-done-badge {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.fit-exercise-card-done-badge svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* Top row: drag handle + image + number + title */
 .fit-exercise-card-top {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	margin-bottom: 8px;
+	min-width: 0; /* Allow children to shrink properly */
 }
 
 .fit-exercise-card-top .fit-drag-handle {
@@ -358,6 +388,7 @@
 	font-size: 16px;
 	font-weight: 600;
 	flex: 1;
+	min-width: 0; /* Allow shrinking below content width in flex */
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -371,8 +402,8 @@
 }
 
 .fit-exercise-card-img {
-	width: 80px;
-	height: 60px;
+	width: 100px;
+	height: 75px;
 	object-fit: cover;
 	border-radius: 8px;
 	flex-shrink: 0;
@@ -392,6 +423,7 @@
 	align-items: center;
 	gap: 6px;
 	flex-wrap: wrap;
+	margin-top: 6px;
 }
 
 .fit-exercise-card-sets {
@@ -419,7 +451,7 @@
 	height: 3px;
 	background: var(--background-modifier-border);
 	border-radius: 2px;
-	margin-top: 4px;
+	margin-top: 6px;
 	overflow: hidden;
 }
 
@@ -428,6 +460,137 @@
 	background: var(--interactive-accent);
 	border-radius: 2px;
 	transition: width 0.3s;
+}
+
+/* Expand/collapse button for exercise cards */
+.fit-exercise-card-expand-btn {
+	background: none;
+	border: none;
+	padding: 4px;
+	margin-left: auto;
+	cursor: pointer;
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	flex-shrink: 0;
+}
+
+.fit-exercise-card-expand-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.fit-exercise-card-expand-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* Expandable details section */
+.fit-exercise-card-details {
+	display: none;
+	padding-top: 8px;
+	margin-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+	overflow: hidden; /* Prevent content from pushing card width */
+}
+
+.fit-exercise-card.is-expanded .fit-exercise-card-details {
+	display: block;
+}
+
+.fit-exercise-card-detail-section {
+	margin-bottom: 8px;
+}
+
+.fit-exercise-card-detail-section:last-child {
+	margin-bottom: 0;
+}
+
+.fit-exercise-card-detail-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 2px;
+}
+
+.fit-exercise-card-detail-value {
+	font-size: 13px;
+	color: var(--text-normal);
+}
+
+.fit-exercise-card-coaching-tip {
+	background: var(--background-primary-alt);
+	padding: 8px;
+	border-radius: 6px;
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.fit-exercise-card-coaching-tip .fit-exercise-card-detail-label {
+	color: var(--interactive-accent);
+}
+
+/* General coaching tips section */
+.fit-general-coaching-tips {
+	background: var(--background-secondary);
+	border-radius: 12px;
+	padding: 12px;
+	margin-bottom: 12px;
+}
+
+.fit-general-coaching-tips-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+}
+
+.fit-general-coaching-tips-toggle {
+	background: none;
+	border: none;
+	padding: 2px;
+	cursor: pointer;
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.fit-general-coaching-tips-toggle svg {
+	width: 16px;
+	height: 16px;
+}
+
+.fit-general-coaching-tips-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.fit-general-coaching-tips-content {
+	margin-top: 8px;
+}
+
+.fit-general-coaching-tips.is-collapsed .fit-general-coaching-tips-content {
+	display: none;
+}
+
+.fit-general-coaching-tips-list {
+	margin: 0;
+	padding-left: 20px;
+	font-size: 13px;
+	color: var(--text-muted);
+}
+
+.fit-general-coaching-tips-list li {
+	margin-bottom: 4px;
+}
+
+.fit-general-coaching-tips-list li:last-child {
+	margin-bottom: 0;
 }
 
 /* Set rows */
@@ -3556,6 +3719,103 @@
 	background: var(--background-primary);
 	color: var(--text-muted);
 	border: 1px solid var(--background-modifier-border);
+}
+
+/* ============================================
+   Session Data Component (shared THIS TIME / LAST TIME)
+   ============================================ */
+
+.fit-session-data {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	min-width: 0; /* Allow shrinking in flex contexts */
+	overflow: hidden;
+}
+
+.fit-session-data-section {
+	background: var(--background-secondary);
+	border-radius: 8px;
+	padding: 10px 12px;
+	border-left: 3px solid var(--interactive-accent);
+	min-width: 0; /* Allow shrinking */
+	overflow: hidden;
+}
+
+.fit-session-data-this-time {
+	border-left-color: var(--interactive-accent);
+}
+
+.fit-session-data-last-time {
+	border-left-color: var(--text-muted);
+}
+
+.fit-session-data-label {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 8px;
+}
+
+.fit-session-data-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.fit-session-data-chip {
+	display: inline-block;
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 500;
+	background: var(--background-primary);
+	color: var(--text-muted);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.fit-session-data-chip-completed {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: transparent;
+}
+
+.fit-session-data-chip-tappable {
+	cursor: pointer;
+}
+
+.fit-session-data-chip-tappable:active {
+	opacity: 0.7;
+	transform: scale(0.95);
+}
+
+.fit-session-data-chip-target {
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	border-color: transparent;
+}
+
+.fit-session-data-row {
+	font-size: 13px;
+	line-height: 1.5;
+	margin-bottom: 4px;
+	word-break: break-word; /* Prevent long text from overflowing */
+}
+
+.fit-session-data-row:last-child {
+	margin-bottom: 0;
+}
+
+.fit-session-data-row-label {
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.fit-session-data-row-value {
+	color: var(--text-normal);
 }
 
 /* ============================================

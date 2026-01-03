@@ -1,5 +1,7 @@
 import { setIcon } from 'obsidian';
 import type { SessionExercise } from '../../types';
+import type { ExerciseFeedback } from '../../data/coach-feedback-types';
+import { createSessionData } from './session-data';
 
 export interface ExerciseCardOptions {
 	exercise: SessionExercise;
@@ -13,6 +15,11 @@ export interface ExerciseCardOptions {
 	onDragStart?: (index: number) => void;
 	onDragEnd?: () => void;
 	onDrop?: (fromIndex: number, toIndex: number) => void;
+	// Expandable details
+	previousExercise?: SessionExercise; // Results from last session
+	feedback?: ExerciseFeedback; // Exercise-specific coaching feedback
+	weightUnit?: string; // For displaying weights (default: 'kg')
+	autoExpand?: boolean; // Start expanded (for first incomplete exercise)
 }
 
 // Store dragged index globally for cross-card communication
@@ -27,111 +34,152 @@ export function createExerciseCard(parent: HTMLElement, options: ExerciseCardOpt
 	const targetSets = exercise.targetSets;
 	const isComplete = completedSets >= targetSets;
 
+	// Auto-expand if requested
+	const startExpanded = options.autoExpand ?? false;
+
 	const card = parent.createDiv({
-		cls: `fit-exercise-card ${isComplete ? 'fit-exercise-card-complete' : ''}`,
+		cls: `fit-exercise-card ${isComplete ? 'fit-exercise-card-complete' : ''} ${startExpanded ? 'is-expanded' : ''}`,
 		attr: options.draggable ? { draggable: 'true', 'data-index': String(index) } : {}
 	});
 
-	// Top row: drag handle + number + title
-	const topRow = card.createDiv({ cls: 'fit-exercise-card-top' });
-
-	// Drag handle (if draggable)
+	// Setup drag events if draggable
 	if (options.draggable) {
-		const dragHandle = topRow.createDiv({ cls: 'fit-drag-handle' });
-		setIcon(dragHandle, 'grip-vertical');
-
-		// Drag events
-		card.addEventListener('dragstart', (e) => {
-			draggedCardIndex = index;
-			card.addClass('fit-dragging');
-			if (e.dataTransfer) {
-				e.dataTransfer.effectAllowed = 'move';
-			}
-			options.onDragStart?.(index);
-		});
-
-		card.addEventListener('dragend', () => {
-			draggedCardIndex = null;
-			card.removeClass('fit-dragging');
-			parent.querySelectorAll('.fit-drag-over').forEach(el => el.removeClass('fit-drag-over'));
-			options.onDragEnd?.();
-		});
-
-		card.addEventListener('dragover', (e) => {
-			e.preventDefault();
-			if (draggedCardIndex === null || draggedCardIndex === index) return;
-			card.addClass('fit-drag-over');
-		});
-
-		card.addEventListener('dragleave', () => {
-			card.removeClass('fit-drag-over');
-		});
-
-		card.addEventListener('drop', (e) => {
-			e.preventDefault();
-			card.removeClass('fit-drag-over');
-			if (draggedCardIndex === null || draggedCardIndex === index) return;
-			options.onDrop?.(draggedCardIndex, index);
-		});
+		setupDragEvents(card, parent, index, options);
 	}
 
-	topRow.createSpan({ cls: 'fit-exercise-card-number', text: String(index + 1) });
-	topRow.createSpan({ cls: 'fit-exercise-card-name', text: options.displayName ?? exercise.exercise });
+	// Render card content (same structure for both completed and incomplete)
+	renderCard(card, options, image1, completedSets, targetSets, isComplete, startExpanded);
 
-	// Middle row: image + content
-	const middleRow = card.createDiv({ cls: 'fit-exercise-card-middle' });
+	// Click handler (for navigating to exercise)
+	card.addEventListener('click', (e) => {
+		// Don't trigger click when clicking drag handle or expand button
+		const target = e.target as HTMLElement;
+		if (target.closest('.fit-drag-handle') || target.closest('.fit-exercise-card-expand-btn')) return;
+		options.onClick();
+	});
 
-	// Image (left side) - show only image1 (end position)
+	return card;
+}
+
+/**
+ * Setup drag and drop events for a card
+ */
+function setupDragEvents(
+	card: HTMLElement,
+	parent: HTMLElement,
+	index: number,
+	options: ExerciseCardOptions
+): void {
+	card.addEventListener('dragstart', (e) => {
+		draggedCardIndex = index;
+		card.addClass('fit-dragging');
+		if (e.dataTransfer) {
+			e.dataTransfer.effectAllowed = 'move';
+		}
+		options.onDragStart?.(index);
+	});
+
+	card.addEventListener('dragend', () => {
+		draggedCardIndex = null;
+		card.removeClass('fit-dragging');
+		parent.querySelectorAll('.fit-drag-over').forEach(el => el.removeClass('fit-drag-over'));
+		options.onDragEnd?.();
+	});
+
+	card.addEventListener('dragover', (e) => {
+		e.preventDefault();
+		if (draggedCardIndex === null || draggedCardIndex === index) return;
+		card.addClass('fit-drag-over');
+	});
+
+	card.addEventListener('dragleave', () => {
+		card.removeClass('fit-drag-over');
+	});
+
+	card.addEventListener('drop', (e) => {
+		e.preventDefault();
+		card.removeClass('fit-drag-over');
+		if (draggedCardIndex === null || draggedCardIndex === index) return;
+		options.onDrop?.(draggedCardIndex, index);
+	});
+}
+
+/**
+ * Render unified card layout for both completed and incomplete exercises
+ */
+function renderCard(
+	card: HTMLElement,
+	options: ExerciseCardOptions,
+	image1: string | undefined,
+	completedSets: number,
+	targetSets: number,
+	isComplete: boolean,
+	startExpanded: boolean
+): void {
+	const { exercise, index } = options;
+
+	// Top row: (drag handle OR done badge) + image + number + title + expand button
+	const topRow = card.createDiv({ cls: 'fit-exercise-card-top' });
+
+	// Show checkmark for completed exercises, drag handle for incomplete
+	if (isComplete) {
+		const badge = topRow.createSpan({ cls: 'fit-exercise-card-done-badge' });
+		setIcon(badge, 'check');
+	} else if (options.draggable) {
+		const dragHandle = topRow.createDiv({ cls: 'fit-drag-handle' });
+		setIcon(dragHandle, 'grip-vertical');
+	}
+
+	// Image
 	if (image1) {
-		middleRow.createEl('img', {
+		topRow.createEl('img', {
 			cls: 'fit-exercise-card-img',
 			attr: { src: image1, alt: exercise.exercise }
 		});
 	}
 
-	// Content container (right side)
-	const content = middleRow.createDiv({ cls: 'fit-exercise-card-content' });
+	// Exercise number and name
+	topRow.createSpan({ cls: 'fit-exercise-card-number', text: String(index + 1) });
+	topRow.createSpan({ cls: 'fit-exercise-card-name', text: options.displayName ?? exercise.exercise });
 
-	// Stats row: sets + reps + rest
-	const statsRow = content.createDiv({ cls: 'fit-exercise-card-stats' });
-	statsRow.createSpan({
-		cls: 'fit-exercise-card-sets',
-		text: `${completedSets}/${targetSets} sets`
+	// Expand/collapse button
+	const expandBtn = topRow.createEl('button', {
+		cls: 'fit-exercise-card-expand-btn',
+		attr: { 'aria-label': 'Show details' }
 	});
-	statsRow.createSpan({ cls: 'fit-exercise-card-separator', text: '•' });
-	statsRow.createSpan({
-		cls: 'fit-exercise-card-target',
-		text: `${exercise.targetRepsMin}-${exercise.targetRepsMax} reps`
-	});
-	statsRow.createSpan({ cls: 'fit-exercise-card-separator', text: '•' });
-	statsRow.createSpan({
-		cls: 'fit-exercise-card-rest',
-		text: `${exercise.restSeconds}s`
-	});
+	setIcon(expandBtn, startExpanded ? 'chevron-up' : 'chevron-down');
 
-	// Last set info (if any)
-	const lastSet = exercise.sets[exercise.sets.length - 1];
-	if (lastSet) {
-		content.createSpan({
-			cls: 'fit-exercise-card-last',
-			text: `Last: ${lastSet.weight}×${lastSet.reps}`
-		});
+	// Progress bar (for incomplete exercises only)
+	if (!isComplete) {
+		const progressBar = card.createDiv({ cls: 'fit-exercise-card-progress-bar' });
+		const progressFill = progressBar.createDiv({ cls: 'fit-exercise-card-progress-fill' });
+		progressFill.style.width = `${(completedSets / targetSets) * 100}%`;
 	}
 
-	// Progress bar
-	const progressBar = content.createDiv({ cls: 'fit-exercise-card-progress-bar' });
-	const progressFill = progressBar.createDiv({ cls: 'fit-exercise-card-progress-fill' });
-	progressFill.style.width = `${(completedSets / targetSets) * 100}%`;
+	// Expandable details section
+	const details = card.createDiv({ cls: 'fit-exercise-card-details' });
+	renderExpandableDetails(details, options);
 
-	// Click handler (for navigating to exercise)
-	card.addEventListener('click', (e) => {
-		// Don't trigger click when clicking drag handle
-		const target = e.target as HTMLElement;
-		if (target.closest('.fit-drag-handle')) return;
-		options.onClick();
+	// Toggle expand/collapse
+	expandBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		const isExpanded = card.hasClass('is-expanded');
+		card.toggleClass('is-expanded', !isExpanded);
+		setIcon(expandBtn, isExpanded ? 'chevron-down' : 'chevron-up');
 	});
+}
 
-	return card;
+/**
+ * Render the expandable details content using the shared session data component
+ */
+function renderExpandableDetails(container: HTMLElement, options: ExerciseCardOptions): void {
+	createSessionData(container, {
+		currentExercise: options.exercise,
+		previousExercise: options.previousExercise,
+		feedback: options.feedback,
+		weightUnit: options.weightUnit
+		// No onSetClick - chips are not tappable in the overview
+	});
 }
 
 /**
