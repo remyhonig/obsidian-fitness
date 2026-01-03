@@ -2,108 +2,6 @@ import { App, Notice, requestUrl } from 'obsidian';
 import { ensureFolder } from './file-utils';
 
 /**
- * Starter exercises - minimal set for demo workouts
- */
-const STARTER_EXERCISES = [
-	{
-		id: 'bench-press',
-		name: 'Bench Press',
-		category: 'Strength',
-		equipment: 'Barbell',
-		muscleGroups: ['Chest', 'Triceps', 'Shoulders'],
-		notes: 'Lie on a flat bench, grip the bar slightly wider than shoulder-width. Lower to chest, press up.'
-	},
-	{
-		id: 'barbell-squat',
-		name: 'Barbell Squat',
-		category: 'Strength',
-		equipment: 'Barbell',
-		muscleGroups: ['Quadriceps', 'Glutes', 'Hamstrings'],
-		notes: 'Bar on upper back, feet shoulder-width apart. Squat down until thighs are parallel, drive up.'
-	},
-	{
-		id: 'deadlift',
-		name: 'Deadlift',
-		category: 'Strength',
-		equipment: 'Barbell',
-		muscleGroups: ['Lower Back', 'Glutes', 'Hamstrings', 'Traps'],
-		notes: 'Stand with feet hip-width, grip bar outside knees. Keep back flat, drive through heels to stand.'
-	},
-	{
-		id: 'overhead-press',
-		name: 'Overhead Press',
-		category: 'Strength',
-		equipment: 'Barbell',
-		muscleGroups: ['Shoulders', 'Triceps'],
-		notes: 'Bar at shoulder height, press overhead until arms are locked out.'
-	},
-	{
-		id: 'barbell-row',
-		name: 'Barbell Row',
-		category: 'Strength',
-		equipment: 'Barbell',
-		muscleGroups: ['Back', 'Biceps', 'Rear Delts'],
-		notes: 'Hinge at hips, pull bar to lower chest, squeeze shoulder blades together.'
-	},
-	{
-		id: 'pull-up',
-		name: 'Pull-up',
-		category: 'Strength',
-		equipment: 'Body Only',
-		muscleGroups: ['Lats', 'Biceps', 'Rear Delts'],
-		notes: 'Hang from bar with overhand grip, pull up until chin clears bar.'
-	},
-	{
-		id: 'dumbbell-curl',
-		name: 'Dumbbell Curl',
-		category: 'Strength',
-		equipment: 'Dumbbell',
-		muscleGroups: ['Biceps'],
-		notes: 'Stand with dumbbells at sides, curl up while keeping elbows stationary.'
-	},
-	{
-		id: 'tricep-pushdown',
-		name: 'Tricep Pushdown',
-		category: 'Strength',
-		equipment: 'Cable',
-		muscleGroups: ['Triceps'],
-		notes: 'At cable machine, push bar down until arms are straight, control the return.'
-	},
-	{
-		id: 'leg-press',
-		name: 'Leg Press',
-		category: 'Strength',
-		equipment: 'Machine',
-		muscleGroups: ['Quadriceps', 'Glutes'],
-		notes: 'Feet shoulder-width on platform, lower until knees are at 90 degrees, press up.'
-	},
-	{
-		id: 'lateral-raise',
-		name: 'Lateral Raise',
-		category: 'Strength',
-		equipment: 'Dumbbell',
-		muscleGroups: ['Shoulders'],
-		notes: 'Raise dumbbells to sides until arms are parallel to floor.'
-	},
-	{
-		id: 'face-pull',
-		name: 'Face Pull',
-		category: 'Strength',
-		equipment: 'Cable',
-		muscleGroups: ['Rear Delts', 'Traps'],
-		notes: 'Pull rope attachment to face, externally rotate at the end.'
-	},
-	{
-		id: 'leg-curl',
-		name: 'Leg Curl',
-		category: 'Strength',
-		equipment: 'Machine',
-		muscleGroups: ['Hamstrings'],
-		notes: 'Lie face down, curl weight up by bending knees.'
-	}
-];
-
-/**
  * Templates - files users can copy and customize
  * Prefixed with underscore to sort to top and indicate they're templates
  */
@@ -277,24 +175,6 @@ const STARTER_PROGRAMS = [
 ];
 
 /**
- * Creates exercise markdown content
- */
-function createExerciseContent(exercise: typeof STARTER_EXERCISES[0]): string {
-	const lines = ['---'];
-	lines.push(`name: ${exercise.name}`);
-	if (exercise.category) lines.push(`category: ${exercise.category}`);
-	if (exercise.equipment) lines.push(`equipment: ${exercise.equipment}`);
-	if (exercise.muscleGroups.length > 0) {
-		lines.push(`muscleGroups: [${exercise.muscleGroups.join(', ')}]`);
-	}
-	lines.push('---');
-	lines.push('');
-	if (exercise.notes) lines.push(exercise.notes);
-	lines.push('');
-	return lines.join('\n');
-}
-
-/**
  * Creates program markdown content with inline workouts and review questions
  */
 function createProgramContent(program: typeof STARTER_PROGRAMS[0]): string {
@@ -340,8 +220,8 @@ function createProgramContent(program: typeof STARTER_PROGRAMS[0]): string {
 }
 
 /**
- * Bootstraps the data folder structure and starter content.
- * Recreates missing directories and starter content on every startup.
+ * Bootstraps the data folder structure and starter programs.
+ * Exercises come from the downloaded database, not from files.
  * Existing files are never overwritten.
  */
 export async function bootstrapDataFolder(app: App, basePath: string): Promise<void> {
@@ -353,20 +233,6 @@ export async function bootstrapDataFolder(app: App, basePath: string): Promise<v
 	await ensureFolder(app, exercisesPath);
 	await ensureFolder(app, programsPath);
 	await ensureFolder(app, sessionsPath);
-
-	// Create starter exercises (only if file doesn't exist)
-	let exercisesCreated = 0;
-	for (const exercise of STARTER_EXERCISES) {
-		const path = `${exercisesPath}/${exercise.id}.md`;
-		if (!app.vault.getFileByPath(path)) {
-			try {
-				await app.vault.create(path, createExerciseContent(exercise));
-				exercisesCreated++;
-			} catch {
-				// File might already exist (cache miss), skip
-			}
-		}
-	}
 
 	// Create starter programs (with inline workouts)
 	let programsCreated = 0;
@@ -382,8 +248,8 @@ export async function bootstrapDataFolder(app: App, basePath: string): Promise<v
 		}
 	}
 
-	if (exercisesCreated > 0 || programsCreated > 0) {
-		new Notice(`Created starter content: ${exercisesCreated} exercises, ${programsCreated} programs`);
+	if (programsCreated > 0) {
+		new Notice(`Created ${programsCreated} starter programs`);
 	}
 }
 
