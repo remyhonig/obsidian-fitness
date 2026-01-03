@@ -3849,6 +3849,17 @@
 	border-color: transparent;
 }
 
+/* Previous session chips - muted appearance */
+.fit-session-data-chips-previous {
+	margin-bottom: 0;
+}
+
+.fit-session-data-chip-previous {
+	background: transparent;
+	color: var(--text-faint);
+	border: 1px dashed var(--background-modifier-border);
+}
+
 .fit-session-data-row {
 	font-size: 12px;
 	line-height: 1.4;

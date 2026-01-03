@@ -23,6 +23,7 @@ Afwijken van koppen, volgorde of hiërarchie is **niet toegestaan**.
 - Geef **exact 2 of 3** korte, direct toepasbare actiepunten
 - Formuleer ze als concrete gedragsinstructies voor de gym
 - Geen uitleg, geen context, alleen actie
+- De punten mogen niet specifiek voor een oefening zijn
 
 Gebruik **exact dit format**:
 

@@ -135,6 +135,20 @@ function renderThisTimeSection(parent: HTMLElement, options: SessionDataOptions)
 		}
 	}
 
+	// Show previous session's sets for context (helps understand coaching tips)
+	const previousCompletedSets = previousExercise?.sets.filter(s => s.completed) ?? [];
+	if (previousCompletedSets.length > 0) {
+		const previousChipsContainer = section.createDiv({ cls: 'fit-session-data-chips fit-session-data-chips-previous' });
+
+		for (const set of previousCompletedSets) {
+			const chipText = `${set.reps}×${set.weight}${weightUnit}`;
+			previousChipsContainer.createSpan({
+				cls: 'fit-session-data-chip fit-session-data-chip-previous',
+				text: chipText
+			});
+		}
+	}
+
 	// Coaching tips section (styled like general coaching tips)
 	const hasTips = feedback?.aanpak_volgende_sessie || feedback?.coach_cue_volgende_sessie;
 	if (hasTips) {
