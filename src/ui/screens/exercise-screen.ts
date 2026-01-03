@@ -77,15 +77,21 @@ export class ExerciseScreen extends BaseScreen {
 
 	/**
 	 * Load weight/reps from the last session's matching exercise
+	 * Uses the same set number from history (e.g., if logging set 2, use set 2 from history)
 	 */
 	private async loadFromHistory(signal: AbortSignal): Promise<void> {
 		const exercise = this.getExercise();
 		if (!exercise) return;
 
+		// Calculate next set number (completed sets + 1)
+		const completedSets = exercise.sets.filter(s => s.completed).length;
+		const nextSetNumber = completedSets + 1;
+
 		const updated = await this.formState.loadFromHistory(
 			exercise.exercise,
 			this.ctx.sessionRepo,
-			signal
+			signal,
+			nextSetNumber
 		);
 
 		if (updated && !signal.aborted) {
@@ -361,6 +367,12 @@ export class ExerciseScreen extends BaseScreen {
 				this.formState.weight,
 				this.formState.reps
 			);
+
+			// Reset history flag and reload for next set number from history
+			this.formState.resetHistoryLoaded();
+			this.abortController?.abort();
+			this.abortController = new AbortController();
+			void this.loadFromHistory(this.abortController.signal);
 
 			// Explicitly re-render (subscription handler may be blocked by rest timer)
 			this.render();

@@ -141,23 +141,17 @@ function renderThisTimeSection(parent: HTMLElement, options: SessionDataOptions)
 		}
 	}
 
-	// Rest time
-	const restRow = section.createDiv({ cls: 'fit-session-data-row' });
-	restRow.createSpan({ cls: 'fit-session-data-row-label', text: 'Rest:' });
-	restRow.createSpan({ cls: 'fit-session-data-row-value', text: `${currentExercise.restSeconds}s` });
+	// Rest time (no label)
+	section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: `${currentExercise.restSeconds}s` });
 
-	// Coach cue
-	if (feedback?.coach_cue_volgende_sessie) {
-		const row = section.createDiv({ cls: 'fit-session-data-row' });
-		row.createSpan({ cls: 'fit-session-data-row-label', text: 'Coach cue:' });
-		row.createSpan({ cls: 'fit-session-data-row-value', text: feedback.coach_cue_volgende_sessie });
+	// Approach (no label) - shown before coach cue
+	if (feedback?.aanpak_volgende_sessie) {
+		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.aanpak_volgende_sessie });
 	}
 
-	// Approach
-	if (feedback?.aanpak_volgende_sessie) {
-		const row = section.createDiv({ cls: 'fit-session-data-row' });
-		row.createSpan({ cls: 'fit-session-data-row-label', text: 'Approach:' });
-		row.createSpan({ cls: 'fit-session-data-row-value', text: feedback.aanpak_volgende_sessie });
+	// Coach cue (no label)
+	if (feedback?.coach_cue_volgende_sessie) {
+		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.coach_cue_volgende_sessie });
 	}
 }
 
@@ -188,24 +182,18 @@ function renderLastTimeSection(parent: HTMLElement, options: SessionDataOptions)
 		}
 	}
 
-	// Stimulus
-	if (feedback?.stimulus) {
-		const row = section.createDiv({ cls: 'fit-session-data-row' });
-		row.createSpan({ cls: 'fit-session-data-row-label', text: 'Stimulus:' });
-		row.createSpan({ cls: 'fit-session-data-row-value', text: feedback.stimulus });
-	}
-
-	// Set analysis (set_degradatie_en_vermoeidheid)
+	// Set analysis (no label)
 	if (feedback?.set_degradatie_en_vermoeidheid) {
-		const row = section.createDiv({ cls: 'fit-session-data-row' });
-		row.createSpan({ cls: 'fit-session-data-row-label', text: 'Set analysis:' });
-		row.createSpan({ cls: 'fit-session-data-row-value', text: feedback.set_degradatie_en_vermoeidheid });
+		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.set_degradatie_en_vermoeidheid });
 	}
 
-	// Progress (progressie_tov_vorige)
+	// Progress (no label)
 	if (feedback?.progressie_tov_vorige) {
-		const row = section.createDiv({ cls: 'fit-session-data-row' });
-		row.createSpan({ cls: 'fit-session-data-row-label', text: 'Progress:' });
-		row.createSpan({ cls: 'fit-session-data-row-value', text: feedback.progressie_tov_vorige });
+		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.progressie_tov_vorige });
+	}
+
+	// Stimulus (no label) - at the bottom
+	if (feedback?.stimulus) {
+		section.createDiv({ cls: 'fit-session-data-row fit-session-data-row-value', text: feedback.stimulus });
 	}
 }

@@ -25,12 +25,15 @@ export class ExerciseFormState {
 
 	/**
 	 * Loads form values from history (previous session's matching exercise)
+	 * Uses the same set number from the previous session (e.g., if logging set 2, use set 2 from history)
+	 * Falls back to the last completed set if the specific set doesn't exist
 	 * Returns true if values were updated
 	 */
 	async loadFromHistory(
 		exerciseName: string,
 		sessionRepo: SessionRepository,
-		signal: AbortSignal
+		signal: AbortSignal,
+		nextSetNumber: number = 1
 	): Promise<boolean> {
 		if (this.historyLoaded) return false;
 		this.historyLoaded = true;
@@ -48,10 +51,14 @@ export class ExerciseFormState {
 				if (sessionEx && sessionEx.sets.length > 0) {
 					const completedSets = sessionEx.sets.filter(s => s.completed);
 					if (completedSets.length > 0) {
-						const lastHistorySet = completedSets[completedSets.length - 1];
-						if (lastHistorySet && !signal.aborted) {
-							this.weight = lastHistorySet.weight;
-							this.reps = lastHistorySet.reps;
+						// Try to get the same set number (0-indexed)
+						const targetSetIndex = nextSetNumber - 1;
+						const matchingSet = completedSets[targetSetIndex];
+						// Fall back to last completed set if target doesn't exist
+						const historySet = matchingSet ?? completedSets[completedSets.length - 1];
+						if (historySet && !signal.aborted) {
+							this.weight = historySet.weight;
+							this.reps = historySet.reps;
 							return true;
 						}
 					}
