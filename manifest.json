@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-fitness",
 	"name": "Fitness",
-	"version": "1.0.18",
+	"version": "1.0.19",
 	"minAppVersion": "0.15.0",
 	"description": "Mobile-first workout tracking with zero-typing set logging, templates, and rest timers.",
 	"author": "Remy Honig",
