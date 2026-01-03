@@ -6,7 +6,7 @@ import { createScreenHeader } from '../components/screen-header';
 import { formatDuration } from '../components/timer';
 import { resolveTransclusions, parseFeedbackPromptSection, parseFrontmatter } from '../../data/file-utils';
 import { SYSTEM_PROMPT } from '../../prompts/system-prompt';
-import { toSlug } from '../../domain/identifier';
+import { findProgramForSession } from '../../domain/program-lookup';
 import { parseCoachFeedbackYaml, validateFeedbackAgainstSession, findExerciseFeedback } from '../../data/coach-feedback-parser';
 import { createFeedbackStatusCallout, type FeedbackStatusCalloutRefs } from '../components/feedback-status-callout';
 import type { FeedbackValidationStatus, StructuredCoachFeedback } from '../../data/coach-feedback-types';
@@ -393,7 +393,7 @@ export class SessionDetailScreen extends BaseScreen {
 
 	private async renderReviewSection(session: Session): Promise<void> {
 		// Check if the program has questions
-		const program = await this.findProgramForSession(session);
+		const program = await findProgramForSession(session, this.ctx.programRepo);
 		const hasQuestions = program?.questions && program.questions.length > 0;
 
 		// Only show review section if program has questions
@@ -475,7 +475,7 @@ export class SessionDetailScreen extends BaseScreen {
 		parts.push(SYSTEM_PROMPT);
 
 		// 2. Program feedback prompt if session belongs to a program (with resolved transclusions)
-		const program = await this.findProgramForSession(session);
+		const program = await findProgramForSession(session, this.ctx.programRepo);
 		if (program) {
 			const programPath = `${settings.basePath}/Programs/${program.id}.md`;
 			const programFile = this.ctx.view.app.vault.getFileByPath(programPath);
@@ -497,24 +497,6 @@ export class SessionDetailScreen extends BaseScreen {
 		const content = parts.join('\n\n---\n\n');
 		await navigator.clipboard.writeText(content);
 		new Notice('Copied to clipboard');
-	}
-
-	/**
-	 * Finds the program that contains the workout used in this session
-	 */
-	private async findProgramForSession(session: Session): Promise<Program | null> {
-		if (!session.workout) return null;
-
-		const workoutId = toSlug(session.workout);
-		const programs = await this.ctx.programRepo.list();
-
-		for (const program of programs) {
-			if (program.workouts.includes(workoutId)) {
-				return program;
-			}
-		}
-
-		return null;
 	}
 
 	destroy(): void {
