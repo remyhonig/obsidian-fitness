@@ -100,7 +100,10 @@ function renderThisTimeSection(parent: HTMLElement, options: SessionDataOptions)
 	// Get target weight from last set of previous session
 	const lastPreviousSet = previousExercise?.sets.filter(s => s.completed).slice(-1)[0];
 	const targetWeight = lastPreviousSet?.weight;
-	const repsRange = `${currentExercise.targetRepsMin}-${currentExercise.targetRepsMax}`;
+	// Show single number if min equals max, otherwise show range
+	const repsRange = currentExercise.targetRepsMin === currentExercise.targetRepsMax
+		? `${currentExercise.targetRepsMin}`
+		: `${currentExercise.targetRepsMin}-${currentExercise.targetRepsMax}`;
 
 	const completedSets = currentExercise.sets.filter(s => s.completed);
 

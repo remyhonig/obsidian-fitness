@@ -389,9 +389,7 @@
 	font-weight: 600;
 	flex: 1;
 	min-width: 0; /* Allow shrinking below content width in flex */
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	word-wrap: break-word;
 }
 
 /* Middle row: image + content */
@@ -1532,27 +1530,16 @@
 	/* Uses horizontal reps selector */
 }
 
-/* Horizontal reps selector */
+/* Horizontal reps selector - wraps to multiple lines */
 .fit-reps-horizontal {
 	width: 100%;
 	display: flex;
-	align-items: center;
-	gap: 2px;
+	flex-direction: column;
 }
 
+/* Hide scroll indicators - no longer scrolling */
 .fit-reps-scroll-indicator {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 24px;
-	height: 40px;
-	font-size: 24px;
-	font-weight: 300;
-	color: var(--text-muted);
-	cursor: pointer;
-	flex-shrink: 0;
-	transition: color 0.15s, opacity 0.15s;
-	user-select: none;
+	display: none;
 }
 
 .fit-reps-scroll-indicator:hover {
@@ -1569,12 +1556,7 @@
 }
 
 .fit-reps-scroll {
-	flex: 1;
-	overflow-x: auto;
-	-webkit-overflow-scrolling: touch;
-	scrollbar-width: none;
-	-ms-overflow-style: none;
-	min-width: 0;
+	width: 100%;
 }
 
 .fit-reps-scroll::-webkit-scrollbar {
@@ -1583,9 +1565,9 @@
 
 .fit-reps-scroll-row {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 6px;
 	padding: 4px 2px;
-	width: max-content;
 }
 
 .fit-reps-pill {
@@ -1606,21 +1588,20 @@
 	transform: scale(0.95);
 }
 
-.fit-reps-pill-active {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-	border-color: var(--interactive-accent);
+.fit-reps-pill.fit-reps-pill-active {
+	background: var(--background-primary) !important;
+	color: var(--text-normal) !important;
+	border: 4px solid #000000 !important;
 }
 
-/* Target range band - continuous outline behind target reps */
+/* Target range band - accent background behind target reps */
 .fit-reps-target-band {
 	display: flex;
 	gap: 8px;
 	padding: 4px;
 	margin: -4px;
-	border: 2px solid var(--text-accent);
 	border-radius: 24px;
-	background: var(--background-primary-alt);
+	background: var(--interactive-accent);
 }
 
 /* Exercise top section (progress + sets) */
