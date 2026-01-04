@@ -42,6 +42,7 @@ export {
 export {
 	parseDescriptionSection,
 	parseFeedbackPromptSection,
+	parseWorkoutsSection,
 	parseInlineWorkouts,
 	createCoachFeedbackBody,
 	parseCoachFeedbackBody

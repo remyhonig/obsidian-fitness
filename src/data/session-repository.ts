@@ -466,10 +466,10 @@ export class SessionRepository {
 				? extractWikiLinkName(frontmatter.workout)
 				: undefined;
 
-			// Extract programId from wikilink path
+			// Extract programId from wikilink path (handles both [[Programs/id#...]] and [[id#...]])
 			let programId: string | undefined;
 			if (frontmatter.workout) {
-				const wikiMatch = frontmatter.workout.match(/^\[\[Programs\/([^#\]]+)/);
+				const wikiMatch = frontmatter.workout.match(/^\[\[(?:Programs\/)?([^#\]]+)/);
 				if (wikiMatch) {
 					programId = wikiMatch[1];
 				}

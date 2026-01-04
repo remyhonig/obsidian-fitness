@@ -32,6 +32,14 @@ export function parseFeedbackPromptSection(body: string): string | undefined {
 }
 
 /**
+ * Parses the ## Workouts section from program body
+ * Returns the content between ## Workouts and the next ## heading outside code blocks
+ */
+export function parseWorkoutsSection(body: string): string | undefined {
+	return parseSectionContent(body, 'Workouts');
+}
+
+/**
  * Generic function to parse a ## section from program body
  * Returns the content between the section header and the next ## heading outside code blocks
  */

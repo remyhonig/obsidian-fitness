@@ -4,7 +4,7 @@ import type { ScreenParams, Session, Program } from '../../types';
 import { BaseScreen } from './base-screen';
 import { createScreenHeader } from '../components/screen-header';
 import { formatDuration } from '../components/timer';
-import { resolveTransclusions, parseFeedbackPromptSection, parseFrontmatter } from '../../data/file-utils';
+import { resolveTransclusions, parseDescriptionSection, parseWorkoutsSection, parseFeedbackPromptSection, parseFrontmatter } from '../../data/file-utils';
 import { SYSTEM_PROMPT } from '../../prompts/system-prompt';
 import { findProgramForSession } from '../../domain/program-lookup';
 import { parseCoachFeedbackYaml, validateFeedbackAgainstSession, findExerciseFeedback } from '../../data/coach-feedback-parser';
@@ -51,10 +51,18 @@ export class SessionDetailScreen extends BaseScreen {
 			return;
 		}
 
-		this.renderContent(session);
+		// Load program for session
+		const program = await findProgramForSession(session, this.ctx.programRepo);
+
+		// Load previous session for context
+		const previousSession = session.workout
+			? await this.ctx.sessionRepo.getPreviousSession(session.workout, session.id)
+			: null;
+
+		this.renderContent(session, program ?? undefined, previousSession ?? undefined);
 	}
 
-	private renderContent(session: Session): void {
+	private renderContent(session: Session, program?: Program, previousSession?: Session): void {
 		// session.workout is already extracted by extractWikiLinkName in session-repository
 		const workoutName = session.workout;
 
@@ -67,7 +75,7 @@ export class SessionDetailScreen extends BaseScreen {
 			onBack: () => this.ctx.view.goBack()
 		});
 
-		// Session info (date)
+		// Session info (date and program)
 		const info = this.containerEl.createDiv({ cls: 'fit-session-detail-info' });
 
 		const date = new Date(session.date);
@@ -78,6 +86,11 @@ export class SessionDetailScreen extends BaseScreen {
 			day: 'numeric'
 		});
 		info.createDiv({ cls: 'fit-session-detail-date', text: dateStr });
+
+		// Program name
+		if (program) {
+			info.createDiv({ cls: 'fit-session-detail-program', text: program.name });
+		}
 
 		// Store session for later use
 		this.currentSession = session;
@@ -157,6 +170,24 @@ export class SessionDetailScreen extends BaseScreen {
 				}
 				if (tooltipParts.length > 0) {
 					pill.setAttribute('title', tooltipParts.join(' | '));
+				}
+			}
+
+			// Previous session sets (same style as exercise screen)
+			const previousExercise = previousSession?.exercises.find(
+				e => e.exercise.toLowerCase() === exercise.exercise.toLowerCase()
+			);
+			const previousCompletedSets = previousExercise?.sets.filter(s => s.completed) ?? [];
+			if (previousCompletedSets.length > 0) {
+				const previousContainer = exerciseCard.createDiv({
+					cls: 'fit-session-data-chips fit-session-data-chips-previous'
+				});
+				for (const set of previousCompletedSets) {
+					const chipText = `${set.reps}×${set.weight}${unit}`;
+					previousContainer.createSpan({
+						cls: 'fit-session-data-chip fit-session-data-chip-previous',
+						text: chipText
+					});
 				}
 			}
 
@@ -474,7 +505,7 @@ export class SessionDetailScreen extends BaseScreen {
 		// 1. System prompt (hardcoded YAML structure requirements)
 		parts.push(SYSTEM_PROMPT);
 
-		// 2. Program feedback prompt if session belongs to a program (with resolved transclusions)
+		// 2. Program context if session belongs to a program (with resolved transclusions)
 		const program = await findProgramForSession(session, this.ctx.programRepo);
 		if (program) {
 			const programPath = `${settings.basePath}/Programs/${program.id}.md`;
@@ -482,8 +513,22 @@ export class SessionDetailScreen extends BaseScreen {
 			if (programFile) {
 				// Resolve transclusions using Obsidian's metadata cache
 				const resolvedContent = await resolveTransclusions(this.ctx.app, programFile);
-				// Separate frontmatter from body, then parse feedback prompt from body
+				// Separate frontmatter from body, then parse sections from body
 				const { body } = parseFrontmatter(resolvedContent);
+
+				// Include program description
+				const description = parseDescriptionSection(body);
+				if (description) {
+					parts.push(`## Program Description\n\n${description}`);
+				}
+
+				// Include workouts section
+				const workouts = parseWorkoutsSection(body);
+				if (workouts) {
+					parts.push(`## Workouts\n\n${workouts}`);
+				}
+
+				// Include feedback prompt
 				const feedbackPrompt = parseFeedbackPromptSection(body);
 				if (feedbackPrompt) {
 					parts.push(`## Feedback Prompt\n\n${feedbackPrompt}`);

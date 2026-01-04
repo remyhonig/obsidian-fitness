@@ -3294,6 +3294,12 @@
 	margin-bottom: 4px;
 }
 
+.fit-session-detail-program {
+	font-size: 14px;
+	color: var(--text-muted);
+	margin-bottom: 8px;
+}
+
 /* Motivational quote (mini poster style) */
 .fit-motivation-quote {
 	position: relative;
