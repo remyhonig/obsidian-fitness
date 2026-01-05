@@ -5076,18 +5076,50 @@
 
 .fit-exercise-current {
 	text-align: center;
-	padding: 32px 16px;
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
+	padding: 16px;
 }
 
 .fit-exercise-current h2 {
 	font-size: 28px;
 	font-weight: 700;
-	margin: 0 0 12px 0;
+	margin: 0 0 8px 0;
 	color: var(--fit-text-primary);
+}
+
+/* Workout complete state */
+.fit-workout-complete {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 48px 16px;
+	text-align: center;
+}
+
+.fit-complete-icon {
+	width: 80px;
+	height: 80px;
+	border-radius: 50%;
+	background: var(--fit-primary-light);
+	color: var(--fit-primary);
+	font-size: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 24px;
+}
+
+.fit-workout-complete h2 {
+	font-size: 24px;
+	font-weight: 700;
+	margin: 0 0 8px 0;
+	color: var(--fit-text-primary);
+}
+
+.fit-complete-stats {
+	font-size: 16px;
+	color: var(--fit-text-secondary);
+	margin: 0 0 32px 0;
 }
 
 .fit-exercise-target {
@@ -5096,14 +5128,445 @@
 	margin: 0;
 }
 
-.fit-set-indicator {
-	text-align: center;
-	font-size: 16px;
-	color: var(--fit-text-muted);
-	padding: 16px 0;
+/* Session info box - clock, cancel, skip */
+.fit-session-info-box {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px 16px;
+	background: var(--fit-bg-card);
+	border: 1px solid var(--fit-border);
+	border-radius: var(--fit-border-radius);
+	margin-bottom: 16px;
 }
 
-/* Rest timer card */
+.fit-session-clock {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 20px;
+	font-weight: 600;
+	color: var(--fit-text-primary);
+}
+
+.fit-clock-icon {
+	font-size: 18px;
+}
+
+.fit-clock-value {
+	font-variant-numeric: tabular-nums;
+}
+
+.fit-session-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.fit-skip-btn,
+.fit-cancel-btn {
+	padding: 8px 16px;
+	border-radius: var(--fit-border-radius-sm);
+	font-size: 14px;
+	font-weight: 600;
+	border: none;
+	cursor: pointer;
+	min-height: 36px;
+}
+
+.fit-skip-btn {
+	background: var(--fit-bg);
+	color: var(--fit-text-secondary);
+	border: 1px solid var(--fit-border);
+}
+
+.fit-skip-btn:active {
+	background: var(--fit-border);
+}
+
+.fit-cancel-btn {
+	background: var(--fit-danger);
+	color: white;
+}
+
+.fit-cancel-btn:active {
+	opacity: 0.8;
+}
+
+/* Set progress cards */
+/* Header clock */
+.fit-header-clock {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--fit-text-muted);
+	min-width: 60px;
+}
+
+.fit-header-clock .fit-clock-icon {
+	font-size: 14px;
+}
+
+/* Session screen layout */
+.fit-session-screen .fit-content {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+/* Set tabs container */
+.fit-set-tabs {
+	display: flex;
+	justify-content: center;
+	gap: 8px;
+	padding: 8px 0;
+	flex-wrap: wrap;
+}
+
+.fit-set-cards {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	padding: 16px 0;
+	flex-wrap: wrap;
+}
+
+.fit-set-card {
+	min-width: 72px;
+	flex: 1;
+	max-width: 100px;
+	padding: 12px 8px;
+	border-radius: var(--fit-border-radius);
+	text-align: center;
+	background: var(--fit-bg);
+	border: 2px solid var(--fit-border);
+	transition: all 0.2s ease;
+	cursor: pointer;
+	position: relative;
+	z-index: 1;
+}
+
+.fit-set-card.done {
+	background: var(--fit-primary);
+	border-color: var(--fit-primary);
+	color: white;
+}
+
+.fit-set-card.next {
+	background: var(--fit-accent-light);
+	border-color: var(--fit-accent);
+}
+
+.fit-set-card.next {
+	animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Selected card - highlighted border */
+.fit-set-card.selected {
+	border-width: 3px;
+}
+
+.fit-set-card.selected:not(.done) {
+	border-color: var(--fit-accent);
+}
+
+@keyframes pulse-glow {
+	0%, 100% {
+		box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+		transform: scale(1);
+	}
+	50% {
+		box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+		transform: scale(1.03);
+	}
+}
+
+.fit-set-card-header {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 4px;
+	opacity: 0.8;
+}
+
+.fit-set-card.done .fit-set-card-header {
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.fit-set-card:not(.done) .fit-set-card-header {
+	color: var(--fit-text-muted);
+}
+
+.fit-set-card-main {
+	font-size: 24px;
+	font-weight: 700;
+	line-height: 1.2;
+}
+
+.fit-set-card.done .fit-set-card-main {
+	color: white;
+}
+
+.fit-set-card.next .fit-set-card-main {
+	color: var(--fit-text-primary);
+}
+
+.fit-set-card:not(.done):not(.next) .fit-set-card-main {
+	color: var(--fit-text-muted);
+}
+
+.fit-set-card-details {
+	font-size: 10px;
+	font-weight: 500;
+	margin-top: 4px;
+	line-height: 1.3;
+}
+
+.fit-set-card.done .fit-set-card-details {
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.fit-set-card:not(.done) .fit-set-card-details {
+	color: var(--fit-text-muted);
+}
+
+/* Set completion animation */
+.fit-set-card.just-completed {
+	animation: set-complete-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.fit-set-card.just-completed .fit-set-card-content {
+	animation: content-pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+@keyframes set-complete-pop {
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.15);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes content-pop-in {
+	0% {
+		opacity: 0;
+		transform: translateY(-8px) scale(0.8);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+/* Stars container */
+.fit-stars {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 10;
+}
+
+.fit-set-card {
+	position: relative;
+	overflow: visible;
+}
+
+/* Individual stars - positioned at edges */
+.fit-star {
+	position: absolute;
+	color: var(--fit-accent);
+	text-shadow: 0 0 4px var(--fit-accent);
+	opacity: 0;
+}
+
+/* Star positions - starting from border edges */
+.fit-star-1 {
+	top: -4px;
+	left: 20%;
+	font-size: 14px;
+	animation: star-explode-1 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.fit-star-2 {
+	top: -4px;
+	right: 15%;
+	font-size: 10px;
+	animation: star-explode-2 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.05s forwards;
+}
+
+.fit-star-3 {
+	bottom: -4px;
+	left: 25%;
+	font-size: 8px;
+	animation: star-explode-3 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.08s forwards;
+}
+
+.fit-star-4 {
+	bottom: -4px;
+	right: 20%;
+	font-size: 12px;
+	animation: star-explode-4 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.fit-star-5 {
+	top: 30%;
+	left: -4px;
+	font-size: 9px;
+	animation: star-explode-5 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.03s forwards;
+}
+
+.fit-star-6 {
+	top: 40%;
+	right: -4px;
+	font-size: 11px;
+	animation: star-explode-6 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.06s forwards;
+}
+
+.fit-star-7 {
+	top: -4px;
+	left: 50%;
+	font-size: 7px;
+	animation: star-explode-7 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.02s forwards;
+}
+
+.fit-star-8 {
+	bottom: -4px;
+	left: 50%;
+	font-size: 13px;
+	animation: star-explode-8 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.04s forwards;
+}
+
+.fit-star-9 {
+	top: 60%;
+	left: -4px;
+	font-size: 10px;
+	animation: star-explode-9 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.07s forwards;
+}
+
+.fit-star-10 {
+	top: 20%;
+	right: -4px;
+	font-size: 8px;
+	animation: star-explode-10 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.09s forwards;
+}
+
+@keyframes star-explode-1 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-12px, -28px) scale(1.2) rotate(45deg);
+	}
+}
+
+@keyframes star-explode-2 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(16px, -25px) scale(1) rotate(-30deg);
+	}
+}
+
+@keyframes star-explode-3 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-14px, 22px) scale(0.8) rotate(60deg);
+	}
+}
+
+@keyframes star-explode-4 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(20px, 28px) scale(1.1) rotate(-45deg);
+	}
+}
+
+@keyframes star-explode-5 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-25px, -8px) scale(0.9) rotate(30deg);
+	}
+}
+
+@keyframes star-explode-6 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(28px, 12px) scale(1) rotate(-60deg);
+	}
+}
+
+@keyframes star-explode-7 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(2px, -30px) scale(0.9) rotate(20deg);
+	}
+}
+
+@keyframes star-explode-8 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-5px, 26px) scale(1.1) rotate(-25deg);
+	}
+}
+
+@keyframes star-explode-9 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-22px, 10px) scale(0.85) rotate(50deg);
+	}
+}
+
+@keyframes star-explode-10 {
+	0% {
+		opacity: 1;
+		transform: translate(0, 0) scale(0.5) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(24px, -15px) scale(0.95) rotate(-40deg);
+	}
+}
+
+/* Rest timer card (legacy - keeping for reference) */
 .fit-rest-timer {
 	background: var(--fit-card-green);
 	border-radius: var(--fit-border-radius);
@@ -5141,7 +5604,249 @@
 	min-height: 64px;
 }
 
-/* Skip exercise button */
+/* Rest timer panel */
+.fit-timer-panel {
+	position: relative;
+	background: var(--fit-bg-secondary);
+	border: 1px solid var(--fit-border);
+	border-radius: var(--fit-border-radius);
+	overflow: hidden;
+	min-height: 60px;
+}
+
+.fit-timer-panel.complete {
+	border-color: var(--fit-primary);
+}
+
+.fit-timer-progress {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	background: var(--fit-accent-light);
+	transition: width 1s linear;
+}
+
+.fit-timer-panel.complete .fit-timer-progress {
+	background: var(--fit-primary-light, #d1fae5);
+}
+
+.fit-timer-content {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 20px;
+}
+
+.fit-timer-time {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+}
+
+.fit-timer-label {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--fit-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.fit-timer-value {
+	font-size: 32px;
+	font-weight: 700;
+	color: var(--fit-text-primary);
+	font-variant-numeric: tabular-nums;
+}
+
+.fit-timer-panel.complete .fit-timer-label {
+	color: var(--fit-primary);
+}
+
+.fit-timer-panel.complete .fit-timer-value {
+	color: var(--fit-primary);
+}
+
+.fit-timer-add-btn {
+	background: var(--fit-bg);
+	border: 1px solid var(--fit-border);
+	border-radius: var(--fit-border-radius);
+	padding: 8px 16px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--fit-text-primary);
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.fit-timer-add-btn:hover {
+	background: var(--fit-bg-secondary);
+	border-color: var(--fit-accent);
+}
+
+/* Detail panel */
+.fit-detail-panel {
+	background: var(--fit-bg-secondary);
+	border-radius: var(--fit-border-radius);
+	padding: 24px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	flex: 1;
+}
+
+.fit-detail-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+}
+
+.fit-detail-content h3 {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--fit-text-primary);
+	text-align: center;
+}
+
+.fit-detail-stats {
+	display: flex;
+	gap: 16px;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+.fit-detail-stats span {
+	background: var(--fit-bg-secondary);
+	padding: 8px 16px;
+	border-radius: var(--fit-border-radius);
+	font-weight: 600;
+	color: var(--fit-text-primary);
+}
+
+.fit-detail-hint {
+	color: var(--fit-text-muted);
+	font-size: 14px;
+	margin: 0;
+}
+
+/* DONE button */
+.fit-done-button {
+	padding: 16px 48px;
+	font-size: 18px;
+	font-weight: 700;
+	min-width: 150px;
+}
+
+/* Edit button */
+.fit-edit-button {
+	padding: 10px 24px;
+	font-size: 14px;
+}
+
+/* Skip button in panel */
+.fit-skip-btn-panel {
+	background: transparent;
+	border: 1px solid var(--fit-border);
+	color: var(--fit-text-muted);
+	padding: 10px 16px;
+	border-radius: var(--fit-border-radius);
+	font-size: 13px;
+	cursor: pointer;
+	align-self: center;
+	transition: all 0.2s ease;
+}
+
+.fit-skip-btn-panel:hover {
+	background: var(--fit-bg-secondary);
+	color: var(--fit-text-primary);
+}
+
+/* Inline input styles */
+.fit-inline-input {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.fit-inline-input h3 {
+	margin-bottom: 8px;
+}
+
+.fit-number-grid-inline {
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	gap: 6px;
+	max-width: 100%;
+}
+
+.fit-number-grid-inline .fit-number-button {
+	padding: 10px 8px;
+	font-size: 14px;
+	min-width: 0;
+}
+
+.fit-number-grid-inline.fit-number-grid-rpe {
+	grid-template-columns: repeat(5, 1fr);
+}
+
+/* Inline weight input */
+.fit-weight-inline {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+}
+
+.fit-weight-display-inline {
+	font-size: 36px;
+	font-weight: 700;
+	color: var(--fit-text-primary);
+}
+
+.fit-weight-unit-inline {
+	font-size: 18px;
+	font-weight: 500;
+	color: var(--fit-text-muted);
+	margin-left: 4px;
+}
+
+.fit-weight-buttons-inline {
+	display: flex;
+	gap: 8px;
+}
+
+.fit-weight-buttons-inline button {
+	padding: 10px 16px;
+	font-size: 14px;
+	font-weight: 600;
+	border: 1px solid var(--fit-border);
+	background: var(--fit-bg);
+	color: var(--fit-text-primary);
+	border-radius: var(--fit-border-radius);
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.fit-weight-buttons-inline button:hover {
+	background: var(--fit-bg-secondary);
+}
+
+.fit-confirm-inline {
+	margin-top: 8px;
+	padding: 14px 24px;
+	font-size: 15px;
+	width: 100%;
+}
+
+/* Skip exercise button (legacy) */
 .fit-skip-button {
 	margin-top: 12px;
 	background: transparent;

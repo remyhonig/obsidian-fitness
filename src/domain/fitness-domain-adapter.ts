@@ -131,6 +131,8 @@ export interface SessionExerciseState {
 	targetSets: number;
 	targetRepsMin: number;
 	targetRepsMax: number;
+	targetWeight: number | null;
+	targetRPE: number | null;
 	restSeconds: number;
 	sets: CompletedSet[];
 }
@@ -152,6 +154,7 @@ export interface SessionState {
 export type UIEvent =
 	| { type: 'start_workout'; workoutName: string; programId?: string }
 	| { type: 'complete_set'; exercise: string; reps: number; weight: number; rpe: number; restSeconds?: number }
+	| { type: 'update_set'; exerciseIndex: number; setIndex: number; reps: number; weight: number; rpe: number }
 	| { type: 'skip_exercise'; exercise: string }
 	| { type: 'next_exercise' }
 	| { type: 'finish_session' }
@@ -310,6 +313,10 @@ export class FitnessDomainAdapter {
 				this.completeSet(event.exercise, event.reps, event.weight, event.rpe, event.restSeconds);
 				break;
 
+			case 'update_set':
+				this.updateSet(event.exerciseIndex, event.setIndex, event.reps, event.weight, event.rpe);
+				break;
+
 			case 'skip_exercise':
 				this.sessionState.currentExerciseIndex++;
 				this.sessionState.currentSetIndex = 0;
@@ -350,11 +357,27 @@ export class FitnessDomainAdapter {
 			const restMatch = e.rest?.match(/(\d+)/);
 			const restSeconds = restMatch?.[1] ? parseInt(restMatch[1], 10) : 120;
 
+			// Parse weight from string like "80kg" or "bodyweight"
+			let targetWeight: number | null = null;
+			if (e.weight) {
+				const weightMatch = e.weight.match(/(\d+)/);
+				if (weightMatch?.[1]) {
+					targetWeight = parseInt(weightMatch[1], 10);
+				} else if (e.weight.toLowerCase().includes('body')) {
+					targetWeight = 0; // 0 = bodyweight
+				}
+			}
+
+			// Get RPE from intensity if available
+			const targetRPE = e.intensity?.type === 'RPE' ? e.intensity.value : null;
+
 			return {
 				exercise: e.name,
 				targetSets: e.sets,
 				targetRepsMin: reps.min,
 				targetRepsMax: reps.max,
+				targetWeight,
+				targetRPE,
 				restSeconds,
 				sets: []
 			};
@@ -389,6 +412,8 @@ export class FitnessDomainAdapter {
 				targetSets: 3,
 				targetRepsMin: 8,
 				targetRepsMax: 12,
+				targetWeight: null,
+				targetRPE: null,
 				restSeconds: 120,
 				sets: []
 			};
@@ -417,6 +442,21 @@ export class FitnessDomainAdapter {
 				this.sessionState.currentSetIndex = 0;
 			}
 		}
+	}
+
+	/**
+	 * Update an existing set
+	 */
+	private updateSet(exerciseIndex: number, setIndex: number, reps: number, weight: number, rpe: number): void {
+		const exercise = this.sessionState.exercises[exerciseIndex];
+		if (!exercise) return;
+
+		const set = exercise.sets[setIndex];
+		if (!set) return;
+
+		set.reps = reps;
+		set.weight = weight;
+		set.rpe = rpe;
 	}
 
 	/**

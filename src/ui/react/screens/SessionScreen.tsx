@@ -38,7 +38,20 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 
 	// Timer state
 	const [restElapsed, setRestElapsed] = useState(0);
+	const [extraRestTime, setExtraRestTime] = useState(0);
 	const [isSaving, setIsSaving] = useState(false);
+
+	// Animation state - tracks which set index just completed
+	const [justCompletedSet, setJustCompletedSet] = useState<number | null>(null);
+
+	// Selected set for detail panel (defaults to next set to complete)
+	const [selectedSetIndex, setSelectedSetIndex] = useState<number | null>(null);
+
+	// Input mode for inline editing in detail panel
+	const [detailInputMode, setDetailInputMode] = useState<'none' | 'reps' | 'rpe' | 'weight'>('none');
+
+	// Track if we're editing an existing set (null = new set, number = set index being edited)
+	const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null);
 
 	// Get current exercise from session state
 	const currentExercise = session.exercises[session.currentExerciseIndex];
@@ -58,17 +71,6 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		const mins = Math.floor(seconds / 60);
 		const secs = seconds % 60;
 		return `${mins}:${secs.toString().padStart(2, '0')}`;
-	};
-
-	// Get last weight used for this exercise
-	const getLastWeight = (): number => {
-		const exercise = session.exercises[session.currentExerciseIndex];
-		if (!exercise) return 0;
-		const lastSet = exercise.sets[exercise.sets.length - 1];
-		if (lastSet) {
-			return lastSet.weight;
-		}
-		return 0;
 	};
 
 	// Auto-save after each set
@@ -91,6 +93,20 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		onNavigate('home');
 	};
 
+	// Get suggested weight: use last completed set, or fall back to program target
+	const getSuggestedWeight = (): number | null => {
+		if (!currentExercise) return null;
+		const lastSet = currentExercise.sets[currentExercise.sets.length - 1];
+		if (lastSet) {
+			return lastSet.weight;
+		}
+		// Fall back to program target weight
+		return currentExercise.targetWeight;
+	};
+
+	// Target RPE from program, defaulting to 7
+	const targetRPE = currentExercise?.targetRPE ?? 7;
+
 	// Check if workout is complete
 	if (isSessionComplete() || !currentExercise) {
 		const totalSets = session.exercises.reduce((sum, e) => sum + e.sets.length, 0);
@@ -98,19 +114,14 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		return (
 			<div className="fit-session-screen">
 				<header className="fit-screen-header">
-					<div style={{ width: 70 }} /> {/* Spacer to balance Cancel button */}
 					<h1>{session.workout}</h1>
-					<button className="fit-header-btn-cancel" onClick={handleCancel}>
-						Cancel
-					</button>
 				</header>
 
 				<div className="fit-content">
 					<div className="fit-workout-complete">
-						<div className="fit-exercise-current">
-							<h2>Workout Complete!</h2>
-							<p className="fit-exercise-target">{totalSets} sets logged</p>
-						</div>
+						<div className="fit-complete-icon">✓</div>
+						<h2>Workout Complete!</h2>
+						<p className="fit-complete-stats">{totalSets} sets logged</p>
 						<button
 							className="fit-button-success fit-log-set-button"
 							disabled={isSaving}
@@ -135,7 +146,7 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		setPendingSet({
 			reps: null,
 			rpe: null,
-			weight: getLastWeight()
+			weight: getSuggestedWeight() ?? 0
 		});
 		setSessionStep('reps');
 	};
@@ -153,6 +164,10 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 	const handleConfirmWeight = () => {
 		if (pendingSet.reps === null || pendingSet.rpe === null) return;
 
+		// Track which set is being completed for animation
+		const completingSetIndex = currentExercise.sets.length;
+		setJustCompletedSet(completingSetIndex);
+
 		dispatch({
 			type: 'complete_set',
 			exercise: currentExercise.exercise,
@@ -161,6 +176,9 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 			rpe: pendingSet.rpe,
 			restSeconds: restElapsed
 		});
+
+		// Clear animation state after animation completes
+		setTimeout(() => setJustCompletedSet(null), 600);
 
 		setRestElapsed(0);
 		setSessionStep('workout');
@@ -190,70 +208,312 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		: `${currentExercise.targetRepsMin}-${currentExercise.targetRepsMax}`;
 
 	const restTarget = currentExercise.restSeconds;
-	const isRestComplete = restElapsed >= restTarget;
+
+	// Format weight for display
+	const formatWeight = (weight: number | null): string => {
+		if (weight === null) return '?';
+		if (weight === 0) return 'BW';
+		return `${weight}kg`;
+	};
+
+	// Get the effective selected set index (default to next set)
+	const effectiveSelectedIndex = selectedSetIndex ?? completedSets;
+	const isSelectedSetDone = effectiveSelectedIndex < completedSets;
+	const isSelectedSetNext = effectiveSelectedIndex === completedSets;
+	const selectedSet = currentExercise?.sets[effectiveSelectedIndex];
+
+	// Handle set card tap
+	const handleSetCardTap = (index: number) => {
+		setSelectedSetIndex(index);
+		setDetailInputMode('none');
+		// Reset pending set when selecting a new card
+		if (index === completedSets) {
+			setPendingSet({
+				reps: null,
+				rpe: null,
+				weight: getSuggestedWeight() ?? 0
+			});
+		}
+	};
+
+	// Handle DONE button - stop set timer, start rest timer, begin input flow
+	const handleDoneClick = () => {
+		setRestElapsed(0);
+		setExtraRestTime(0);
+		setEditingSetIndex(null);
+		setPendingSet({
+			reps: null,
+			rpe: null,
+			weight: getSuggestedWeight() ?? 0
+		});
+		setDetailInputMode('reps');
+	};
+
+	// Handle Edit button - start editing an existing set
+	const handleEditClick = () => {
+		if (!isSelectedSetDone || !selectedSet) return;
+		setEditingSetIndex(effectiveSelectedIndex);
+		setPendingSet({
+			reps: selectedSet.reps,
+			rpe: selectedSet.rpe,
+			weight: selectedSet.weight
+		});
+		setDetailInputMode('reps');
+	};
+
+	// Handle inline reps selection
+	const handleInlineReps = (reps: number) => {
+		setPendingSet(prev => ({ ...prev, reps }));
+		setDetailInputMode('rpe');
+	};
+
+	// Handle inline RPE selection
+	const handleInlineRPE = (rpe: number) => {
+		setPendingSet(prev => ({ ...prev, rpe }));
+		setDetailInputMode('weight');
+	};
+
+	// Handle inline weight confirm
+	const handleInlineWeightConfirm = () => {
+		if (pendingSet.reps === null || pendingSet.rpe === null) return;
+
+		if (editingSetIndex !== null) {
+			// Editing an existing set
+			dispatch({
+				type: 'update_set',
+				exerciseIndex: session.currentExerciseIndex,
+				setIndex: editingSetIndex,
+				reps: pendingSet.reps,
+				weight: pendingSet.weight,
+				rpe: pendingSet.rpe
+			});
+			setEditingSetIndex(null);
+		} else {
+			// Completing a new set
+			const completingSetIndex = currentExercise.sets.length;
+			setJustCompletedSet(completingSetIndex);
+
+			dispatch({
+				type: 'complete_set',
+				exercise: currentExercise.exercise,
+				reps: pendingSet.reps,
+				weight: pendingSet.weight,
+				rpe: pendingSet.rpe,
+				restSeconds: restElapsed
+			});
+
+			setTimeout(() => setJustCompletedSet(null), 600);
+		}
+
+		setDetailInputMode('none');
+		setSelectedSetIndex(null); // Will default to next set
+	};
 
 	// Render based on current step
 	switch (sessionStep) {
 		case 'workout':
+			// Calculate rest progress and timing
+			const totalRestTarget = restTarget + extraRestTime;
+			const isRestComplete = restElapsed >= totalRestTarget;
+			const restRemaining = Math.max(0, totalRestTarget - restElapsed);
+			const setDuration = isRestComplete ? restElapsed - totalRestTarget : 0;
+			const restProgress = Math.min(100, (restElapsed / totalRestTarget) * 100);
+
 			return (
 				<div className="fit-session-screen">
 					<header className="fit-screen-header">
-						<div style={{ width: 70 }} /> {/* Spacer to balance Cancel button */}
-						<h1>{session.workout}</h1>
+						<h1>{currentExercise.exercise}</h1>
 						<button className="fit-header-btn-cancel" onClick={handleCancel}>
 							Cancel
 						</button>
 					</header>
 
 					<div className="fit-content">
-						<div className="fit-exercise-current">
-							<h2>{currentExercise.exercise}</h2>
-							<p className="fit-exercise-target">
-								{totalSets} × {repsTarget} reps
-							</p>
-						</div>
-
-						<div className="fit-set-indicator">
-							Set {currentSetNumber} of {totalSets}
-						</div>
-
-						<div className={`fit-rest-timer ${isRestComplete ? 'ready' : ''}`}>
-							<div className="fit-rest-timer-label">
-								{isRestComplete ? 'Ready!' : 'Rest'}
-							</div>
-							<div className="fit-rest-timer-value">
-								{isRestComplete
-									? formatTime(restElapsed)
-									: formatTime(restTarget - restElapsed)}
-							</div>
-						</div>
-
-						{completedSets > 0 && (
-							<div className="fit-completed-sets">
-								<h3>Completed</h3>
-								<div className="fit-completed-sets-list">
-									{currentExercise.sets.map((set, i) => (
-										<div key={i} className="fit-set-chip">
-											{set.reps} × {set.weight === 0 ? 'BW' : `${set.weight}kg`}
+						{/* Set cards */}
+						<div className="fit-set-tabs">
+							{Array.from({ length: totalSets }, (_, i) => {
+								const isDone = i < completedSets;
+								const isNext = i === completedSets;
+								const isJustCompleted = i === justCompletedSet;
+								const isSelected = i === effectiveSelectedIndex;
+								const set = currentExercise.sets[i];
+								return (
+									<div
+										key={i}
+										className={`fit-set-card ${isDone ? 'done' : ''} ${isNext ? 'next' : ''} ${isJustCompleted ? 'just-completed' : ''} ${isSelected ? 'selected' : ''}`}
+										onClick={() => handleSetCardTap(i)}
+									>
+										{isJustCompleted && (
+											<div className="fit-stars">
+												<span className="fit-star fit-star-1">✦</span>
+												<span className="fit-star fit-star-2">★</span>
+												<span className="fit-star fit-star-3">✦</span>
+												<span className="fit-star fit-star-4">★</span>
+												<span className="fit-star fit-star-5">✦</span>
+												<span className="fit-star fit-star-6">★</span>
+												<span className="fit-star fit-star-7">✦</span>
+												<span className="fit-star fit-star-8">★</span>
+												<span className="fit-star fit-star-9">✦</span>
+												<span className="fit-star fit-star-10">★</span>
+											</div>
+										)}
+										<div className="fit-set-card-header">
+											{isDone && set ? formatWeight(set.weight) : formatWeight(getSuggestedWeight())}
 										</div>
-									))}
-								</div>
+										{isDone && set ? (
+											<div className="fit-set-card-content">
+												<div className="fit-set-card-main">{set.reps}</div>
+												<div className="fit-set-card-details">
+													RPE {set.rpe}
+												</div>
+											</div>
+										) : (
+											<div className="fit-set-card-content">
+												<div className="fit-set-card-main">{repsTarget}</div>
+												<div className="fit-set-card-details">
+													RPE {targetRPE}
+												</div>
+											</div>
+										)}
+									</div>
+								);
+							})}
+						</div>
+
+						{/* Rest timer panel */}
+						<div className={`fit-timer-panel ${isRestComplete ? 'complete' : ''}`}>
+							<div
+								className="fit-timer-progress"
+								style={{ width: `${restProgress}%` }}
+							/>
+							<div className="fit-timer-content">
+								{isRestComplete ? (
+									<div className="fit-timer-time">
+										<span className="fit-timer-label">Set time</span>
+										<span className="fit-timer-value">{formatTime(setDuration)}</span>
+									</div>
+								) : (
+									<div className="fit-timer-time">
+										<span className="fit-timer-label">Rest</span>
+										<span className="fit-timer-value">{formatTime(restRemaining)}</span>
+									</div>
+								)}
+								{!isRestComplete && (
+									<button
+										className="fit-timer-add-btn"
+										onClick={() => setExtraRestTime(prev => prev + 30)}
+									>
+										+30s
+									</button>
+								)}
 							</div>
-						)}
+						</div>
 
-						<button
-							className="fit-button-primary fit-log-set-button"
-							onClick={handleStartLogSet}
-						>
-							Log Set
-						</button>
+						{/* Detail panel */}
+						<div className="fit-detail-panel">
+							<div className="fit-detail-content">
+								{detailInputMode === 'none' && (
+									<>
+										{isSelectedSetNext && (
+											<button
+												className="fit-button-success fit-done-button"
+												onClick={handleDoneClick}
+											>
+												DONE
+											</button>
+										)}
+										{isSelectedSetDone && selectedSet && (
+											<>
+												<div className="fit-detail-stats">
+													<span>{selectedSet.reps} reps</span>
+													<span>{formatWeight(selectedSet.weight)}</span>
+													<span>RPE {selectedSet.rpe}</span>
+												</div>
+												<button
+													className="fit-button-secondary fit-edit-button"
+													onClick={handleEditClick}
+												>
+													Edit
+												</button>
+											</>
+										)}
+										{!isSelectedSetNext && !isSelectedSetDone && (
+											<p className="fit-detail-hint">Complete earlier sets first</p>
+										)}
+									</>
+								)}
 
-						<button
-							className="fit-skip-button"
-							onClick={handleSkipExercise}
-						>
-							Skip Exercise
-						</button>
+								{detailInputMode === 'reps' && (
+									<div className="fit-inline-input">
+										<h3>How many reps?</h3>
+										<div className="fit-number-grid fit-number-grid-inline">
+											{Array.from({ length: 20 }, (_, i) => i + 1).map(num => {
+												const inRange = num >= currentExercise.targetRepsMin &&
+													num <= currentExercise.targetRepsMax;
+												return (
+													<button
+														key={num}
+														className={`fit-number-button ${inRange ? 'in-range' : ''}`}
+														onClick={() => handleInlineReps(num)}
+													>
+														{num}
+													</button>
+												);
+											})}
+										</div>
+									</div>
+								)}
+
+								{detailInputMode === 'rpe' && (
+									<div className="fit-inline-input">
+										<h3>RPE?</h3>
+										<div className="fit-number-grid fit-number-grid-inline fit-number-grid-rpe">
+											{Array.from({ length: 10 }, (_, i) => i + 1).map(num => {
+												const isTarget = num === targetRPE;
+												return (
+													<button
+														key={num}
+														className={`fit-number-button ${isTarget ? 'in-range' : ''}`}
+														onClick={() => handleInlineRPE(num)}
+													>
+														{num}
+													</button>
+												);
+											})}
+										</div>
+									</div>
+								)}
+
+								{detailInputMode === 'weight' && (
+									<div className="fit-inline-input">
+										<h3>Weight (kg)</h3>
+										<div className="fit-weight-inline">
+											<div className="fit-weight-display-inline">
+												{pendingSet.weight === 0 ? 'BW' : pendingSet.weight}
+												{pendingSet.weight > 0 && <span className="fit-weight-unit-inline">kg</span>}
+											</div>
+											<div className="fit-weight-buttons-inline">
+												<button onClick={() => setPendingSet(p => ({ ...p, weight: Math.max(0, p.weight - 5) }))}>-5</button>
+												<button onClick={() => setPendingSet(p => ({ ...p, weight: Math.max(0, p.weight - 1) }))}>-1</button>
+												<button onClick={() => setPendingSet(p => ({ ...p, weight: p.weight + 1 }))}>+1</button>
+												<button onClick={() => setPendingSet(p => ({ ...p, weight: p.weight + 5 }))}>+5</button>
+											</div>
+											<button
+												className="fit-button-success fit-confirm-inline"
+												onClick={handleInlineWeightConfirm}
+											>
+												Confirm ({pendingSet.reps} reps @ {pendingSet.weight === 0 ? 'BW' : `${pendingSet.weight}kg`})
+											</button>
+										</div>
+									</div>
+								)}
+							</div>
+
+							{/* Skip button at bottom of panel */}
+							<button className="fit-skip-btn-panel" onClick={handleSkipExercise}>
+								Skip Exercise
+							</button>
+						</div>
 					</div>
 				</div>
 			);
@@ -311,15 +571,18 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 						<div className="fit-number-step">
 							<h2>Rate of Perceived Exertion</h2>
 							<div className="fit-number-grid fit-number-grid-rpe">
-								{Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
-									<button
-										key={num}
-										className="fit-number-button"
-										onClick={() => handleSelectRPE(num)}
-									>
-										{num}
-									</button>
-								))}
+								{Array.from({ length: 10 }, (_, i) => i + 1).map(num => {
+									const isTarget = num === targetRPE;
+									return (
+										<button
+											key={num}
+											className={`fit-number-button ${isTarget ? 'in-range' : ''}`}
+											onClick={() => handleSelectRPE(num)}
+										>
+											{num}
+										</button>
+									);
+								})}
 							</div>
 						</div>
 					</div>
