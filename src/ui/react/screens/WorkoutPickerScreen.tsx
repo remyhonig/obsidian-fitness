@@ -10,9 +10,10 @@ import { useDomain } from '../contexts';
 
 interface WorkoutPickerScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
+	isTab?: boolean;
 }
 
-export function WorkoutPickerScreen({ onNavigate }: WorkoutPickerScreenProps) {
+export function WorkoutPickerScreen({ onNavigate, isTab = false }: WorkoutPickerScreenProps) {
 	const { program, dispatch } = useDomain();
 	const [searchQuery, setSearchQuery] = useState('');
 
@@ -45,8 +46,9 @@ export function WorkoutPickerScreen({ onNavigate }: WorkoutPickerScreenProps) {
 	return (
 		<div className="fit-workout-picker-screen">
 			<header className="fit-screen-header">
-				<button onClick={() => onNavigate('home')}>← Back</button>
-				<h1>Start Workout</h1>
+				{!isTab && <button onClick={() => onNavigate('home')}>← Back</button>}
+				<h1>{isTab ? 'Workouts' : 'Start Workout'}</h1>
+				{!isTab && <div style={{ width: 44 }} />}
 			</header>
 
 			<div className="fit-content">

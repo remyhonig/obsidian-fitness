@@ -16,11 +16,12 @@ interface SessionSummary {
 	path: string;
 }
 
-interface WorkoutPickerScreenProps {
+interface HistoryScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
+	isTab?: boolean;
 }
 
-export function HistoryScreen({ onNavigate }: WorkoutPickerScreenProps) {
+export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps) {
 	const app = useApp();
 	const { adapter } = useDomain();
 	const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -69,8 +70,9 @@ export function HistoryScreen({ onNavigate }: WorkoutPickerScreenProps) {
 	return (
 		<div className="fit-history-screen">
 			<header className="fit-screen-header">
-				<button onClick={() => onNavigate('home')}>← Back</button>
+				{!isTab && <button onClick={() => onNavigate('home')}>← Back</button>}
 				<h1>History</h1>
+				{!isTab && <div style={{ width: 44 }} />}
 			</header>
 
 			<div className="fit-content">

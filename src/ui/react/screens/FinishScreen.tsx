@@ -49,11 +49,15 @@ export function FinishScreen({ onNavigate }: FinishScreenProps) {
 
 	return (
 		<div className="fit-finish-screen">
+			<header className="fit-screen-header">
+				<h1>Complete</h1>
+			</header>
+
 			<div className="fit-content">
 				<div className="fit-finish-content">
 					<div className="fit-finish-icon">✓</div>
-					<h1>Workout Complete!</h1>
-					<h2>{session.workout}</h2>
+					<h2>Workout Complete!</h2>
+					<h3>{session.workout}</h3>
 
 					<div className="fit-finish-stats">
 						<div className="fit-stat">

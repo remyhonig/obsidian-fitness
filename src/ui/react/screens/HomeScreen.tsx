@@ -118,11 +118,18 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	return (
 		<div className="fit-home-screen">
 			<header className="fit-screen-header">
-				<h1>{program.program.name}</h1>
-				<p>{program.program.description}</p>
+				<h1>Home</h1>
 			</header>
 
 			<div className="fit-content">
+				{/* Program Info Card */}
+				<section className="fit-card fit-program-card">
+					<h2>{program.program.name}</h2>
+					{program.program.description && (
+						<p className="fit-program-description">{program.program.description}</p>
+					)}
+				</section>
+
 				{/* Next Workout Card */}
 				<section className="fit-card">
 					<h2>Next Workout</h2>
@@ -162,28 +169,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 					</div>
 				</section>
 
-				{/* Quick Actions */}
-				<section className="fit-actions">
-					<button
-						className="fit-button-secondary"
-						onClick={() => onNavigate('workout-picker')}
-					>
-						Choose Workout
-					</button>
-					<button
-						className="fit-button-secondary"
-						onClick={() => onNavigate('history')}
-					>
-						View History
-					</button>
-					<button
-						className="fit-button-secondary"
-						onClick={() => onNavigate('exercise-library')}
-					>
-						Exercise Library
-					</button>
-				</section>
-			</div>
+				</div>
 		</div>
 	);
 }

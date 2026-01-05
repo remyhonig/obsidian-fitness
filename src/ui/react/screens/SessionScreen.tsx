@@ -1,44 +1,74 @@
 /**
  * SessionScreen Component
  *
- * Active workout session showing:
- * - Current exercise
- * - Set logging interface
- * - Progress through workout
- * - Auto-save after each set
+ * Multi-step workout session flow:
+ * 1. Workout step - Shows exercise, timer, "Log Set" button
+ * 2. Reps step - Grid of 1-20 to select reps
+ * 3. RPE step - Grid of 1-10 to select perceived exertion
+ * 4. Weight step - Pre-filled weight with +/- adjustment
+ *
+ * Uses consistent layout with standard header and bottom navigation.
  */
 
 import React, { useState, useEffect } from 'react';
 import { useDomain } from '../contexts';
 
+type SessionStep = 'workout' | 'reps' | 'rpe' | 'weight';
+
+interface PendingSet {
+	reps: number | null;
+	rpe: number | null;
+	weight: number;
+}
+
 interface SessionScreenProps {
-	onNavigate: (screen: string, params?: any) => void;
+	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
 }
 
 export function SessionScreen({ onNavigate }: SessionScreenProps) {
-	const { program, session, dispatch, saveSession, getSessionProgress, isSessionComplete } = useDomain();
-	const [currentWeight, setCurrentWeight] = useState('');
-	const [currentReps, setCurrentReps] = useState('');
-	const [currentRPE, setCurrentRPE] = useState('8');
-	const [isSaving, setIsSaving] = useState(false);
+	const { session, dispatch, saveSession, getSessionProgress, isSessionComplete } = useDomain();
+
+	// Step flow state
+	const [sessionStep, setSessionStep] = useState<SessionStep>('workout');
+	const [pendingSet, setPendingSet] = useState<PendingSet>({
+		reps: null,
+		rpe: null,
+		weight: 0
+	});
+
+	// Timer state
 	const [restElapsed, setRestElapsed] = useState(0);
+	const [isSaving, setIsSaving] = useState(false);
 
 	// Get current exercise from session state
 	const currentExercise = session.exercises[session.currentExerciseIndex];
 
-	// Timer effect - counts up every second
+	// Timer effect - counts up every second (only on workout step)
 	useEffect(() => {
+		if (sessionStep !== 'workout') return;
+
 		const interval = setInterval(() => {
 			setRestElapsed(prev => prev + 1);
 		}, 1000);
 		return () => clearInterval(interval);
-	}, []);
+	}, [sessionStep]);
 
 	// Format seconds to M:SS
 	const formatTime = (seconds: number): string => {
 		const mins = Math.floor(seconds / 60);
 		const secs = seconds % 60;
 		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	};
+
+	// Get last weight used for this exercise
+	const getLastWeight = (): number => {
+		const exercise = session.exercises[session.currentExerciseIndex];
+		if (!exercise) return 0;
+		const lastSet = exercise.sets[exercise.sets.length - 1];
+		if (lastSet) {
+			return lastSet.weight;
+		}
+		return 0;
 	};
 
 	// Auto-save after each set
@@ -48,10 +78,18 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		}
 	}, [session.exercises]);
 
+	// Redirect if no active session
 	if (!session.isActive || !session.workout) {
 		onNavigate('home');
 		return null;
 	}
+
+	// Handle cancel workout
+	const handleCancel = () => {
+		// TODO: Could add confirmation dialog
+		dispatch({ type: 'cancel_session' });
+		onNavigate('home');
+	};
 
 	// Check if workout is complete
 	if (isSessionComplete() || !currentExercise) {
@@ -59,219 +97,309 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 
 		return (
 			<div className="fit-session-screen">
-				<div className="fit-workout-complete">
-					<h2>Workout Complete!</h2>
-					<p>{totalSets} sets logged</p>
-					<button
-						className="fit-button-primary"
-						disabled={isSaving}
-						onClick={async () => {
-							setIsSaving(true);
-							dispatch({ type: 'finish_session' });
-							await saveSession();
-							setIsSaving(false);
-							onNavigate('finish');
-						}}
-					>
-						{isSaving ? 'Saving...' : 'Finish & Save'}
+				<header className="fit-screen-header">
+					<div style={{ width: 70 }} /> {/* Spacer to balance Cancel button */}
+					<h1>{session.workout}</h1>
+					<button className="fit-header-btn-cancel" onClick={handleCancel}>
+						Cancel
 					</button>
+				</header>
+
+				<div className="fit-content">
+					<div className="fit-workout-complete">
+						<div className="fit-exercise-current">
+							<h2>Workout Complete!</h2>
+							<p className="fit-exercise-target">{totalSets} sets logged</p>
+						</div>
+						<button
+							className="fit-button-success fit-log-set-button"
+							disabled={isSaving}
+							onClick={async () => {
+								setIsSaving(true);
+								dispatch({ type: 'finish_session' });
+								await saveSession();
+								setIsSaving(false);
+								onNavigate('finish');
+							}}
+						>
+							{isSaving ? 'Saving...' : 'Finish & Save'}
+						</button>
+					</div>
 				</div>
 			</div>
 		);
 	}
 
-	const handleLogSet = async () => {
-		const reps = parseInt(currentReps, 10);
-		const rpe = parseInt(currentRPE, 10);
-		const weight = parseFloat(currentWeight) || 0;
+	// Step handlers
+	const handleStartLogSet = () => {
+		setPendingSet({
+			reps: null,
+			rpe: null,
+			weight: getLastWeight()
+		});
+		setSessionStep('reps');
+	};
 
-		if (!reps) {
-			return;
-		}
+	const handleSelectReps = (reps: number) => {
+		setPendingSet(prev => ({ ...prev, reps }));
+		setSessionStep('rpe');
+	};
+
+	const handleSelectRPE = (rpe: number) => {
+		setPendingSet(prev => ({ ...prev, rpe }));
+		setSessionStep('weight');
+	};
+
+	const handleConfirmWeight = () => {
+		if (pendingSet.reps === null || pendingSet.rpe === null) return;
 
 		dispatch({
 			type: 'complete_set',
 			exercise: currentExercise.exercise,
-			reps,
-			weight,
-			rpe: isNaN(rpe) ? 8 : rpe,
+			reps: pendingSet.reps,
+			weight: pendingSet.weight,
+			rpe: pendingSet.rpe,
 			restSeconds: restElapsed
 		});
 
-		// Reset timer and clear inputs for next set
 		setRestElapsed(0);
-		setCurrentReps('');
+		setSessionStep('workout');
 	};
 
 	const handleSkipExercise = () => {
 		dispatch({ type: 'next_exercise' });
-		setCurrentReps('');
+		setSessionStep('workout');
 	};
 
-	const completedSetsForExercise = currentExercise.sets.length;
-	const currentSetNumber = completedSetsForExercise + 1;
+	const handleBack = () => {
+		if (sessionStep === 'reps') {
+			setSessionStep('workout');
+		} else if (sessionStep === 'rpe') {
+			setSessionStep('reps');
+		} else if (sessionStep === 'weight') {
+			setSessionStep('rpe');
+		}
+	};
+
+	// Calculate display values
+	const completedSets = currentExercise.sets.length;
+	const currentSetNumber = completedSets + 1;
 	const totalSets = currentExercise.targetSets;
 	const repsTarget = currentExercise.targetRepsMin === currentExercise.targetRepsMax
 		? String(currentExercise.targetRepsMin)
 		: `${currentExercise.targetRepsMin}-${currentExercise.targetRepsMax}`;
 
-	const progress = getSessionProgress();
+	const restTarget = currentExercise.restSeconds;
+	const isRestComplete = restElapsed >= restTarget;
 
-	// Get all completed sets across all exercises for the table
-	const allCompletedSets = session.exercises.flatMap(e =>
-		e.sets.map(s => ({
-			...s,
-			exerciseName: e.exercise
-		}))
-	);
+	// Render based on current step
+	switch (sessionStep) {
+		case 'workout':
+			return (
+				<div className="fit-session-screen">
+					<header className="fit-screen-header">
+						<div style={{ width: 70 }} /> {/* Spacer to balance Cancel button */}
+						<h1>{session.workout}</h1>
+						<button className="fit-header-btn-cancel" onClick={handleCancel}>
+							Cancel
+						</button>
+					</header>
 
-	return (
-		<div className="fit-session-screen">
-			<header className="fit-screen-header">
-				<button onClick={() => onNavigate('home')}>← Back</button>
-				<h1>{session.workout}</h1>
-			</header>
+					<div className="fit-content">
+						<div className="fit-exercise-current">
+							<h2>{currentExercise.exercise}</h2>
+							<p className="fit-exercise-target">
+								{totalSets} × {repsTarget} reps
+							</p>
+						</div>
 
-			<div className="fit-content">
-				{/* Progress */}
-				<div className="fit-progress">
-					<p>Exercise {session.currentExerciseIndex + 1} of {session.exercises.length} ({progress}% complete)</p>
-					<progress
-						value={progress}
-						max={100}
-					/>
+						<div className="fit-set-indicator">
+							Set {currentSetNumber} of {totalSets}
+						</div>
+
+						<div className={`fit-rest-timer ${isRestComplete ? 'ready' : ''}`}>
+							<div className="fit-rest-timer-label">
+								{isRestComplete ? 'Ready!' : 'Rest'}
+							</div>
+							<div className="fit-rest-timer-value">
+								{isRestComplete
+									? formatTime(restElapsed)
+									: formatTime(restTarget - restElapsed)}
+							</div>
+						</div>
+
+						{completedSets > 0 && (
+							<div className="fit-completed-sets">
+								<h3>Completed</h3>
+								<div className="fit-completed-sets-list">
+									{currentExercise.sets.map((set, i) => (
+										<div key={i} className="fit-set-chip">
+											{set.reps} × {set.weight === 0 ? 'BW' : `${set.weight}kg`}
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+
+						<button
+							className="fit-button-primary fit-log-set-button"
+							onClick={handleStartLogSet}
+						>
+							Log Set
+						</button>
+
+						<button
+							className="fit-skip-button"
+							onClick={handleSkipExercise}
+						>
+							Skip Exercise
+						</button>
+					</div>
 				</div>
+			);
 
-				{/* Current Exercise */}
-				<section className="fit-card">
-					<h2>{currentExercise.exercise}</h2>
-					<div className="fit-exercise-target">
-						<p><strong>Target:</strong> {totalSets} × {repsTarget}</p>
-						<p><strong>Rest:</strong> {currentExercise.restSeconds}s</p>
-					</div>
-				</section>
+		case 'reps':
+			return (
+				<div className="fit-session-screen">
+					<header className="fit-screen-header">
+						<button className="fit-header-btn-back" onClick={handleBack}>
+							← Back
+						</button>
+						<h1>Reps</h1>
+						<button className="fit-header-btn-cancel" onClick={handleCancel}>
+							Cancel
+						</button>
+					</header>
 
-				{/* Rest Timer */}
-				<section className="fit-timer-card">
-					<div className="fit-timer-display">
-						<div className="fit-timer-elapsed">
-							<span className="fit-timer-label">Rest</span>
-							<span className="fit-timer-value">{formatTime(restElapsed)}</span>
-						</div>
-						<div className={`fit-timer-remaining ${restElapsed >= currentExercise.restSeconds ? 'fit-timer-ready' : ''}`}>
-							<span className="fit-timer-label">Remaining</span>
-							<span className="fit-timer-value">
-								{restElapsed >= currentExercise.restSeconds
-									? 'Ready!'
-									: formatTime(currentExercise.restSeconds - restElapsed)}
-							</span>
-						</div>
-					</div>
-				</section>
-
-				{/* Set Logger */}
-				<section className="fit-card">
-					<h3>Log Set {currentSetNumber} / {totalSets}</h3>
-					<div className="fit-set-logger">
-						<div className="fit-input-group">
-							<label>Reps</label>
-							<input
-								type="number"
-								value={currentReps}
-								onChange={(e) => setCurrentReps(e.target.value)}
-								placeholder={repsTarget}
-							/>
-						</div>
-						<div className="fit-input-group">
-							<label>Weight (kg)</label>
-							<input
-								type="number"
-								step="0.5"
-								value={currentWeight}
-								onChange={(e) => setCurrentWeight(e.target.value)}
-								placeholder="0 for bodyweight"
-							/>
-						</div>
-						<div className="fit-input-group">
-							<label>RPE</label>
-							<input
-								type="number"
-								min="1"
-								max="10"
-								value={currentRPE}
-								onChange={(e) => setCurrentRPE(e.target.value)}
-							/>
+					<div className="fit-content">
+						<div className="fit-number-step">
+							<h2>How many reps?</h2>
+							<div className="fit-number-grid fit-number-grid-reps">
+								{Array.from({ length: 20 }, (_, i) => i + 1).map(num => {
+									const inRange = num >= currentExercise.targetRepsMin &&
+										num <= currentExercise.targetRepsMax;
+									return (
+										<button
+											key={num}
+											className={`fit-number-button ${inRange ? 'in-range' : ''}`}
+											onClick={() => handleSelectReps(num)}
+										>
+											{num}
+										</button>
+									);
+								})}
+							</div>
 						</div>
 					</div>
-					<button
-						className="fit-button-primary"
-						onClick={handleLogSet}
-					>
-						Log Set
-					</button>
-				</section>
+				</div>
+			);
 
-				{/* Completed Sets for Current Exercise */}
-				{currentExercise.sets.length > 0 && (
-					<section className="fit-card">
-						<h3>Sets for {currentExercise.exercise}</h3>
-						<table className="fit-sets-table">
-							<thead>
-								<tr>
-									<th>#</th>
-									<th>Reps</th>
-									<th>Weight</th>
-									<th>RPE</th>
-								</tr>
-							</thead>
-							<tbody>
-								{currentExercise.sets.map((set) => (
-									<tr key={set.setNumber}>
-										<td>{set.setNumber}</td>
-										<td>{set.reps}</td>
-										<td>{set.weight === 0 ? 'BW' : `${set.weight}kg`}</td>
-										<td>{set.rpe}</td>
-									</tr>
+		case 'rpe':
+			return (
+				<div className="fit-session-screen">
+					<header className="fit-screen-header">
+						<button className="fit-header-btn-back" onClick={handleBack}>
+							← Back
+						</button>
+						<h1>RPE</h1>
+						<button className="fit-header-btn-cancel" onClick={handleCancel}>
+							Cancel
+						</button>
+					</header>
+
+					<div className="fit-content">
+						<div className="fit-number-step">
+							<h2>Rate of Perceived Exertion</h2>
+							<div className="fit-number-grid fit-number-grid-rpe">
+								{Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
+									<button
+										key={num}
+										className="fit-number-button"
+										onClick={() => handleSelectRPE(num)}
+									>
+										{num}
+									</button>
 								))}
-							</tbody>
-						</table>
-					</section>
-				)}
+							</div>
+						</div>
+					</div>
+				</div>
+			);
 
-				{/* All Completed Sets */}
-				{allCompletedSets.length > currentExercise.sets.length && (
-					<section className="fit-card">
-						<h3>All Completed Sets</h3>
-						<table className="fit-sets-table">
-							<thead>
-								<tr>
-									<th>Exercise</th>
-									<th>Reps</th>
-									<th>Weight</th>
-									<th>RPE</th>
-								</tr>
-							</thead>
-							<tbody>
-								{allCompletedSets.map((set, index) => (
-									<tr key={index}>
-										<td>{set.exerciseName}</td>
-										<td>{set.reps}</td>
-										<td>{set.weight === 0 ? 'BW' : `${set.weight}kg`}</td>
-										<td>{set.rpe}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</section>
-				)}
+		case 'weight':
+			return (
+				<div className="fit-session-screen">
+					<header className="fit-screen-header">
+						<button className="fit-header-btn-back" onClick={handleBack}>
+							← Back
+						</button>
+						<h1>Weight</h1>
+						<button className="fit-header-btn-cancel" onClick={handleCancel}>
+							Cancel
+						</button>
+					</header>
 
-				<button
-					className="fit-button-secondary"
-					onClick={handleSkipExercise}
-				>
-					Skip Exercise
-				</button>
-			</div>
-		</div>
-	);
+					<div className="fit-content">
+						<div className="fit-weight-step">
+							<h2>Set weight (kg)</h2>
+
+							<div className="fit-weight-display">
+								<div className="fit-weight-value">
+									{pendingSet.weight === 0 ? 'BW' : pendingSet.weight}
+								</div>
+								{pendingSet.weight > 0 && (
+									<div className="fit-weight-unit">kg</div>
+								)}
+							</div>
+
+							<div className="fit-weight-buttons">
+								<button
+									className="fit-weight-adjust fit-weight-adjust-large"
+									onClick={() => setPendingSet(p => ({
+										...p,
+										weight: Math.max(0, p.weight - 5)
+									}))}
+								>
+									-5
+								</button>
+								<button
+									className="fit-weight-adjust"
+									onClick={() => setPendingSet(p => ({
+										...p,
+										weight: Math.max(0, p.weight - 1)
+									}))}
+								>
+									-1
+								</button>
+								<button
+									className="fit-weight-adjust"
+									onClick={() => setPendingSet(p => ({
+										...p,
+										weight: p.weight + 1
+									}))}
+								>
+									+1
+								</button>
+								<button
+									className="fit-weight-adjust fit-weight-adjust-large"
+									onClick={() => setPendingSet(p => ({
+										...p,
+										weight: p.weight + 5
+									}))}
+								>
+									+5
+								</button>
+							</div>
+
+							<button
+								className="fit-button-success fit-weight-confirm"
+								onClick={handleConfirmWeight}
+							>
+								Confirm ({pendingSet.reps} reps @ {pendingSet.weight === 0 ? 'BW' : `${pendingSet.weight}kg`})
+							</button>
+						</div>
+					</div>
+				</div>
+			);
+	}
 }
