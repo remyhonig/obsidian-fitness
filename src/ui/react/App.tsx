@@ -14,6 +14,9 @@ import { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
 import { AppProvider, PluginProvider, DomainProvider } from './contexts';
 import { HomeScreen } from './screens/HomeScreen';
 import { SessionScreen } from './screens/SessionScreen';
+import { WorkoutPickerScreen } from './screens/WorkoutPickerScreen';
+import { HistoryScreen } from './screens/HistoryScreen';
+import { FinishScreen } from './screens/FinishScreen';
 
 // Screen types
 type ScreenType = 'home' | 'session' | 'workout-picker' | 'history' | 'exercise-library' | 'finish';
@@ -60,21 +63,9 @@ export function App({ app, plugin }: AppProps) {
 			case 'session':
 				return <SessionScreen onNavigate={navigateTo} />;
 			case 'workout-picker':
-				return (
-					<div className="fit-placeholder-screen">
-						<h2>Workout Picker</h2>
-						<p>Coming soon...</p>
-						<button onClick={goBack}>Go Back</button>
-					</div>
-				);
+				return <WorkoutPickerScreen onNavigate={navigateTo} />;
 			case 'history':
-				return (
-					<div className="fit-placeholder-screen">
-						<h2>History</h2>
-						<p>Coming soon...</p>
-						<button onClick={goBack}>Go Back</button>
-					</div>
-				);
+				return <HistoryScreen onNavigate={navigateTo} />;
 			case 'exercise-library':
 				return (
 					<div className="fit-placeholder-screen">
@@ -84,13 +75,7 @@ export function App({ app, plugin }: AppProps) {
 					</div>
 				);
 			case 'finish':
-				return (
-					<div className="fit-placeholder-screen">
-						<h2>Workout Complete!</h2>
-						<p>Session saved successfully</p>
-						<button onClick={() => navigateTo('home')}>Go Home</button>
-					</div>
-				);
+				return <FinishScreen onNavigate={navigateTo} />;
 			default:
 				return <HomeScreen onNavigate={navigateTo} />;
 		}

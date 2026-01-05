@@ -21,9 +21,25 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 	const [currentReps, setCurrentReps] = useState('');
 	const [currentRPE, setCurrentRPE] = useState('8');
 	const [isSaving, setIsSaving] = useState(false);
+	const [restElapsed, setRestElapsed] = useState(0);
 
 	// Get current exercise from session state
 	const currentExercise = session.exercises[session.currentExerciseIndex];
+
+	// Timer effect - counts up every second
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setRestElapsed(prev => prev + 1);
+		}, 1000);
+		return () => clearInterval(interval);
+	}, []);
+
+	// Format seconds to M:SS
+	const formatTime = (seconds: number): string => {
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	};
 
 	// Auto-save after each set
 	useEffect(() => {
@@ -78,10 +94,12 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 			exercise: currentExercise.exercise,
 			reps,
 			weight,
-			rpe: isNaN(rpe) ? 8 : rpe
+			rpe: isNaN(rpe) ? 8 : rpe,
+			restSeconds: restElapsed
 		});
 
-		// Clear inputs for next set
+		// Reset timer and clear inputs for next set
+		setRestElapsed(0);
 		setCurrentReps('');
 	};
 
@@ -130,6 +148,24 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 					<div className="fit-exercise-target">
 						<p><strong>Target:</strong> {totalSets} × {repsTarget}</p>
 						<p><strong>Rest:</strong> {currentExercise.restSeconds}s</p>
+					</div>
+				</section>
+
+				{/* Rest Timer */}
+				<section className="fit-timer-card">
+					<div className="fit-timer-display">
+						<div className="fit-timer-elapsed">
+							<span className="fit-timer-label">Rest</span>
+							<span className="fit-timer-value">{formatTime(restElapsed)}</span>
+						</div>
+						<div className={`fit-timer-remaining ${restElapsed >= currentExercise.restSeconds ? 'fit-timer-ready' : ''}`}>
+							<span className="fit-timer-label">Remaining</span>
+							<span className="fit-timer-value">
+								{restElapsed >= currentExercise.restSeconds
+									? 'Ready!'
+									: formatTime(currentExercise.restSeconds - restElapsed)}
+							</span>
+						</div>
 					</div>
 				</section>
 
