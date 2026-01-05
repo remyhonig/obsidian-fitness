@@ -13,11 +13,9 @@
  */
 
 import { App, TFile } from 'obsidian';
-import * as antlr from 'antlr4ng';
+import { parseProgram as parseFitnessDSL, type ProgramExport } from 'fitness-dsl';
 
-// Import fitness-dsl parser types
-// Note: We'll need to adapt this based on the actual exports from fitness-dsl
-// For now, creating interfaces that match the expected structure
+// Re-export types from fitness-dsl for convenience
 
 export interface ProgramData {
 	program: {
@@ -178,81 +176,57 @@ export class FitnessDomainAdapter {
 
 	/**
 	 * Parse program markdown using fitness-dsl
-	 *
-	 * TODO: Integrate with actual fitness-dsl parser
-	 * For now, returns a mock structure
 	 */
 	private async parseProgram(markdown: string): Promise<ProgramData> {
-		// TODO: Import and use fitness-dsl parser
-		// This is a temporary mock implementation
-		// The real implementation will use:
-		//
-		// import { FitnessMarkdownLexer } from 'fitness-dsl';
-		// import { FitnessMarkdownParser } from 'fitness-dsl';
-		//
-		// const chars = antlr.CharStream.fromString(markdown);
-		// const lexer = new FitnessMarkdownLexer(chars);
-		// const tokens = new antlr.CommonTokenStream(lexer);
-		// const parser = new FitnessMarkdownParser(tokens);
-		// const tree = parser.document();
-		//
-		// Then extract program data using a visitor/listener
-
 		console.log('[FitnessDomainAdapter] Parsing program...', markdown.substring(0, 100));
 
-		// Mock data for now
+		const result = parseFitnessDSL(markdown);
+
+		if (!result.success || !result.program) {
+			const errors = result.errors?.map(e => `Line ${e.line}: ${e.message}`).join('\n') || 'Unknown error';
+			throw new Error(`Failed to parse program:\n${errors}`);
+		}
+
+		// Convert ProgramExport to ProgramData
+		// The types are compatible, but we need to ensure proper conversion
+		const program = result.program;
+
 		return {
 			program: {
-				name: 'Push Pull Legs',
-				description: 'A 6-day training split focusing on push, pull, and leg movements'
+				name: program.program.name,
+				description: program.program.description
 			},
 			schedule: {
-				weeklyPattern: [
-					{ day: 'Monday', time: '18:00', workouts: ['Push Day'] },
-					{ day: 'Tuesday', time: '18:00', workouts: ['Pull Day'] },
-					{ day: 'Wednesday', time: '18:00', workouts: ['Leg Day'] },
-					{ day: 'Thursday', time: '18:00', workouts: ['Push Day'] },
-					{ day: 'Friday', time: '18:00', workouts: ['Pull Day'] },
-					{ day: 'Saturday', time: '10:00', workouts: ['Leg Day'] },
-					{ day: 'Sunday', time: null, workouts: ['Rest'] }
-				],
-				dateOverrides: [],
-				cyclePattern: []
+				weeklyPattern: program.schedule.weeklyPattern,
+				dateOverrides: program.schedule.dateOverrides,
+				cyclePattern: program.schedule.cyclePattern
 			},
 			progression: {
-				globalRules: [
-					{
-						condition: 'reps >= max',
-						action: '+2.5kg',
-						timing: 'next_session'
-					}
-				],
-				periodization: []
+				globalRules: program.progression.globalRules,
+				periodization: program.progression.periodization
 			},
-			workouts: [
-				{
-					name: 'Push Day',
-					description: 'Chest, shoulders, and triceps',
-					exercises: [
-						{
-							name: 'Bench Press',
-							alternatives: [],
-							optional: false,
-							sets: 4,
-							reps: { min: 6, max: 8 },
-							weight: '80kg',
-							intensity: { type: 'RPE', value: 8 },
-							rest: '180s',
-							emom: null,
-							duration: null,
-							distance: null,
-							progression: ['+2.5kg when 4x8 complete'],
-							autoregulation: [],
-							note: null
-						}
-					]
-				}
-			]
+			workouts: program.workouts.map(w => ({
+				name: w.name,
+				description: w.description,
+				exercises: w.exercises.map(e => ({
+					name: e.name,
+					alternatives: e.alternatives,
+					optional: e.optional,
+					sets: e.sets,
+					reps: e.reps,
+					weight: e.weight,
+					intensity: e.intensity,
+					rest: e.rest,
+					emom: e.emom,
+					duration: e.duration,
+					distance: e.distance,
+					progression: e.progression,
+					autoregulation: e.autoregulation,
+					note: e.note
+				}))
+			})),
+			nextSession: program.nextSession,
+			sessionHistory: program.sessionHistory
 		};
 	}
 
