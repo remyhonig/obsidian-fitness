@@ -56,6 +56,9 @@ interface DomainContextValue {
 	session: SessionState;
 	loadProgram: (path: string) => Promise<void>;
 	dispatch: (event: any) => void;
+	saveSession: () => Promise<string | null>;
+	getSessionProgress: () => number;
+	isSessionComplete: () => boolean;
 }
 
 const DomainContext = createContext<DomainContextValue | null>(null);
@@ -77,15 +80,26 @@ export function DomainProvider({
 
 	const dispatch = (event: any) => {
 		const newSession = adapter.dispatch(event);
-		setSession(newSession);
+		setSession({ ...newSession }); // Create new object reference to trigger re-render
 	};
+
+	const saveSession = async () => {
+		const path = await adapter.saveSession();
+		return path;
+	};
+
+	const getSessionProgress = () => adapter.getSessionProgress();
+	const isSessionComplete = () => adapter.isSessionComplete();
 
 	const value: DomainContextValue = {
 		adapter,
 		program,
 		session,
 		loadProgram,
-		dispatch
+		dispatch,
+		saveSession,
+		getSessionProgress,
+		isSessionComplete
 	};
 
 	return <DomainContext.Provider value={value}>{children}</DomainContext.Provider>;
