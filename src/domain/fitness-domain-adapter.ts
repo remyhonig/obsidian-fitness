@@ -13,7 +13,17 @@
  */
 
 import { App, TFile } from 'obsidian';
-import { parseProgram as parseFitnessDSL, type ProgramExport } from 'fitness-dsl';
+import {
+	parseProgram as parseFitnessDSL,
+	compileProgramFromString,
+	generateExecutionView,
+	type CompiledProgram,
+	type ExerciseExecutionView,
+	type CompletedSetInput,
+} from 'fitness-dsl';
+
+// Re-export execution view types for UI consumption
+export type { ExerciseExecutionView, ExecutionSet, SetTarget, SetAdjustment } from 'fitness-dsl';
 
 // Re-export types from fitness-dsl for convenience
 
@@ -169,6 +179,7 @@ export class FitnessDomainAdapter {
 	private app: App;
 	private basePath: string;
 	private programData: ProgramData | null = null;
+	private compiledProgram: CompiledProgram | null = null;
 	private sessionState: SessionState;
 
 	constructor(app: App, basePath: string = 'Fitness') {
@@ -255,6 +266,29 @@ export class FitnessDomainAdapter {
 		if (!result.success || !result.program) {
 			const errors = result.errors?.map(e => `Line ${e.line}: ${e.message}`).join('\n') || 'Unknown error';
 			throw new Error(`Failed to parse program:\n${errors}`);
+		}
+
+		// Also compile the program to get structured IR for execution view
+		try {
+			this.compiledProgram = compileProgramFromString(markdown);
+			console.log('[FitnessDomainAdapter] Compiled program:', {
+				exercises: this.compiledProgram.exercises.length,
+				globalRules: this.compiledProgram.globalRules.length,
+				globalRulesDetail: this.compiledProgram.globalRules.map(r => ({
+					condition: r.condition,
+					action: r.action,
+					timing: r.timing,
+					hasIR: !!r.ir,
+					ir: r.ir ? {
+						conditionTerms: r.ir.condition.terms,
+						effect: r.ir.effect,
+						timing: r.ir.timing,
+						sourceText: r.ir.sourceText,
+					} : null,
+				})),
+			});
+		} catch (e) {
+			console.warn('[FitnessDomainAdapter] Failed to compile program:', e);
 		}
 
 		// Convert ProgramExport to ProgramData
@@ -616,5 +650,83 @@ export class FitnessDomainAdapter {
 		const completedSets = this.sessionState.exercises.reduce((sum, e) => sum + e.sets.length, 0);
 
 		return totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
+	}
+
+	/**
+	 * Get the execution view for an exercise, which provides dynamic set targets
+	 * based on completed sets and progression rules.
+	 *
+	 * @param exerciseIndex - Index of the exercise in the current session
+	 * @returns ExerciseExecutionView with targets for each set, or null if not available
+	 */
+	getExecutionView(exerciseIndex: number): ExerciseExecutionView | null {
+		if (!this.compiledProgram || !this.sessionState.isActive) {
+			console.log('[FitnessDomainAdapter] getExecutionView: No compiled program or inactive session');
+			return null;
+		}
+
+		const sessionExercise = this.sessionState.exercises[exerciseIndex];
+		if (!sessionExercise) {
+			console.log('[FitnessDomainAdapter] getExecutionView: No session exercise at index', exerciseIndex);
+			return null;
+		}
+
+		// Find the matching exercise target from the compiled program
+		const exerciseTarget = this.compiledProgram.exercises.find(
+			e => e.name.toLowerCase() === sessionExercise.exercise.toLowerCase() &&
+			     e.workout.toLowerCase() === this.sessionState.workout?.toLowerCase()
+		);
+
+		if (!exerciseTarget) {
+			console.warn('[FitnessDomainAdapter] No exercise target found for:', sessionExercise.exercise);
+			return null;
+		}
+
+		// Convert completed sets to CompletedSetInput format
+		const completedSets: CompletedSetInput[] = sessionExercise.sets.map(set => ({
+			reps: set.reps,
+			weight: set.weight === 0 ? 'bodyweight' : `${set.weight}kg`,
+			rpe: set.rpe,
+		}));
+
+		// Log info about rules and execution
+		console.log('[FitnessDomainAdapter] getExecutionView INPUT:', {
+			exercise: exerciseTarget.name,
+			exerciseTarget: {
+				sets: exerciseTarget.sets,
+				minReps: exerciseTarget.minReps,
+				maxReps: exerciseTarget.maxReps,
+				weight: exerciseTarget.weight,
+				targetRPE: exerciseTarget.targetRPE,
+				autoregulationIR: exerciseTarget.autoregulationIR,
+			},
+			completedSets,
+			globalRulesCount: this.compiledProgram.globalRules.length,
+			globalRulesWithNextSet: this.compiledProgram.globalRules.filter(r => r.timing === 'next_set').length,
+			globalRulesWithIR: this.compiledProgram.globalRules.filter(r => r.ir && r.timing === 'next_set').map(r => ({
+				timing: r.timing,
+				ir: r.ir,
+			})),
+		});
+
+		// Generate the execution view using the DSL engine
+		const executionView = generateExecutionView(
+			exerciseTarget,
+			completedSets,
+			this.compiledProgram.globalRules,
+			[] // alternatives - could be populated from exercise data if needed
+		);
+
+		// Log the execution view result
+		console.log('[FitnessDomainAdapter] getExecutionView OUTPUT:', {
+			sets: executionView.sets.map(s => ({
+				setNumber: s.setNumber,
+				status: s.status,
+				target: s.target,
+				actual: s.actual,
+			})),
+		});
+
+		return executionView;
 	}
 }

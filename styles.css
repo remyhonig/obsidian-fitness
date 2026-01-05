@@ -5604,6 +5604,66 @@
 	min-height: 64px;
 }
 
+/* Triggered rules panel */
+.fit-triggered-rules {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.fit-rule-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	background: var(--fit-accent-light);
+	border: 1px solid var(--fit-primary);
+	border-radius: var(--fit-border-radius);
+	padding: 10px 12px;
+}
+
+.fit-rule-icon {
+	font-size: 16px;
+	line-height: 1;
+	flex-shrink: 0;
+}
+
+.fit-rule-content {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	flex: 1;
+	min-width: 0;
+}
+
+.fit-rule-reason {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--fit-text-primary);
+}
+
+.fit-rule-source {
+	font-size: 12px;
+	color: var(--fit-text-secondary);
+	font-family: var(--font-monospace);
+	background: var(--fit-bg-secondary);
+	padding: 4px 8px;
+	border-radius: 4px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Auto-matched variant - more subtle styling */
+.fit-triggered-rules.auto-matched .fit-rule-item {
+	background: var(--fit-bg-secondary);
+	border-color: var(--fit-border);
+}
+
+.fit-triggered-rules.auto-matched .fit-rule-icon {
+	color: var(--fit-text-secondary);
+}
+
 /* Rest timer panel */
 .fit-timer-panel {
 	position: relative;

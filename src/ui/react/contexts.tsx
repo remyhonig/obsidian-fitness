@@ -80,7 +80,9 @@ export function DomainProvider({
 
 	const dispatch = (event: any) => {
 		const newSession = adapter.dispatch(event);
-		setSession({ ...newSession }); // Create new object reference to trigger re-render
+		// Deep clone to ensure all nested arrays get new references
+		// This is needed for useMemo dependencies that track nested data
+		setSession(JSON.parse(JSON.stringify(newSession)));
 	};
 
 	const saveSession = async () => {

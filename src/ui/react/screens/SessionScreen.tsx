@@ -10,8 +10,9 @@
  * Uses consistent layout with standard header and bottom navigation.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDomain } from '../contexts';
+import type { ExerciseExecutionView } from '../../../domain/fitness-domain-adapter';
 
 type SessionStep = 'workout' | 'reps' | 'rpe' | 'weight';
 
@@ -26,7 +27,7 @@ interface SessionScreenProps {
 }
 
 export function SessionScreen({ onNavigate }: SessionScreenProps) {
-	const { session, dispatch, saveSession, getSessionProgress, isSessionComplete } = useDomain();
+	const { adapter, session, dispatch, saveSession, getSessionProgress, isSessionComplete } = useDomain();
 
 	// Step flow state
 	const [sessionStep, setSessionStep] = useState<SessionStep>('workout');
@@ -55,6 +56,20 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 
 	// Get current exercise from session state
 	const currentExercise = session.exercises[session.currentExerciseIndex];
+
+	// Create a stable key that changes when set data changes (not just length)
+	// This ensures execution view recalculates when sets are edited
+	const setsKey = useMemo(() => {
+		if (!currentExercise?.sets) return '';
+		return currentExercise.sets.map(s => `${s.reps}-${s.weight}-${s.rpe}`).join('|');
+	}, [currentExercise?.sets]);
+
+	// Get execution view for current exercise (provides dynamic set targets)
+	// Recalculates when exercise index or set data changes
+	const executionView: ExerciseExecutionView | null = useMemo(() => {
+		if (!currentExercise) return null;
+		return adapter.getExecutionView(session.currentExerciseIndex);
+	}, [adapter, session.currentExerciseIndex, setsKey]);
 
 	// Timer effect - counts up every second (only on workout step)
 	useEffect(() => {
@@ -93,15 +108,35 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		onNavigate('home');
 	};
 
-	// Get suggested weight: use last completed set, or fall back to program target
-	const getSuggestedWeight = (): number | null => {
+	// Get suggested weight for a specific set index
+	// Uses execution view targets (dynamic based on progression rules)
+	const getSuggestedWeightForSet = (setIndex: number): number | null => {
+		// Use execution view if available
+		if (executionView?.sets[setIndex]) {
+			const targetWeight = executionView.sets[setIndex].target.weight;
+			// Parse weight string (e.g., "80kg" or "bodyweight")
+			if (targetWeight.toLowerCase().includes('body')) {
+				return 0;
+			}
+			const match = targetWeight.match(/(\d+(?:\.\d+)?)/);
+			if (match?.[1]) {
+				return parseFloat(match[1]);
+			}
+		}
+
+		// Fall back to last completed set or program target
 		if (!currentExercise) return null;
 		const lastSet = currentExercise.sets[currentExercise.sets.length - 1];
 		if (lastSet) {
 			return lastSet.weight;
 		}
-		// Fall back to program target weight
 		return currentExercise.targetWeight;
+	};
+
+	// Legacy function - use for next set (completedSets index)
+	const getSuggestedWeight = (): number | null => {
+		if (!currentExercise) return null;
+		return getSuggestedWeightForSet(currentExercise.sets.length);
 	};
 
 	// Target RPE from program, defaulting to 7
@@ -358,7 +393,7 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 											</div>
 										)}
 										<div className="fit-set-card-header">
-											{isDone && set ? formatWeight(set.weight) : formatWeight(getSuggestedWeight())}
+											{isDone && set ? formatWeight(set.weight) : formatWeight(getSuggestedWeightForSet(i))}
 										</div>
 										{isDone && set ? (
 											<div className="fit-set-card-content">
@@ -379,6 +414,33 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 								);
 							})}
 						</div>
+
+						{/* Adjustments panel - show rule or auto-match adjustments for next set */}
+						{executionView && (() => {
+							// Get the next pending set's adjustment
+							const nextPendingSet = executionView.sets[completedSets];
+							const adjustment = nextPendingSet?.target.adjustment;
+
+							// Only show if there's an adjustment of any type
+							if (!adjustment) return null;
+
+							const isRuleApplied = adjustment.type === 'rule_applied';
+							const isAutoMatched = adjustment.type === 'auto_matched';
+
+							return (
+								<div className={`fit-triggered-rules ${isAutoMatched ? 'auto-matched' : ''}`}>
+									<div className="fit-rule-item">
+										<span className="fit-rule-icon">{isRuleApplied ? '⚡' : '↔'}</span>
+										<div className="fit-rule-content">
+											<span className="fit-rule-reason">{adjustment.reason}</span>
+											{adjustment.ruleSource && (
+												<span className="fit-rule-source">{adjustment.ruleSource}</span>
+											)}
+										</div>
+									</div>
+								</div>
+							);
+						})()}
 
 						{/* Rest timer panel */}
 						<div className={`fit-timer-panel ${isRestComplete ? 'complete' : ''}`}>
