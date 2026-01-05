@@ -1,6 +1,7 @@
 import { Notice, Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, PluginSettings, PluginSettingTab } from './settings';
 import { FitView, VIEW_TYPE_FIT } from './views/fit-view';
+import { FitViewReact, VIEW_TYPE_FIT_REACT } from './views/fit-view-react';
 import { bootstrapDataFolder } from './data/bootstrap';
 import { DatabaseExerciseRepository } from './data/database-exercise-repository';
 import { registerContextMenus } from './context-menus';
@@ -46,21 +47,34 @@ export default class MainPlugin extends Plugin {
 			console.error('[Fit] Bootstrap failed:', error);
 		}
 
-		// Register the workout view
+		// Register the workout views (both legacy and React)
 		this.registerView(
 			VIEW_TYPE_FIT,
 			(leaf) => new FitView(leaf, this)
 		);
+		this.registerView(
+			VIEW_TYPE_FIT_REACT,
+			(leaf) => new FitViewReact(leaf, this)
+		);
 
-		// Add ribbon icon
+		// Add ribbon icon (opens React version by default)
 		this.addRibbonIcon('dumbbell', 'Open workout tracker', () => {
-			void this.activateView();
+			void this.activateViewReact();
 		});
 
-		// Add command to open workout tracker
+		// Add command to open workout tracker (React version)
 		this.addCommand({
 			id: 'open-workout-tracker',
-			name: 'Open workout tracker',
+			name: 'Open workout tracker (React)',
+			callback: () => {
+				void this.activateViewReact();
+			}
+		});
+
+		// Add command to open workout tracker (legacy version)
+		this.addCommand({
+			id: 'open-workout-tracker-legacy',
+			name: 'Open workout tracker (Legacy)',
 			callback: () => {
 				void this.activateView();
 			}
@@ -138,17 +152,27 @@ export default class MainPlugin extends Plugin {
 	 * Notifies all open FitViews that settings have changed
 	 */
 	private notifyViewsOfSettingsChange(): void {
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_FIT);
-		for (const leaf of leaves) {
+		// Notify legacy views
+		const legacyLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_FIT);
+		for (const leaf of legacyLeaves) {
 			const view = leaf.view;
 			if (view instanceof FitView) {
+				view.onSettingsChanged();
+			}
+		}
+
+		// Notify React views
+		const reactLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_FIT_REACT);
+		for (const leaf of reactLeaves) {
+			const view = leaf.view;
+			if (view instanceof FitViewReact) {
 				view.onSettingsChanged();
 			}
 		}
 	}
 
 	/**
-	 * Activates the workout view
+	 * Activates the workout view (legacy version)
 	 */
 	async activateView(): Promise<void> {
 		const { workspace } = this.app;
@@ -166,6 +190,31 @@ export default class MainPlugin extends Plugin {
 		const leaf = workspace.getLeaf(false);
 		await leaf.setViewState({
 			type: VIEW_TYPE_FIT,
+			active: true
+		});
+
+		await workspace.revealLeaf(leaf);
+	}
+
+	/**
+	 * Activates the workout view (React version)
+	 */
+	async activateViewReact(): Promise<void> {
+		const { workspace } = this.app;
+
+		// Check if view is already open
+		const leaves = workspace.getLeavesOfType(VIEW_TYPE_FIT_REACT);
+		const existingLeaf = leaves[0];
+		if (existingLeaf) {
+			// Reveal existing view
+			await workspace.revealLeaf(existingLeaf);
+			return;
+		}
+
+		// Open in a new leaf
+		const leaf = workspace.getLeaf(false);
+		await leaf.setViewState({
+			type: VIEW_TYPE_FIT_REACT,
 			active: true
 		});
 
