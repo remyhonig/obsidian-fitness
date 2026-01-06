@@ -8,11 +8,11 @@
  * - Screen rendering
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { App as ObsidianApp } from 'obsidian';
 import type MainPlugin from '../../main';
 import { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
-import { AppProvider, PluginProvider, DomainProvider } from './contexts';
+import { AppProvider, PluginProvider, DomainProvider, useDomain } from './contexts';
 import { HomeScreen } from './screens/HomeScreen';
 import { SessionScreen } from './screens/SessionScreen';
 import { WorkoutPickerScreen } from './screens/WorkoutPickerScreen';
@@ -85,6 +85,64 @@ function BottomNavItem({ icon, label, isActive, onClick }: BottomNavItemProps) {
 			<span className="fit-bottom-nav-icon">{icon}</span>
 			<span className="fit-bottom-nav-label">{label}</span>
 		</button>
+	);
+}
+
+// Session banner - shows on non-session screens when workout is active
+interface SessionBannerProps {
+	onClick: () => void;
+}
+
+function SessionBanner({ onClick }: SessionBannerProps) {
+	const { session } = useDomain();
+	const currentExercise = session.exercises[session.currentExerciseIndex];
+	// Timer state - calculated from session.restStartTime
+	const [restElapsed, setRestElapsed] = useState(0);
+	// Include extra rest time from session state (added by tapping header in SessionScreen)
+	const restTarget = (currentExercise?.restSeconds ?? 120) + session.extraRestTime;
+
+	// Timer effect - calculates elapsed time from session.restStartTime
+	useEffect(() => {
+		if (!session.isActive || !session.restStartTime) return;
+
+		const updateRest = () => {
+			const elapsed = Math.floor((Date.now() - session.restStartTime!) / 1000);
+			setRestElapsed(elapsed);
+		};
+
+		updateRest();
+		const interval = setInterval(updateRest, 1000);
+		return () => clearInterval(interval);
+	}, [session.isActive, session.restStartTime]);
+
+	if (!session.isActive) return null;
+
+	const exerciseName = currentExercise?.exercise ?? 'Workout';
+
+	// Format time as M:SS
+	const formatTime = (seconds: number): string => {
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	};
+
+	// Calculate rest progress (0-100%)
+	const isResting = restElapsed < restTarget;
+	const restProgress = Math.min(100, (restElapsed / restTarget) * 100);
+
+	// Show rest remaining if resting, otherwise show "Ready"
+	const restRemaining = Math.max(0, restTarget - restElapsed);
+	const timeDisplay = isResting ? formatTime(restRemaining) : 'Ready!';
+
+	return (
+		<div
+			className={`fit-session-banner ${isResting ? 'resting' : 'ready'}`}
+			onClick={onClick}
+			style={{ '--rest-progress': `${restProgress}%` } as React.CSSProperties}
+		>
+			<span className="fit-session-banner-exercise">{exerciseName}</span>
+			<span className="fit-session-banner-time">{timeDisplay}</span>
+		</div>
 	);
 }
 
@@ -161,11 +219,17 @@ export function App({ app, plugin }: AppProps) {
 		}
 	};
 
+	// Show session banner on non-session screens
+	const showSessionBanner = currentScreen !== 'session' && currentScreen !== 'finish';
+
 	return (
 		<AppProvider app={app}>
 			<PluginProvider plugin={plugin}>
 				<DomainProvider adapter={adapter}>
 					<div className="fit-app">
+						{showSessionBanner && (
+							<SessionBanner onClick={() => navigateTo('session')} />
+						)}
 						<div className="fit-main-content">
 							{renderScreen()}
 						</div>

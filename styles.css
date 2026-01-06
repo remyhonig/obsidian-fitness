@@ -4003,6 +4003,61 @@
 	color: var(--fit-text-primary);
 }
 
+/* Session Banner - shows on non-session screens when workout is active */
+.fit-session-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px var(--fit-spacing);
+	background: var(--fit-bg-card);
+	border-bottom: 1px solid var(--fit-border);
+	cursor: pointer;
+	position: relative;
+	overflow: hidden;
+}
+
+.fit-session-banner::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 100%;
+	width: var(--rest-progress, 0%);
+	background: var(--fit-primary);
+	opacity: 0.2;
+	transition: width 0.5s linear;
+}
+
+.fit-session-banner.ready::before {
+	width: 100%;
+	opacity: 0.15;
+}
+
+.fit-session-banner:active {
+	background: var(--fit-bg-secondary);
+}
+
+.fit-session-banner-exercise {
+	position: relative;
+	z-index: 1;
+	font-weight: 600;
+	font-size: 15px;
+	color: var(--fit-text-primary);
+}
+
+.fit-session-banner-time {
+	position: relative;
+	z-index: 1;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--fit-primary);
+	font-variant-numeric: tabular-nums;
+}
+
+.fit-session-banner.ready .fit-session-banner-time {
+	color: var(--fit-primary);
+}
+
 /* Screen Header */
 .fit-screen-header {
 	display: flex;
@@ -4048,6 +4103,350 @@
 
 .fit-screen-header button:active {
 	opacity: 0.7;
+}
+
+/* Navigation header variant */
+.fit-screen-header-nav {
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.fit-header-nav-btn {
+	font-size: 28px !important;
+	font-weight: 300 !important;
+	color: var(--fit-primary) !important;
+	width: 44px;
+	min-width: 44px;
+	max-width: 44px;
+	height: 44px;
+	display: flex !important;
+	align-items: center;
+	justify-content: center;
+	opacity: 1;
+	transition: opacity 0.15s ease;
+	flex-shrink: 0;
+	flex-grow: 0;
+}
+
+.fit-header-nav-btn:disabled {
+	opacity: 0.25;
+	cursor: default;
+}
+
+/* Header with rest timer - uses ::before pseudo-element for progress */
+.fit-screen-header-nav {
+	position: relative;
+}
+
+.fit-screen-header-nav::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 100%;
+	width: var(--rest-progress, 0%);
+	background: var(--fit-primary);
+	opacity: 0.15;
+	transition: width 0.3s linear;
+	z-index: 0;
+	pointer-events: none;
+}
+
+.fit-screen-header-nav > button,
+.fit-screen-header-nav > .fit-exercise-title {
+	position: relative;
+	z-index: 1;
+}
+
+/* Exercise title with YouTube button */
+.fit-exercise-title {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	flex: 1;
+	cursor: pointer;
+	padding: 4px 8px;
+	border-radius: 8px;
+	transition: background 0.15s ease;
+}
+
+.fit-exercise-title:active {
+	background: var(--fit-bg-secondary);
+}
+
+.fit-exercise-title h1 {
+	flex: 0;
+	text-align: center;
+	font-size: 18px;
+	line-height: 1.2;
+}
+
+/* Browsing mode - viewing non-active exercise */
+.fit-exercise-title-browsing {
+	background: var(--fit-bg-secondary);
+}
+
+.fit-exercise-title-browsing h1 {
+	color: var(--fit-text-secondary);
+}
+
+.fit-return-hint {
+	font-size: 11px;
+	color: var(--fit-primary);
+	font-weight: 500;
+}
+
+.fit-header-timer {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--fit-primary);
+	font-variant-numeric: tabular-nums;
+}
+
+/* YouTube button */
+.fit-youtube-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: #FF0000;
+	border-radius: 6px;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.fit-youtube-btn:hover {
+	color: #CC0000;
+}
+
+.fit-youtube-btn:active {
+	transform: scale(0.95);
+}
+
+.fit-youtube-btn svg {
+	display: block;
+}
+
+/* Image button */
+.fit-image-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: var(--fit-primary);
+	border-radius: 6px;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.fit-image-btn:hover {
+	color: var(--fit-primary-hover);
+}
+
+.fit-image-btn:active {
+	transform: scale(0.95);
+}
+
+.fit-image-btn svg {
+	display: block;
+}
+
+/* Image modal */
+.fit-image-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.9);
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+}
+
+.fit-image-modal-content {
+	position: relative;
+	max-width: 100%;
+	max-height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.fit-image-modal-content img {
+	max-width: 100%;
+	max-height: 80vh;
+	object-fit: contain;
+	border-radius: 8px;
+}
+
+.fit-image-modal-close {
+	position: absolute;
+	top: -40px;
+	right: 0;
+	width: 36px;
+	height: 36px;
+	border: none;
+	background: var(--fit-bg-card);
+	color: var(--fit-text-primary);
+	font-size: 24px;
+	border-radius: 50%;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.fit-image-modal-close:hover {
+	background: var(--fit-bg-secondary);
+}
+
+.fit-image-modal-desc {
+	margin-top: 12px;
+	color: white;
+	font-size: 14px;
+	text-align: center;
+}
+
+/* Exercise media row - image and comments side by side */
+.fit-exercise-media-row {
+	display: flex;
+	gap: 12px;
+	margin-bottom: 12px;
+	align-items: flex-start;
+}
+
+/* Exercise preview image */
+.fit-exercise-preview {
+	position: relative;
+	width: 120px;
+	min-width: 120px;
+	height: 120px;
+	overflow: hidden;
+	border-radius: var(--fit-border-radius);
+	cursor: pointer;
+	background: var(--fit-bg-secondary);
+}
+
+.fit-exercise-preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	display: block;
+}
+
+/* Exercise note/comment (coaching cue) */
+.fit-exercise-note {
+	flex: 1;
+	margin: 0;
+	font-size: 15px;
+	font-style: italic;
+	color: var(--fit-text-secondary);
+	line-height: 1.5;
+	max-height: 120px;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.fit-exercise-preview:active {
+	opacity: 0.8;
+}
+
+/* YouTube badge on thumbnail */
+.fit-exercise-preview .fit-youtube-btn {
+	position: absolute;
+	bottom: 8px;
+	right: 8px;
+	width: 40px;
+	height: 28px;
+	background: #FF0000;
+	color: white;
+	border-radius: 6px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.fit-exercise-preview .fit-youtube-btn:hover {
+	background: #CC0000;
+	color: white;
+}
+
+/* YouTube embed modal */
+.fit-youtube-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.95);
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+}
+
+.fit-youtube-modal-content {
+	position: relative;
+	width: 100%;
+	max-width: 800px;
+}
+
+.fit-youtube-modal-close {
+	position: absolute;
+	top: -40px;
+	right: 0;
+	width: 36px;
+	height: 36px;
+	border: none;
+	background: var(--fit-bg-card);
+	color: var(--fit-text-primary);
+	font-size: 24px;
+	border-radius: 50%;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1;
+}
+
+.fit-youtube-modal-close:hover {
+	background: var(--fit-bg-secondary);
+}
+
+/* YouTube embed container for react-youtube */
+.fit-youtube-embed {
+	position: relative;
+	width: 100%;
+	padding-bottom: 56.25%; /* 16:9 aspect ratio */
+	border-radius: 8px;
+	overflow: hidden;
+	background: #000;
+}
+
+.fit-youtube-player {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.fit-youtube-iframe {
+	width: 100%;
+	height: 100%;
+	border: none;
 }
 
 /* Header action buttons */
@@ -5811,21 +6210,34 @@
 }
 
 /* Skip button in panel */
-.fit-skip-btn-panel {
+/* Panel actions container */
+.fit-panel-actions {
+	display: flex;
+	flex-direction: row;
+	gap: 16px;
+	align-items: center;
+	justify-content: center;
+	padding-top: 8px;
+}
+
+/* Skip and Cancel buttons - seamless text links */
+.fit-skip-btn-panel,
+.fit-cancel-btn-panel {
 	background: transparent;
-	border: 1px solid var(--fit-border);
+	border: none;
 	color: var(--fit-text-muted);
-	padding: 10px 16px;
-	border-radius: var(--fit-border-radius);
+	padding: 8px 12px;
 	font-size: 13px;
 	cursor: pointer;
-	align-self: center;
-	transition: all 0.2s ease;
+	transition: color 0.15s ease;
 }
 
 .fit-skip-btn-panel:hover {
-	background: var(--fit-bg-secondary);
-	color: var(--fit-text-primary);
+	color: var(--fit-text-secondary);
+}
+
+.fit-cancel-btn-panel:hover {
+	color: var(--fit-error);
 }
 
 /* Inline input styles */

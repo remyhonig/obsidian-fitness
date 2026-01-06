@@ -12,9 +12,93 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDomain } from '../contexts';
-import type { ExerciseExecutionView } from '../../../domain/fitness-domain-adapter';
+import type { ExerciseExecutionView, MediaReference } from '../../../domain/fitness-domain-adapter';
 
 type SessionStep = 'workout' | 'reps' | 'rpe' | 'weight';
+
+/**
+ * YouTube media info - can be embeddable (video/shorts) or external (search)
+ */
+interface YouTubeMedia {
+	type: 'youtube-video' | 'youtube-shorts' | 'youtube-search';
+	url: string;
+	videoId?: string;
+	description: string | null;
+}
+
+/**
+ * Extract YouTube media from media references
+ * Priority: 1. Shorts (embeddable), 2. Videos (embeddable), 3. Search (browser)
+ */
+function getYouTubeMedia(media: MediaReference[]): YouTubeMedia | null {
+	// First pass: look for shorts (highest priority - embeddable)
+	for (const m of media) {
+		if (m.type === 'youtube-shorts') {
+			return { type: 'youtube-shorts', url: m.url, videoId: m.videoId, description: m.description };
+		}
+	}
+	// Second pass: look for videos (embeddable)
+	for (const m of media) {
+		if (m.type === 'youtube-video') {
+			return { type: 'youtube-video', url: m.url, videoId: m.videoId, description: m.description };
+		}
+	}
+	// Third pass: look for search (fallback - opens browser)
+	for (const m of media) {
+		if (m.type === 'youtube-search') {
+			return { type: 'youtube-search', url: m.url, description: m.description };
+		}
+	}
+	return null;
+}
+
+/**
+ * Extract image URL from media references
+ */
+function getImageUrl(media: MediaReference[]): { url: string; description: string | null } | null {
+	for (const m of media) {
+		if (m.type === 'image') {
+			return { url: m.url, description: m.description };
+		}
+	}
+	return null;
+}
+
+/**
+ * YouTube button component - badge on thumbnail
+ */
+function YouTubeButton({ onClick }: { onClick: () => void }) {
+	return (
+		<button
+			className="fit-youtube-btn"
+			onClick={(e) => {
+				e.stopPropagation();
+				onClick();
+			}}
+			title="Watch exercise video"
+		>
+			<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+				<path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+			</svg>
+		</button>
+	);
+}
+
+
+/**
+ * Image modal component - fullscreen overlay with exercise image
+ */
+function ImageModal({ url, description, onClose }: { url: string; description: string | null; onClose: () => void }) {
+	return (
+		<div className="fit-image-modal" onClick={onClose}>
+			<div className="fit-image-modal-content" onClick={(e) => e.stopPropagation()}>
+				<button className="fit-image-modal-close" onClick={onClose}>×</button>
+				<img src={url} alt={description || 'Exercise illustration'} />
+				{description && <p className="fit-image-modal-desc">{description}</p>}
+			</div>
+		</div>
+	);
+}
 
 interface PendingSet {
 	reps: number | null;
@@ -37,10 +121,12 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		weight: 0
 	});
 
-	// Timer state
+	// Timer state - calculated from session.restStartTime
 	const [restElapsed, setRestElapsed] = useState(0);
-	const [extraRestTime, setExtraRestTime] = useState(0);
 	const [isSaving, setIsSaving] = useState(false);
+
+	// Extra rest time comes from session state (global)
+	const extraRestTime = session.extraRestTime;
 
 	// Animation state - tracks which set index just completed
 	const [justCompletedSet, setJustCompletedSet] = useState<number | null>(null);
@@ -54,8 +140,25 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 	// Track if we're editing an existing set (null = new set, number = set index being edited)
 	const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null);
 
+	// Image modal state
+	const [showImageModal, setShowImageModal] = useState(false);
+
+	// Viewed exercise index - allows browsing other exercises while tracking active one
+	// Defaults to current active exercise, resets when active changes
+	const [viewedExerciseIndex, setViewedExerciseIndex] = useState(session.currentExerciseIndex);
+
+	// Reset viewed index when active exercise changes (e.g., after completing all sets)
+	useEffect(() => {
+		setViewedExerciseIndex(session.currentExerciseIndex);
+	}, [session.currentExerciseIndex]);
+
 	// Get current exercise from session state
 	const currentExercise = session.exercises[session.currentExerciseIndex];
+
+	// Get viewed exercise (may be different from active when browsing)
+	// Falls back to current exercise if viewed index is somehow invalid
+	const viewedExercise = session.exercises[viewedExerciseIndex] ?? currentExercise;
+	const isViewingActiveExercise = viewedExerciseIndex === session.currentExerciseIndex;
 
 	// Create a stable key that changes when set data changes (not just length)
 	// This ensures execution view recalculates when sets are edited
@@ -71,15 +174,19 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		return adapter.getExecutionView(session.currentExerciseIndex);
 	}, [adapter, session.currentExerciseIndex, setsKey]);
 
-	// Timer effect - counts up every second (only on workout step)
+	// Timer effect - calculates elapsed time from session.restStartTime
 	useEffect(() => {
-		if (sessionStep !== 'workout') return;
+		if (sessionStep !== 'workout' || !session.restStartTime) return;
 
-		const interval = setInterval(() => {
-			setRestElapsed(prev => prev + 1);
-		}, 1000);
+		const updateElapsed = () => {
+			const elapsed = Math.floor((Date.now() - session.restStartTime!) / 1000);
+			setRestElapsed(elapsed);
+		};
+
+		updateElapsed();
+		const interval = setInterval(updateElapsed, 1000);
 		return () => clearInterval(interval);
-	}, [sessionStep]);
+	}, [sessionStep, session.restStartTime]);
 
 	// Format seconds to M:SS
 	const formatTime = (seconds: number): string => {
@@ -143,7 +250,7 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 	const targetRPE = currentExercise?.targetRPE ?? 7;
 
 	// Check if workout is complete
-	if (isSessionComplete() || !currentExercise) {
+	if (isSessionComplete() || !currentExercise || !viewedExercise) {
 		const totalSets = session.exercises.reduce((sum, e) => sum + e.sets.length, 0);
 
 		return (
@@ -215,7 +322,6 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		// Clear animation state after animation completes
 		setTimeout(() => setJustCompletedSet(null), 600);
 
-		setRestElapsed(0);
 		setSessionStep('workout');
 	};
 
@@ -271,10 +377,8 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		}
 	};
 
-	// Handle DONE button - stop set timer, start rest timer, begin input flow
+	// Handle DONE button - begin input flow for logging the set
 	const handleDoneClick = () => {
-		setRestElapsed(0);
-		setExtraRestTime(0);
 		setEditingSetIndex(null);
 		setPendingSet({
 			reps: null,
@@ -354,24 +458,92 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 			const setDuration = isRestComplete ? restElapsed - totalRestTarget : 0;
 			const restProgress = Math.min(100, (restElapsed / totalRestTarget) * 100);
 
+			// Get YouTube media and image for viewed exercise
+			const youtubeMedia = getYouTubeMedia(viewedExercise.media);
+			const imageData = getImageUrl(viewedExercise.media);
+
+			// Handle YouTube button click - always open in browser
+			// (YouTube blocks embeds from Obsidian's app:// origin)
+			const handleYouTubeClick = () => {
+				if (!youtubeMedia) return;
+				window.open(youtubeMedia.url, '_blank');
+			};
+
 			return (
 				<div className="fit-session-screen">
-					<header className="fit-screen-header">
-						<h1>{currentExercise.exercise}</h1>
-						<button className="fit-header-btn-cancel" onClick={handleCancel}>
-							Cancel
+					{/* Image modal */}
+					{showImageModal && imageData && (
+						<ImageModal
+							url={imageData.url}
+							description={imageData.description}
+							onClose={() => setShowImageModal(false)}
+						/>
+					)}
+
+					<header
+						className={`fit-screen-header fit-screen-header-nav ${!isRestComplete && isViewingActiveExercise ? 'fit-header-resting' : ''}`}
+						onClick={!isRestComplete && isViewingActiveExercise ? () => dispatch({ type: 'add_extra_rest', seconds: 15 }) : undefined}
+						style={{
+							'--rest-progress': !isRestComplete && isViewingActiveExercise ? `${restProgress}%` : '0%',
+							cursor: !isRestComplete && isViewingActiveExercise ? 'pointer' : undefined
+						} as React.CSSProperties}
+					>
+						<button
+							className="fit-header-nav-btn"
+							onClick={(e) => { e.stopPropagation(); setViewedExerciseIndex(i => Math.max(0, i - 1)); }}
+							disabled={viewedExerciseIndex === 0}
+						>
+							‹
+						</button>
+						<div
+							className={`fit-exercise-title ${!isViewingActiveExercise ? 'fit-exercise-title-browsing' : ''}`}
+							onClick={(e) => { e.stopPropagation(); setViewedExerciseIndex(session.currentExerciseIndex); }}
+						>
+							<h1>{viewedExercise.exercise}</h1>
+							{!isViewingActiveExercise && (
+								<span className="fit-return-hint">Tap to return to active</span>
+							)}
+							{isViewingActiveExercise && !isRestComplete && (
+								<span className="fit-header-timer">{formatTime(restRemaining)}</span>
+							)}
+						</div>
+						<button
+							className="fit-header-nav-btn"
+							onClick={(e) => { e.stopPropagation(); setViewedExerciseIndex(i => Math.min(session.exercises.length - 1, i + 1)); }}
+							disabled={viewedExerciseIndex === session.exercises.length - 1}
+						>
+							›
 						</button>
 					</header>
 
 					<div className="fit-content">
+						{/* Exercise media row - image and comments */}
+						{(imageData || viewedExercise.note) && (
+							<div className="fit-exercise-media-row">
+								{imageData && (
+									<div
+										className="fit-exercise-preview"
+										onClick={() => setShowImageModal(true)}
+									>
+										<img src={imageData.url} alt={imageData.description || 'Exercise illustration'} />
+										{youtubeMedia && <YouTubeButton onClick={handleYouTubeClick} />}
+									</div>
+								)}
+								{viewedExercise.note && (
+									<p className="fit-exercise-note">{viewedExercise.note}</p>
+								)}
+							</div>
+						)}
+
 						{/* Set cards */}
 						<div className="fit-set-tabs">
-							{Array.from({ length: totalSets }, (_, i) => {
-								const isDone = i < completedSets;
-								const isNext = i === completedSets;
-								const isJustCompleted = i === justCompletedSet;
-								const isSelected = i === effectiveSelectedIndex;
-								const set = currentExercise.sets[i];
+							{Array.from({ length: viewedExercise.targetSets }, (_, i) => {
+								const viewedCompletedSets = viewedExercise.sets.length;
+								const isDone = i < viewedCompletedSets;
+								const isNext = i === viewedCompletedSets && isViewingActiveExercise;
+								const isJustCompleted = i === justCompletedSet && isViewingActiveExercise;
+								const isSelected = i === effectiveSelectedIndex && isViewingActiveExercise;
+								const set = viewedExercise.sets[i];
 								return (
 									<div
 										key={i}
@@ -393,7 +565,7 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 											</div>
 										)}
 										<div className="fit-set-card-header">
-											{isDone && set ? formatWeight(set.weight) : formatWeight(getSuggestedWeightForSet(i))}
+											{isDone && set ? formatWeight(set.weight) : formatWeight(viewedExercise.targetWeight)}
 										</div>
 										{isDone && set ? (
 											<div className="fit-set-card-content">
@@ -404,9 +576,13 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 											</div>
 										) : (
 											<div className="fit-set-card-content">
-												<div className="fit-set-card-main">{repsTarget}</div>
+												<div className="fit-set-card-main">
+													{viewedExercise.targetRepsMin === viewedExercise.targetRepsMax
+														? String(viewedExercise.targetRepsMin)
+														: `${viewedExercise.targetRepsMin}-${viewedExercise.targetRepsMax}`}
+												</div>
 												<div className="fit-set-card-details">
-													RPE {targetRPE}
+													RPE {viewedExercise.targetRPE ?? 7}
 												</div>
 											</div>
 										)}
@@ -415,8 +591,8 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 							})}
 						</div>
 
-						{/* Adjustments panel - show rule or auto-match adjustments for next set */}
-						{executionView && (() => {
+						{/* Adjustments panel - show rule or auto-match adjustments for next set (only for active exercise) */}
+						{isViewingActiveExercise && executionView && (() => {
 							// Get the next pending set's adjustment
 							const nextPendingSet = executionView.sets[completedSets];
 							const adjustment = nextPendingSet?.target.adjustment;
@@ -442,39 +618,22 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 							);
 						})()}
 
-						{/* Rest timer panel */}
-						<div className={`fit-timer-panel ${isRestComplete ? 'complete' : ''}`}>
-							<div
-								className="fit-timer-progress"
-								style={{ width: `${restProgress}%` }}
-							/>
-							<div className="fit-timer-content">
-								{isRestComplete ? (
-									<div className="fit-timer-time">
-										<span className="fit-timer-label">Set time</span>
-										<span className="fit-timer-value">{formatTime(setDuration)}</span>
-									</div>
-								) : (
-									<div className="fit-timer-time">
-										<span className="fit-timer-label">Rest</span>
-										<span className="fit-timer-value">{formatTime(restRemaining)}</span>
-									</div>
-								)}
-								{!isRestComplete && (
-									<button
-										className="fit-timer-add-btn"
-										onClick={() => setExtraRestTime(prev => prev + 30)}
-									>
-										+30s
-									</button>
-								)}
-							</div>
-						</div>
-
 						{/* Detail panel */}
 						<div className="fit-detail-panel">
 							<div className="fit-detail-content">
-								{detailInputMode === 'none' && (
+								{!isViewingActiveExercise ? (
+									<>
+										<p className="fit-detail-hint">
+											{viewedExercise.sets.length}/{viewedExercise.targetSets} sets completed
+										</p>
+										<button
+											className="fit-button-success fit-done-button"
+											onClick={() => setViewedExerciseIndex(session.currentExerciseIndex)}
+										>
+											Return to Active Exercise
+										</button>
+									</>
+								) : detailInputMode === 'none' ? (
 									<>
 										{isSelectedSetNext && (
 											<button
@@ -503,9 +662,9 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 											<p className="fit-detail-hint">Complete earlier sets first</p>
 										)}
 									</>
-								)}
+								) : null}
 
-								{detailInputMode === 'reps' && (
+								{isViewingActiveExercise && detailInputMode === 'reps' && (
 									<div className="fit-inline-input">
 										<h3>How many reps?</h3>
 										<div className="fit-number-grid fit-number-grid-inline">
@@ -526,7 +685,7 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 									</div>
 								)}
 
-								{detailInputMode === 'rpe' && (
+								{isViewingActiveExercise && detailInputMode === 'rpe' && (
 									<div className="fit-inline-input">
 										<h3>RPE?</h3>
 										<div className="fit-number-grid fit-number-grid-inline fit-number-grid-rpe">
@@ -546,7 +705,7 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 									</div>
 								)}
 
-								{detailInputMode === 'weight' && (
+								{isViewingActiveExercise && detailInputMode === 'weight' && (
 									<div className="fit-inline-input">
 										<h3>Weight (kg)</h3>
 										<div className="fit-weight-inline">
@@ -571,10 +730,17 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 								)}
 							</div>
 
-							{/* Skip button at bottom of panel */}
-							<button className="fit-skip-btn-panel" onClick={handleSkipExercise}>
-								Skip Exercise
-							</button>
+							{/* Skip and Cancel buttons at bottom of panel */}
+							{isViewingActiveExercise && (
+								<div className="fit-panel-actions">
+									<button className="fit-skip-btn-panel" onClick={handleSkipExercise}>
+										Skip Exercise
+									</button>
+									<button className="fit-cancel-btn-panel" onClick={handleCancel}>
+										Cancel Workout
+									</button>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>

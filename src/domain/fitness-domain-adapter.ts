@@ -20,10 +20,20 @@ import {
 	type CompiledProgram,
 	type ExerciseExecutionView,
 	type CompletedSetInput,
+	type MediaReference,
 } from 'fitness-dsl';
 
 // Re-export execution view types for UI consumption
-export type { ExerciseExecutionView, ExecutionSet, SetTarget, SetAdjustment } from 'fitness-dsl';
+export type {
+	ExerciseExecutionView,
+	ExecutionSet,
+	SetTarget,
+	SetAdjustment,
+	MediaReference,
+	YouTubeVideoReference,
+	YouTubeShortsReference,
+	YouTubeSearchReference,
+} from 'fitness-dsl';
 
 // Re-export types from fitness-dsl for convenience
 
@@ -54,12 +64,6 @@ export interface ProgramData {
 			condition: string;
 			action: string;
 			timing: 'next_set' | 'next_session' | null;
-		}>;
-		periodization: Array<{
-			weekStart: number;
-			weekEnd: number;
-			phase: string;
-			deloadPercent: number | null;
 		}>;
 	};
 	workouts: Array<{
@@ -145,6 +149,8 @@ export interface SessionExerciseState {
 	targetRPE: number | null;
 	restSeconds: number;
 	sets: CompletedSet[];
+	media: MediaReference[];
+	note: string | null;
 }
 
 export interface SessionState {
@@ -159,6 +165,8 @@ export interface SessionState {
 	startTime: string | null;
 	endTime: string | null;
 	status: 'active' | 'paused' | 'completed';
+	extraRestTime: number; // Extra rest time added by user (in seconds)
+	restStartTime: number | null; // Timestamp (ms) when rest period started
 }
 
 export type UIEvent =
@@ -169,7 +177,8 @@ export type UIEvent =
 	| { type: 'next_exercise' }
 	| { type: 'finish_session' }
 	| { type: 'cancel_session' }
-	| { type: 'navigate'; screen: string };
+	| { type: 'navigate'; screen: string }
+	| { type: 'add_extra_rest'; seconds: number };
 
 /**
  * Adapter that wraps the fitness-dsl parser and provides a clean API
@@ -203,7 +212,9 @@ export class FitnessDomainAdapter {
 			exercises: [],
 			startTime: null,
 			endTime: null,
-			status: 'active'
+			status: 'active',
+			extraRestTime: 0,
+			restStartTime: null
 		};
 	}
 
@@ -306,8 +317,7 @@ export class FitnessDomainAdapter {
 				cyclePattern: program.schedule.cyclePattern
 			},
 			progression: {
-				globalRules: program.progression.globalRules,
-				periodization: program.progression.periodization
+				globalRules: program.progression.globalRules
 			},
 			workouts: program.workouts.map(w => ({
 				name: w.name,
@@ -345,6 +355,9 @@ export class FitnessDomainAdapter {
 
 			case 'complete_set':
 				this.completeSet(event.exercise, event.reps, event.weight, event.rpe, event.restSeconds);
+				// Reset extra rest time and start rest timer when a set is completed
+				this.sessionState.extraRestTime = 0;
+				this.sessionState.restStartTime = Date.now();
 				break;
 
 			case 'update_set':
@@ -354,11 +367,15 @@ export class FitnessDomainAdapter {
 			case 'skip_exercise':
 				this.sessionState.currentExerciseIndex++;
 				this.sessionState.currentSetIndex = 0;
+				this.sessionState.extraRestTime = 0;
+				this.sessionState.restStartTime = Date.now();
 				break;
 
 			case 'next_exercise':
 				this.sessionState.currentExerciseIndex++;
 				this.sessionState.currentSetIndex = 0;
+				this.sessionState.extraRestTime = 0;
+				this.sessionState.restStartTime = Date.now();
 				break;
 
 			case 'finish_session':
@@ -369,6 +386,10 @@ export class FitnessDomainAdapter {
 
 			case 'cancel_session':
 				this.sessionState = this.createEmptySessionState();
+				break;
+
+			case 'add_extra_rest':
+				this.sessionState.extraRestTime += event.seconds;
 				break;
 		}
 
@@ -384,6 +405,9 @@ export class FitnessDomainAdapter {
 
 		// Find workout definition from program
 		const workoutDef = this.programData?.workouts.find(w => w.name === workoutName);
+
+		// Get compiled workout data for media (CompiledProgram has richer ExerciseExport with media)
+		const compiledWorkout = this.compiledProgram?.workouts.get(workoutName);
 
 		// Initialize exercise states from workout definition
 		const exercises: SessionExerciseState[] = workoutDef?.exercises.map(e => {
@@ -405,6 +429,11 @@ export class FitnessDomainAdapter {
 			// Get RPE from intensity if available
 			const targetRPE = e.intensity?.type === 'RPE' ? e.intensity.value : null;
 
+			// Get media and note from compiled program (has richer exercise data)
+			const compiledExercise = compiledWorkout?.exercises.find(ce => ce.name === e.name);
+			const media = compiledExercise?.media ?? [];
+			const note = compiledExercise?.note ?? null;
+
 			return {
 				exercise: e.name,
 				targetSets: e.sets,
@@ -413,7 +442,9 @@ export class FitnessDomainAdapter {
 				targetWeight,
 				targetRPE,
 				restSeconds,
-				sets: []
+				sets: [],
+				media,
+				note
 			};
 		}) ?? [];
 
@@ -428,7 +459,9 @@ export class FitnessDomainAdapter {
 			exercises,
 			startTime,
 			endTime: null,
-			status: 'active'
+			status: 'active',
+			extraRestTime: 0,
+			restStartTime: Date.now()
 		};
 	}
 
@@ -449,7 +482,9 @@ export class FitnessDomainAdapter {
 				targetWeight: null,
 				targetRPE: null,
 				restSeconds: 120,
-				sets: []
+				sets: [],
+				media: [],
+				note: null
 			};
 			this.sessionState.exercises.push(exerciseState);
 		}
