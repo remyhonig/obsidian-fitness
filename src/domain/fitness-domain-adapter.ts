@@ -178,7 +178,8 @@ export type UIEvent =
 	| { type: 'finish_session' }
 	| { type: 'cancel_session' }
 	| { type: 'navigate'; screen: string }
-	| { type: 'add_extra_rest'; seconds: number };
+	| { type: 'add_extra_rest'; seconds: number }
+	| { type: 'start_rest_timer' };
 
 /**
  * Adapter that wraps the fitness-dsl parser and provides a clean API
@@ -357,9 +358,9 @@ export class FitnessDomainAdapter {
 
 			case 'complete_set':
 				this.completeSet(event.exercise, event.reps, event.weight, event.rpe, event.restSeconds);
-				// Reset extra rest time and start rest timer when a set is completed
+				// Reset extra rest time when a set is completed
+				// Note: restStartTime is set by start_rest_timer when user clicks DONE
 				this.sessionState.extraRestTime = 0;
-				this.sessionState.restStartTime = Date.now();
 				break;
 
 			case 'update_set':
@@ -392,6 +393,12 @@ export class FitnessDomainAdapter {
 
 			case 'add_extra_rest':
 				this.sessionState.extraRestTime += event.seconds;
+				break;
+
+			case 'start_rest_timer':
+				// Start rest timer immediately (when user clicks DONE)
+				this.sessionState.extraRestTime = 0;
+				this.sessionState.restStartTime = Date.now();
 				break;
 		}
 

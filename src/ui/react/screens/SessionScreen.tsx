@@ -379,6 +379,9 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 
 	// Handle DONE button - begin input flow for logging the set
 	const handleDoneClick = () => {
+		// Start rest timer immediately when user clicks DONE
+		dispatch({ type: 'start_rest_timer' });
+
 		setEditingSetIndex(null);
 		setPendingSet({
 			reps: null,
