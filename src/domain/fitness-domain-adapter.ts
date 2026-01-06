@@ -17,10 +17,14 @@ import {
 	parseProgram as parseFitnessDSL,
 	compileProgramFromString,
 	generateExecutionView,
+	evaluateSession,
 	type CompiledProgram,
 	type ExerciseExecutionView,
 	type CompletedSetInput,
 	type MediaReference,
+	type ChangeReport,
+	type ExerciseTarget,
+	type SessionResults,
 } from 'fitness-dsl';
 
 // Re-export execution view types for UI consumption
@@ -182,6 +186,23 @@ export type UIEvent =
 	| { type: 'start_rest_timer' };
 
 /**
+ * Result of evaluating exercise completion for summary display
+ */
+export interface ExerciseCompletionResult {
+	exerciseName: string;
+	nextTarget: {
+		sets: number;
+		reps: string;  // e.g., "8-10"
+		weight: string;
+		rpe: number | null;
+	};
+	adjustment: {
+		change: string;   // e.g., "-5kg"
+		reason: string;   // e.g., "Too heavy man!"
+	} | null;
+}
+
+/**
  * Adapter that wraps the fitness-dsl parser and provides a clean API
  * for the Obsidian plugin UI
  */
@@ -289,16 +310,11 @@ export class FitnessDomainAdapter {
 				exercises: this.compiledProgram.exercises.length,
 				globalRules: this.compiledProgram.globalRules.length,
 				globalRulesDetail: this.compiledProgram.globalRules.map(r => ({
-					condition: r.condition,
-					action: r.action,
+					conditionTerms: r.condition.terms,
+					effect: r.effect,
 					timing: r.timing,
-					hasIR: !!r.ir,
-					ir: r.ir ? {
-						conditionTerms: r.ir.condition.terms,
-						effect: r.ir.effect,
-						timing: r.ir.timing,
-						sourceText: r.ir.sourceText,
-					} : null,
+					sourceText: r.sourceText,
+					description: r.description,
 				})),
 			});
 		} catch (e) {
@@ -511,15 +527,9 @@ export class FitnessDomainAdapter {
 
 		this.sessionState.currentSetIndex = setNumber;
 
-		// Check if all sets for this exercise are complete
-		if (setNumber >= exerciseState.targetSets) {
-			// Move to next exercise
-			const currentIdx = this.sessionState.exercises.findIndex(e => e.exercise === exercise);
-			if (currentIdx >= 0 && currentIdx < this.sessionState.exercises.length - 1) {
-				this.sessionState.currentExerciseIndex = currentIdx + 1;
-				this.sessionState.currentSetIndex = 0;
-			}
-		}
+		// Note: Auto-advance to next exercise has been removed.
+		// The UI now controls when to advance via dispatch({ type: 'next_exercise' })
+		// after showing the exercise completion summary.
 	}
 
 	/**
@@ -744,19 +754,18 @@ export class FitnessDomainAdapter {
 		console.log('[FitnessDomainAdapter] getExecutionView INPUT:', {
 			exercise: exerciseTarget.name,
 			exerciseTarget: {
-				sets: exerciseTarget.sets,
-				minReps: exerciseTarget.minReps,
-				maxReps: exerciseTarget.maxReps,
+				setScheme: exerciseTarget.setScheme,
 				weight: exerciseTarget.weight,
 				targetRPE: exerciseTarget.targetRPE,
-				autoregulationIR: exerciseTarget.autoregulationIR,
+				autoregulation: exerciseTarget.autoregulation,
 			},
 			completedSets,
 			globalRulesCount: this.compiledProgram.globalRules.length,
 			globalRulesWithNextSet: this.compiledProgram.globalRules.filter(r => r.timing === 'next_set').length,
-			globalRulesWithIR: this.compiledProgram.globalRules.filter(r => r.ir && r.timing === 'next_set').map(r => ({
+			globalRulesNextSetDetail: this.compiledProgram.globalRules.filter(r => r.timing === 'next_set').map(r => ({
 				timing: r.timing,
-				ir: r.ir,
+				sourceText: r.sourceText,
+				effect: r.effect,
 			})),
 		});
 
@@ -779,5 +788,99 @@ export class FitnessDomainAdapter {
 		});
 
 		return executionView;
+	}
+
+	/**
+	 * Evaluate what adjustments (if any) apply to the next session after completing an exercise.
+	 * Used to display a summary after the last set of an exercise.
+	 */
+	evaluateExerciseCompletion(exerciseIndex: number): ExerciseCompletionResult {
+		const exerciseState = this.sessionState.exercises[exerciseIndex];
+		if (!exerciseState || !this.compiledProgram) {
+			return {
+				exerciseName: exerciseState?.exercise ?? 'Unknown',
+				nextTarget: {
+					sets: 0,
+					reps: '0',
+					weight: '0kg',
+					rpe: null,
+				},
+				adjustment: null,
+			};
+		}
+
+		// Find the compiled exercise target
+		const exerciseTarget = this.compiledProgram.exercises.find(
+			e => e.name === exerciseState.exercise && e.workout === this.sessionState.workout
+		);
+
+		// Build SessionResults from completed sets
+		const sessionDate = (this.sessionState.date || new Date().toISOString().split('T')[0]) as string;
+		const sessionWorkout = (this.sessionState.workout || '') as string;
+		const sessionResults: SessionResults = {
+			date: sessionDate,
+			workout: sessionWorkout,
+			exercise: exerciseState.exercise,
+			sets: exerciseState.sets.map(s => ({
+				datetime: `${sessionDate} 00:00`,
+				workout: sessionWorkout,
+				exercise: exerciseState.exercise,
+				reps: s.reps,
+				weight: s.weight === 0 ? 'bodyweight' : `${s.weight}kg`,
+				rpe: s.rpe,
+			})),
+		};
+
+		// Default next target (same as current if no rules fire)
+		const defaultTarget = {
+			sets: exerciseState.targetSets,
+			reps: exerciseState.targetRepsMin === exerciseState.targetRepsMax
+				? String(exerciseState.targetRepsMin)
+				: `${exerciseState.targetRepsMin}-${exerciseState.targetRepsMax}`,
+			weight: exerciseState.targetWeight === null || exerciseState.targetWeight === 0
+				? 'bodyweight'
+				: `${exerciseState.targetWeight}kg`,
+			rpe: exerciseState.targetRPE,
+		};
+
+		if (!exerciseTarget) {
+			return {
+				exerciseName: exerciseState.exercise,
+				nextTarget: defaultTarget,
+				adjustment: null,
+			};
+		}
+
+		// Evaluate session with fitness-dsl
+		const changeReport = evaluateSession(
+			sessionResults,
+			exerciseTarget as ExerciseTarget,
+			this.compiledProgram.globalRules,
+			[sessionResults] // allSessions - just current for now
+		);
+
+		if (!changeReport || changeReport.timing === 'next_set') {
+			// No rule fired or it was a next_set rule (already applied)
+			return {
+				exerciseName: exerciseState.exercise,
+				nextTarget: defaultTarget,
+				adjustment: null,
+			};
+		}
+
+		// Rule fired - return the adjustment info
+		return {
+			exerciseName: exerciseState.exercise,
+			nextTarget: {
+				sets: changeReport.after.sets,
+				reps: changeReport.after.reps,
+				weight: changeReport.after.weight,
+				rpe: changeReport.after.rpe,
+			},
+			adjustment: {
+				change: changeReport.change,
+				reason: changeReport.reason,
+			},
+		};
 	}
 }

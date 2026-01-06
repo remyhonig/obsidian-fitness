@@ -143,6 +143,15 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 	// Image modal state
 	const [showImageModal, setShowImageModal] = useState(false);
 
+	// Exercise completion summary state
+	const [exerciseSummary, setExerciseSummary] = useState<{
+		exerciseName: string;
+		exerciseIndex: number;
+		completedSets: Array<{ reps: number; weight: number; rpe: number }>;
+		nextTarget: { sets: number; reps: string; weight: string; rpe: number | null };
+		adjustment: { change: string; reason: string } | null;
+	} | null>(null);
+
 	// Viewed exercise index - allows browsing other exercises while tracking active one
 	// Defaults to current active exercise, resets when active changes
 	const [viewedExerciseIndex, setViewedExerciseIndex] = useState(session.currentExerciseIndex);
@@ -432,8 +441,8 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 			setEditingSetIndex(null);
 		} else {
 			// Completing a new set
-			const completingSetIndex = currentExercise.sets.length;
-			setJustCompletedSet(completingSetIndex);
+			// Check if this completes the exercise (before dispatch, sets.length is current count)
+			const isLastSet = currentExercise.sets.length + 1 >= currentExercise.targetSets;
 
 			dispatch({
 				type: 'complete_set',
@@ -444,12 +453,112 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 				restSeconds: restElapsed
 			});
 
-			setTimeout(() => setJustCompletedSet(null), 600);
+			if (isLastSet) {
+				// Show summary instead of auto-advancing
+				const result = adapter.evaluateExerciseCompletion(session.currentExerciseIndex);
+				setExerciseSummary({
+					exerciseName: currentExercise.exercise,
+					exerciseIndex: session.currentExerciseIndex,
+					// Include the just-completed set (state not updated yet)
+					completedSets: [...currentExercise.sets, {
+						reps: pendingSet.reps,
+						weight: pendingSet.weight,
+						rpe: pendingSet.rpe
+					}],
+					nextTarget: result.nextTarget,
+					adjustment: result.adjustment,
+				});
+			} else {
+				// Animation for mid-exercise set
+				const completingSetIndex = currentExercise.sets.length;
+				setJustCompletedSet(completingSetIndex);
+				setTimeout(() => setJustCompletedSet(null), 600);
+			}
 		}
 
 		setDetailInputMode('none');
 		setSelectedSetIndex(null); // Will default to next set
 	};
+
+	// Show exercise completion summary if set
+	if (exerciseSummary) {
+		// Calculate timer display for header
+		const totalRestTarget = currentExercise?.restSeconds ?? 120;
+		const summaryRestElapsed = session.restStartTime
+			? Math.floor((Date.now() - session.restStartTime) / 1000)
+			: 0;
+		const summaryRestRemaining = Math.max(0, totalRestTarget - summaryRestElapsed);
+		const isRestComplete = summaryRestElapsed >= totalRestTarget;
+
+		return (
+			<div className="fit-session-screen">
+				<header className="fit-screen-header">
+					<h1>Exercise Complete</h1>
+					{!isRestComplete && (
+						<span className="fit-header-timer">{formatTime(summaryRestRemaining)}</span>
+					)}
+					{isRestComplete && (
+						<span className="fit-header-timer fit-header-timer-overage">
+							{formatTime(summaryRestElapsed - totalRestTarget)}
+						</span>
+					)}
+				</header>
+
+				<div className="fit-content">
+					<div className="fit-exercise-summary">
+						<h2>{exerciseSummary.exerciseName}</h2>
+
+						{/* Completed sets recap */}
+						<div className="fit-summary-section">
+							<h3>Completed</h3>
+							<div className="fit-summary-sets">
+								{exerciseSummary.completedSets.map((set, i) => (
+									<span key={i} className="fit-summary-set-chip">
+										{set.reps} × {set.weight === 0 ? 'BW' : `${set.weight}kg`}
+									</span>
+								))}
+							</div>
+						</div>
+
+						{/* Next session target */}
+						<div className="fit-summary-section">
+							<h3>Next Session</h3>
+							<div className="fit-summary-next-target">
+								<span className="fit-summary-target-main">
+									{exerciseSummary.nextTarget.sets} × {exerciseSummary.nextTarget.reps} @ {exerciseSummary.nextTarget.weight}
+								</span>
+								{exerciseSummary.nextTarget.rpe && (
+									<span className="fit-summary-target-rpe">RPE {exerciseSummary.nextTarget.rpe}</span>
+								)}
+							</div>
+						</div>
+
+						{/* Adjustment (if rule fired) */}
+						{exerciseSummary.adjustment && (
+							<div className="fit-summary-adjustment">
+								<span className="fit-adjustment-icon">⚡</span>
+								<div className="fit-adjustment-content">
+									<span className="fit-adjustment-change">{exerciseSummary.adjustment.change}</span>
+									<span className="fit-adjustment-reason">{exerciseSummary.adjustment.reason}</span>
+								</div>
+							</div>
+						)}
+
+						{/* Continue button */}
+						<button
+							className="fit-button-success fit-log-set-button"
+							onClick={() => {
+								dispatch({ type: 'next_exercise' });
+								setExerciseSummary(null);
+							}}
+						>
+							Continue to Next Exercise
+						</button>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
 	// Render based on current step
 	switch (sessionStep) {
