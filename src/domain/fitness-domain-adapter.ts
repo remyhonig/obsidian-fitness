@@ -189,6 +189,7 @@ export class FitnessDomainAdapter {
 	private basePath: string;
 	private programData: ProgramData | null = null;
 	private compiledProgram: CompiledProgram | null = null;
+	private programMarkdown: string | null = null;
 	private sessionState: SessionState;
 
 	constructor(app: App, basePath: string = 'Fitness') {
@@ -262,6 +263,7 @@ export class FitnessDomainAdapter {
 		}
 
 		const content = await this.app.vault.read(file);
+		this.programMarkdown = content; // Store for debug export
 		this.programData = await this.parseProgram(content);
 		return this.programData;
 	}
@@ -533,6 +535,13 @@ export class FitnessDomainAdapter {
 	 */
 	getProgram(): ProgramData | null {
 		return this.programData;
+	}
+
+	/**
+	 * Get raw program markdown (for debug export)
+	 */
+	getProgramMarkdown(): string | null {
+		return this.programMarkdown;
 	}
 
 	/**

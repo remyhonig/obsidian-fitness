@@ -506,6 +506,9 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 							{isViewingActiveExercise && !isRestComplete && (
 								<span className="fit-header-timer">{formatTime(restRemaining)}</span>
 							)}
+							{isViewingActiveExercise && isRestComplete && (
+								<span className="fit-header-timer fit-header-timer-overage">{formatTime(setDuration)}</span>
+							)}
 						</div>
 						<button
 							className="fit-header-nav-btn"

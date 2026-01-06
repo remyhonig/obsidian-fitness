@@ -8,8 +8,10 @@
  * - Screen rendering
  */
 
-import React, { useState, useEffect } from 'react';
-import { App as ObsidianApp } from 'obsidian';
+import React, { useState, useEffect, useCallback } from 'react';
+import { App as ObsidianApp, Notice } from 'obsidian';
+import { compileProgramFromString, dumpFullStateAsJSON } from 'fitness-dsl';
+import type { SetResult } from 'fitness-dsl';
 import type MainPlugin from '../../main';
 import { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
 import { AppProvider, PluginProvider, DomainProvider, useDomain } from './contexts';
@@ -130,9 +132,10 @@ function SessionBanner({ onClick }: SessionBannerProps) {
 	const isResting = restElapsed < restTarget;
 	const restProgress = Math.min(100, (restElapsed / restTarget) * 100);
 
-	// Show rest remaining if resting, otherwise show "Ready"
+	// Show rest remaining if resting, otherwise show overage time
 	const restRemaining = Math.max(0, restTarget - restElapsed);
-	const timeDisplay = isResting ? formatTime(restRemaining) : 'Ready!';
+	const overageTime = restElapsed - restTarget;
+	const timeDisplay = isResting ? formatTime(restRemaining) : formatTime(overageTime);
 
 	return (
 		<div
@@ -151,6 +154,69 @@ export function App({ app, plugin }: AppProps) {
 	const [currentScreen, setCurrentScreen] = useState<ScreenType>('home');
 	const [screenParams, setScreenParams] = useState<ScreenParams>({});
 	const [navigationStack, setNavigationStack] = useState<Array<{ screen: ScreenType; params: ScreenParams }>>([]);
+
+	// Copy program state to clipboard (for debugging)
+	const copyProgramState = useCallback(async () => {
+		try {
+			const programMarkdown = adapter.getProgramMarkdown();
+			if (!programMarkdown) {
+				new Notice('No program loaded');
+				return;
+			}
+
+			const program = compileProgramFromString(programMarkdown);
+			const session = adapter.getSessionState();
+
+			// Convert current session to SetResult[] format
+			// Each completed set becomes a separate SetResult entry
+			const sessionResults: SetResult[] = [];
+			if (session.isActive) {
+				const date = session.date ?? new Date().toISOString().split('T')[0];
+				const workout = session.workout ?? '';
+
+				for (const ex of session.exercises) {
+					// All sets in session.exercises are completed (logged) sets
+					for (const set of ex.sets) {
+						sessionResults.push({
+							datetime: `${date} ${new Date().toTimeString().slice(0, 5)}`,
+							workout,
+							exercise: ex.exercise,
+							reps: set.reps,
+							weight: set.weight === 0 ? 'bodyweight' : `${set.weight}kg`,
+							rpe: set.rpe ?? 0
+						});
+					}
+				}
+			}
+
+			const stateDump = dumpFullStateAsJSON(program, { sessionResults });
+
+			await navigator.clipboard.writeText(stateDump);
+			new Notice('Program state copied to clipboard');
+
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : 'Unknown error';
+			new Notice(`Failed to copy: ${msg}`);
+			console.error('Copy program state error:', error);
+		}
+	}, [adapter]);
+
+	// Keyboard shortcut: 'C' to copy program state
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			// Only 'c' key, not Cmd+C or Ctrl+C (preserve normal copy)
+			if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+				// Don't trigger if user is typing in an input
+				if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+					return;
+				}
+				void copyProgramState();
+			}
+		};
+
+		document.addEventListener('keydown', handleKeyDown);
+		return () => document.removeEventListener('keydown', handleKeyDown);
+	}, [copyProgramState]);
 
 	// Determine which tab is active based on current screen
 	const getActiveTab = (): TabType => {
