@@ -444,34 +444,47 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 			// Check if this completes the exercise (before dispatch, sets.length is current count)
 			const isLastSet = currentExercise.sets.length + 1 >= currentExercise.targetSets;
 
+			// Capture values for use in setTimeout (they're validated non-null above)
+			const completedReps = pendingSet.reps;
+			const completedWeight = pendingSet.weight;
+			const completedRpe = pendingSet.rpe;
+			const exerciseIndexForSummary = session.currentExerciseIndex;
+			const exerciseNameForSummary = currentExercise.exercise;
+			const existingSets = [...currentExercise.sets];
+
 			dispatch({
 				type: 'complete_set',
 				exercise: currentExercise.exercise,
-				reps: pendingSet.reps,
-				weight: pendingSet.weight,
-				rpe: pendingSet.rpe,
+				reps: completedReps,
+				weight: completedWeight,
+				rpe: completedRpe,
 				restSeconds: restElapsed
 			});
 
+			// Always show animation for completed set
+			const completingSetIndex = currentExercise.sets.length;
+			setJustCompletedSet(completingSetIndex);
+
 			if (isLastSet) {
-				// Show summary instead of auto-advancing
-				const result = adapter.evaluateExerciseCompletion(session.currentExerciseIndex);
-				setExerciseSummary({
-					exerciseName: currentExercise.exercise,
-					exerciseIndex: session.currentExerciseIndex,
-					// Include the just-completed set (state not updated yet)
-					completedSets: [...currentExercise.sets, {
-						reps: pendingSet.reps,
-						weight: pendingSet.weight,
-						rpe: pendingSet.rpe
-					}],
-					nextTarget: result.nextTarget,
-					adjustment: result.adjustment,
-				});
+				// Show summary after animation completes
+				setTimeout(() => {
+					setJustCompletedSet(null);
+					const result = adapter.evaluateExerciseCompletion(exerciseIndexForSummary);
+					setExerciseSummary({
+						exerciseName: exerciseNameForSummary,
+						exerciseIndex: exerciseIndexForSummary,
+						// Include the just-completed set
+						completedSets: [...existingSets, {
+							reps: completedReps,
+							weight: completedWeight,
+							rpe: completedRpe
+						}],
+						nextTarget: result.nextTarget,
+						adjustment: result.adjustment,
+					});
+				}, 600);
 			} else {
-				// Animation for mid-exercise set
-				const completingSetIndex = currentExercise.sets.length;
-				setJustCompletedSet(completingSetIndex);
+				// Clear animation after it completes
 				setTimeout(() => setJustCompletedSet(null), 600);
 			}
 		}
