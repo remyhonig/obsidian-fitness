@@ -55,6 +55,7 @@ interface DomainContextValue {
 	program: ProgramData | null;
 	session: SessionState;
 	loadProgram: (path: string) => Promise<void>;
+	loadProgramWithTMs: (path: string, trainingMaxes?: Array<{ exercise: string; value: number; unit: 'kg' | 'lbs' }>) => Promise<void>;
 	clearProgram: () => void;
 	dispatch: (event: any) => void;
 	saveSession: () => Promise<string | null>;
@@ -76,6 +77,14 @@ export function DomainProvider({
 
 	const loadProgram = async (path: string) => {
 		const programData = await adapter.loadProgram(path);
+		setProgram(programData);
+	};
+
+	const loadProgramWithTMs = async (
+		path: string,
+		trainingMaxes?: Array<{ exercise: string; value: number; unit: 'kg' | 'lbs' }>
+	) => {
+		const programData = await adapter.loadProgramWithTMs(path, trainingMaxes);
 		setProgram(programData);
 	};
 
@@ -103,6 +112,7 @@ export function DomainProvider({
 		program,
 		session,
 		loadProgram,
+		loadProgramWithTMs,
 		clearProgram,
 		dispatch,
 		saveSession,

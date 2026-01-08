@@ -1,19 +1,22 @@
 /**
  * HistoryScreen Component
  *
- * Displays past workout sessions grouped by time period.
- * Loads sessions from markdown files in the Sessions folder.
+ * Displays past workout sessions with a calendar view.
+ * Shows monthly stats, calendar with workout indicators,
+ * and scrollable session cards below.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { TFile } from 'obsidian';
-import { useApp, useDomain } from '../contexts';
+import { useApp } from '../contexts';
 
 interface SessionSummary {
 	id: string;
 	date: string;
 	workout: string;
 	path: string;
+	exerciseCount?: number;
+	duration?: number; // in seconds
 }
 
 interface HistoryScreenProps {
@@ -23,9 +26,13 @@ interface HistoryScreenProps {
 
 export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps) {
 	const app = useApp();
-	const { adapter } = useDomain();
 	const [sessions, setSessions] = useState<SessionSummary[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [currentMonth, setCurrentMonth] = useState(() => {
+		const now = new Date();
+		return { year: now.getFullYear(), month: now.getMonth() };
+	});
+	const sessionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
 	useEffect(() => {
 		loadSessions();
@@ -35,7 +42,6 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 		setLoading(true);
 		const sessionsPath = 'Fitness/Sessions';
 
-		// Get all markdown files in Sessions folder
 		const folder = app.vault.getAbstractFileByPath(sessionsPath);
 		if (!folder) {
 			setLoading(false);
@@ -44,19 +50,22 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 
 		const files = app.vault.getMarkdownFiles()
 			.filter(f => f.path.startsWith(sessionsPath + '/'))
-			.sort((a, b) => b.stat.mtime - a.stat.mtime); // Most recent first
+			.sort((a, b) => b.stat.mtime - a.stat.mtime);
 
 		const sessionList: SessionSummary[] = [];
 
 		for (const file of files) {
 			const content = await app.vault.read(file);
 			const metadata = parseYamlFrontmatter(content);
+			const stats = parseSessionStats(content);
 
 			sessionList.push({
 				id: file.basename,
 				date: metadata.date || file.basename.substring(0, 10),
 				workout: extractWorkoutName(metadata.workout) || 'Unknown Workout',
-				path: file.path
+				path: file.path,
+				exerciseCount: stats.exerciseCount,
+				duration: stats.duration
 			});
 		}
 
@@ -64,55 +73,207 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 		setLoading(false);
 	};
 
-	// Group sessions by time period
-	const groupedSessions = groupByTimePeriod(sessions);
+	// Create a map of dates with workouts
+	const workoutDates = useMemo(() => {
+		const dates = new Map<string, SessionSummary[]>();
+		for (const session of sessions) {
+			const dateKey = session.date;
+			if (!dates.has(dateKey)) {
+				dates.set(dateKey, []);
+			}
+			dates.get(dateKey)!.push(session);
+		}
+		return dates;
+	}, [sessions]);
+
+	// Get sessions for current month (for the list below calendar)
+	const currentMonthSessions = useMemo(() => {
+		const monthStart = new Date(currentMonth.year, currentMonth.month, 1);
+		const monthEnd = new Date(currentMonth.year, currentMonth.month + 1, 0);
+
+		return sessions.filter(s => {
+			const date = new Date(s.date + 'T00:00:00');
+			return date >= monthStart && date <= monthEnd;
+		}).sort((a, b) => b.date.localeCompare(a.date));
+	}, [sessions, currentMonth]);
+
+	// Generate calendar days
+	const calendarDays = useMemo(() => {
+		const year = currentMonth.year;
+		const month = currentMonth.month;
+
+		const firstDay = new Date(year, month, 1);
+		const lastDay = new Date(year, month + 1, 0);
+		const daysInMonth = lastDay.getDate();
+
+		// Get day of week for first day (0 = Sunday)
+		let startDayOfWeek = firstDay.getDay();
+		// Convert to Monday start (0 = Monday)
+		startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+
+		const days: Array<{ day: number | null; date: string | null; hasWorkout: boolean }> = [];
+
+		// Add empty cells for days before the first
+		for (let i = 0; i < startDayOfWeek; i++) {
+			days.push({ day: null, date: null, hasWorkout: false });
+		}
+
+		// Add days of the month
+		for (let day = 1; day <= daysInMonth; day++) {
+			const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+			days.push({
+				day,
+				date: dateStr,
+				hasWorkout: workoutDates.has(dateStr)
+			});
+		}
+
+		return days;
+	}, [currentMonth, workoutDates]);
+
+	// Navigate months
+	const goToPrevMonth = () => {
+		setCurrentMonth(prev => {
+			if (prev.month === 0) {
+				return { year: prev.year - 1, month: 11 };
+			}
+			return { year: prev.year, month: prev.month - 1 };
+		});
+	};
+
+	const goToNextMonth = () => {
+		setCurrentMonth(prev => {
+			if (prev.month === 11) {
+				return { year: prev.year + 1, month: 0 };
+			}
+			return { year: prev.year, month: prev.month + 1 };
+		});
+	};
+
+	// Handle day click - scroll to session
+	const handleDayClick = (dateStr: string | null) => {
+		if (!dateStr) return;
+		const ref = sessionRefs.current.get(dateStr);
+		if (ref) {
+			ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		}
+	};
+
+	// Format duration
+	const formatDuration = (seconds: number): string => {
+		const hours = Math.floor(seconds / 3600);
+		const mins = Math.floor((seconds % 3600) / 60);
+		const secs = seconds % 60;
+
+		if (hours > 0) {
+			return `${hours}h ${mins}m`;
+		}
+		return `${mins}m ${secs}s`;
+	};
+
+	// Get month name
+	const monthName = new Date(currentMonth.year, currentMonth.month).toLocaleDateString(undefined, {
+		month: 'long',
+		year: 'numeric'
+	});
+
+	// Check if viewing current month
+	const today = new Date();
+	const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+	const isCurrentMonth = currentMonth.year === today.getFullYear() && currentMonth.month === today.getMonth();
+
+	// Go to current month
+	const goToCurrentMonth = () => {
+		setCurrentMonth({ year: today.getFullYear(), month: today.getMonth() });
+	};
 
 	return (
 		<div className="fit-history-screen">
 			<header className="fit-screen-header">
-				{!isTab && <button onClick={() => onNavigate('home')}>← Back</button>}
-				<h1>History</h1>
-				{!isTab && <div style={{ width: 44 }} />}
+				<button className="fit-header-nav" onClick={goToPrevMonth}>‹</button>
+				<div className="fit-header-title" onClick={!isCurrentMonth ? goToCurrentMonth : undefined}>
+					<h1>{monthName}</h1>
+					{!isCurrentMonth && (
+						<span className="fit-return-hint">Tap to return to current month</span>
+					)}
+				</div>
+				<button className="fit-header-nav" onClick={goToNextMonth}>›</button>
 			</header>
 
 			<div className="fit-content">
 				{loading ? (
 					<div className="fit-loading">Loading sessions...</div>
-				) : sessions.length === 0 ? (
-					<div className="fit-empty-state">
-						<p>No workout history yet.</p>
-						<p>Complete your first workout to see it here!</p>
-					</div>
 				) : (
-					<div className="fit-history-sections">
-						{Array.from(groupedSessions.entries()).map(([period, periodSessions]) => (
-							<section key={period} className="fit-history-section">
-								<h2 className="fit-section-title">{period}</h2>
-								<div className="fit-session-list">
-									{periodSessions.map((session) => (
-										<div
-											key={session.id}
-											className="fit-session-card"
-											onClick={() => {
-												// Open the session file in Obsidian
-												const file = app.vault.getAbstractFileByPath(session.path);
-												if (file instanceof TFile) {
-													void app.workspace.getLeaf().openFile(file);
-												}
-											}}
-										>
-											<div className="fit-session-card-date">
-												{formatDate(session.date)}
-											</div>
-											<div className="fit-session-card-workout">
-												{session.workout}
-											</div>
+					<>
+						{/* Calendar */}
+						<div className="fit-calendar">
+							<div className="fit-calendar-weekdays">
+								{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+									<div key={day} className="fit-calendar-weekday">{day}</div>
+								))}
+							</div>
+
+							<div className="fit-calendar-grid">
+								{calendarDays.map((dayInfo, index) => (
+									<div
+										key={index}
+										className={`fit-calendar-day ${dayInfo.day === null ? 'empty' : ''} ${dayInfo.hasWorkout ? 'has-workout' : ''} ${dayInfo.date === todayStr ? 'today' : ''}`}
+										onClick={() => dayInfo.hasWorkout && handleDayClick(dayInfo.date)}
+									>
+										{dayInfo.day !== null && (
+											<>
+												<span className="fit-day-number">{dayInfo.day}</span>
+												{dayInfo.hasWorkout && <span className="fit-day-dot" />}
+											</>
+										)}
+									</div>
+								))}
+							</div>
+						</div>
+
+						{/* Session Cards */}
+						{sessions.length === 0 ? (
+							<div className="fit-empty-state">
+								<p>No workout history yet.</p>
+								<p>Complete your first workout to see it here!</p>
+							</div>
+						) : currentMonthSessions.length === 0 ? (
+							<div className="fit-empty-state">
+								<p>No workouts this month.</p>
+							</div>
+						) : (
+							<div className="fit-session-list">
+								{currentMonthSessions.map((session) => (
+									<div
+										key={session.id}
+										ref={(el) => {
+											if (el) sessionRefs.current.set(session.date, el);
+										}}
+										className="fit-session-card fit-session-card-detailed"
+										onClick={() => {
+											const file = app.vault.getAbstractFileByPath(session.path);
+											if (file instanceof TFile) {
+												void app.workspace.getLeaf().openFile(file);
+											}
+										}}
+									>
+										<div className="fit-session-card-header">
+											<span className="fit-session-card-workout">{session.workout}</span>
+											<span className="fit-session-card-date">{formatDateShort(session.date)}</span>
 										</div>
-									))}
-								</div>
-							</section>
-						))}
-					</div>
+										<div className="fit-session-card-meta">
+											{session.exerciseCount !== undefined && (
+												<span>{session.exerciseCount} exercises</span>
+											)}
+											{session.duration !== undefined && session.duration > 0 && (
+												<span>{formatDuration(session.duration)}</span>
+											)}
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</>
 				)}
 			</div>
 		</div>
@@ -134,7 +295,6 @@ function parseYamlFrontmatter(content: string): Record<string, string> {
 		if (colonIndex > 0) {
 			const key = line.substring(0, colonIndex).trim();
 			let value = line.substring(colonIndex + 1).trim();
-			// Remove quotes if present
 			if ((value.startsWith('"') && value.endsWith('"')) ||
 				(value.startsWith("'") && value.endsWith("'"))) {
 				value = value.slice(1, -1);
@@ -147,13 +307,29 @@ function parseYamlFrontmatter(content: string): Record<string, string> {
 }
 
 /**
+ * Parse session stats from markdown content
+ */
+function parseSessionStats(content: string): { exerciseCount: number; duration: number } {
+	// Count exercise headings (## Exercise Name)
+	const exerciseMatches = content.match(/^## [^#\n]+$/gm);
+	const exerciseCount = exerciseMatches?.length ?? 0;
+
+	// Try to parse duration from metadata or content
+	let duration = 0;
+	const durationMatch = content.match(/duration:\s*(\d+)/i);
+	if (durationMatch?.[1]) {
+		duration = parseInt(durationMatch[1], 10);
+	}
+
+	return { exerciseCount, duration };
+}
+
+/**
  * Extract workout name from potential wikilink format
- * e.g., "[[Programs/my-program#Push Day]]" -> "Push Day"
  */
 function extractWorkoutName(workout: string | undefined): string | null {
 	if (!workout) return null;
 
-	// Check for wikilink format
 	const wikiMatch = workout.match(/\[\[.*?#(.*?)\]\]/);
 	if (wikiMatch && wikiMatch[1]) {
 		return wikiMatch[1];
@@ -163,61 +339,13 @@ function extractWorkoutName(workout: string | undefined): string | null {
 }
 
 /**
- * Group sessions by time period (This week, Last week, by month)
+ * Format date for short display (M/D/YYYY)
  */
-function groupByTimePeriod(sessions: SessionSummary[]): Map<string, SessionSummary[]> {
-	const groups = new Map<string, SessionSummary[]>();
-	const today = new Date();
-	const startOfWeek = getStartOfWeek(today);
-	const startOfLastWeek = new Date(startOfWeek);
-	startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
-
-	for (const session of sessions) {
-		// Parse date as local time
-		const sessionDate = new Date(session.date + 'T00:00:00');
-		let label: string;
-
-		if (sessionDate >= startOfWeek) {
-			label = 'This week';
-		} else if (sessionDate >= startOfLastWeek) {
-			label = 'Last week';
-		} else {
-			// Group by month
-			label = sessionDate.toLocaleDateString(undefined, {
-				month: 'long',
-				year: 'numeric'
-			});
-		}
-
-		if (!groups.has(label)) {
-			groups.set(label, []);
-		}
-		groups.get(label)!.push(session);
-	}
-
-	return groups;
-}
-
-/**
- * Get start of week (Monday)
- */
-function getStartOfWeek(date: Date): Date {
-	const d = new Date(date);
-	const day = d.getDay();
-	const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-	d.setDate(diff);
-	d.setHours(0, 0, 0, 0);
-	return d;
-}
-
-/**
- * Format date for display
- */
-function formatDate(dateStr: string): string {
+function formatDateShort(dateStr: string): string {
 	const date = new Date(dateStr + 'T00:00:00');
 	return date.toLocaleDateString(undefined, {
-		weekday: 'short',
-		month: 'short',
-		day: 'numeric'
+		month: 'numeric',
+		day: 'numeric',
+		year: 'numeric'
 	});
 }

@@ -22,12 +22,13 @@ import { HistoryScreen } from './screens/HistoryScreen';
 import { FinishScreen } from './screens/FinishScreen';
 import { MoreScreen } from './screens/MoreScreen';
 import { WorkoutDetailScreen } from './screens/WorkoutDetailScreen';
+import { ProgramSetupScreen } from './screens/ProgramSetupScreen';
 
 // Tab types for bottom navigation
 type TabType = 'home' | 'workout' | 'history' | 'more';
 
 // Screen types (tabs + full-screen modes)
-type ScreenType = TabType | 'session' | 'finish' | 'exercise-library' | 'workout-detail';
+type ScreenType = TabType | 'session' | 'finish' | 'exercise-library' | 'workout-detail' | 'program-setup';
 
 interface ScreenParams {
 	[key: string]: unknown;
@@ -285,6 +286,13 @@ export function App({ app, plugin }: AppProps) {
 						onNavigate={navigateTo}
 						workoutName={screenParams.workoutName as string}
 						onBack={goBack}
+					/>
+				);
+			case 'program-setup':
+				return (
+					<ProgramSetupScreen
+						programPath={screenParams.programPath as string}
+						onNavigate={navigateTo}
 					/>
 				);
 			case 'finish':

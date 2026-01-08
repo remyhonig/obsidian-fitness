@@ -17,10 +17,8 @@ interface HomeScreenProps {
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	const app = useApp();
-	const { program, session, dispatch, loadProgram, clearProgram } = useDomain();
+	const { program, dispatch, clearProgram } = useDomain();
 	const [programFiles, setProgramFiles] = useState<TFile[]>([]);
-	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 
 	// Load available program files on mount
 	useEffect(() => {
@@ -49,16 +47,9 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 		};
 	}, [app]);
 
-	const handleLoadProgram = async (path: string) => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			await loadProgram(path);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to load program');
-		} finally {
-			setIsLoading(false);
-		}
+	const handleSelectProgram = (path: string) => {
+		// Navigate to program setup screen instead of loading directly
+		onNavigate('program-setup', { programPath: path });
 	};
 
 	const handleStartWorkout = (workoutName: string) => {
@@ -74,12 +65,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 				</header>
 				<div className="fit-content">
 					<section className="fit-card">
-						<h2>Load Program</h2>
-						{error && (
-							<div className="fit-error">
-								{error}
-							</div>
-						)}
+						<h2>Select Program</h2>
 						{programFiles.length === 0 ? (
 							<div className="fit-empty-state">
 								<p>No programs found in Fitness/Programs/</p>
@@ -91,8 +77,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 									<button
 										key={file.path}
 										className="fit-button-secondary"
-										disabled={isLoading}
-										onClick={() => handleLoadProgram(file.path)}
+										onClick={() => handleSelectProgram(file.path)}
 									>
 										{file.basename}
 									</button>

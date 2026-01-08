@@ -129,16 +129,16 @@ export function WorkoutDetailScreen({ onNavigate, workoutName, onBack }: Workout
 						))}
 					</div>
 				</section>
+			</div>
 
-				{/* Start Button */}
-				<div className="fit-action-footer">
-					<button
-						className="fit-button-primary fit-button-large"
-						onClick={handleStartWorkout}
-					>
-						Start Workout
-					</button>
-				</div>
+			{/* Start Button - fixed at bottom, outside scrollable content */}
+			<div className="fit-action-footer">
+				<button
+					className="fit-button-primary fit-button-large"
+					onClick={handleStartWorkout}
+				>
+					Start Workout
+				</button>
 			</div>
 		</div>
 	);

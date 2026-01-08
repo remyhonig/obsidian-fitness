@@ -4111,7 +4111,8 @@
 	gap: 8px;
 }
 
-.fit-header-nav-btn {
+.fit-header-nav-btn,
+.fit-header-nav {
 	font-size: 28px !important;
 	font-weight: 300 !important;
 	color: var(--fit-primary) !important;
@@ -4190,6 +4191,18 @@
 
 .fit-exercise-title-browsing h1 {
 	color: var(--fit-text-secondary);
+}
+
+.fit-header-title {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex: 1;
+	cursor: pointer;
+}
+
+.fit-header-title h1 {
+	margin: 0;
 }
 
 .fit-return-hint {
@@ -5038,6 +5051,205 @@
 	color: var(--fit-text-primary);
 }
 
+/* Monthly Stats Bar */
+.fit-month-stats {
+	display: flex;
+	justify-content: space-around;
+	background: white;
+	border-radius: var(--fit-border-radius);
+	padding: 16px;
+	box-shadow: var(--fit-shadow);
+}
+
+.fit-month-stat {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+
+.fit-month-stat .fit-stat-value {
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--fit-text-primary);
+}
+
+.fit-month-stat .fit-stat-label {
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--fit-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+/* Calendar */
+.fit-calendar {
+	background: white;
+	border-radius: var(--fit-border-radius);
+	padding: 16px;
+	box-shadow: var(--fit-shadow);
+}
+
+.fit-calendar-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.fit-calendar-nav {
+	background: transparent;
+	border: none;
+	font-size: 20px;
+	color: var(--fit-text-secondary);
+	cursor: pointer;
+	padding: 8px 12px;
+	border-radius: var(--fit-border-radius-sm);
+	transition: background-color 0.15s;
+}
+
+.fit-calendar-nav:hover {
+	background: var(--fit-bg-secondary);
+}
+
+.fit-calendar-month {
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--fit-text-primary);
+}
+
+.fit-calendar-weekdays {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 4px;
+	margin-bottom: 8px;
+}
+
+.fit-calendar-weekday {
+	text-align: center;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--fit-text-muted);
+	padding: 4px 0;
+}
+
+.fit-calendar-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 4px;
+}
+
+.fit-calendar-day {
+	aspect-ratio: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--fit-border-radius-sm);
+	cursor: default;
+	position: relative;
+	gap: 2px;
+}
+
+.fit-calendar-day.empty {
+	background: transparent;
+}
+
+.fit-day-number {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--fit-text-secondary);
+}
+
+.fit-calendar-day.today {
+	background: var(--fit-primary);
+	border-radius: 50%;
+}
+
+.fit-calendar-day.today .fit-day-number {
+	color: white;
+	font-weight: 700;
+}
+
+.fit-calendar-day.today .fit-day-dot {
+	background: white;
+}
+
+.fit-calendar-day.has-workout {
+	cursor: pointer;
+}
+
+.fit-calendar-day.has-workout .fit-day-number {
+	color: var(--fit-primary);
+	font-weight: 700;
+}
+
+.fit-calendar-day.has-workout:hover {
+	background: var(--fit-primary-light);
+}
+
+.fit-calendar-day.today.has-workout {
+	cursor: pointer;
+}
+
+.fit-calendar-day.today.has-workout .fit-day-number {
+	color: white;
+}
+
+.fit-calendar-day.today.has-workout:hover {
+	opacity: 0.85;
+	background: var(--fit-primary);
+}
+
+.fit-day-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--fit-primary);
+}
+
+/* Session Cards (Detailed) */
+.fit-session-card-detailed {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	background: white;
+	border-radius: var(--fit-border-radius);
+	padding: 16px 20px;
+	cursor: pointer;
+	box-shadow: var(--fit-shadow);
+	transition: transform 0.1s;
+}
+
+.fit-session-card-detailed:active {
+	transform: scale(0.98);
+}
+
+.fit-session-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.fit-session-card-header .fit-session-card-workout {
+	font-size: 17px;
+	font-weight: 600;
+	color: var(--fit-text-primary);
+}
+
+.fit-session-card-header .fit-session-card-date {
+	font-size: 13px;
+	color: var(--fit-text-muted);
+	font-weight: 500;
+}
+
+.fit-session-card-meta {
+	display: flex;
+	gap: 16px;
+	font-size: 14px;
+	color: var(--fit-text-secondary);
+}
+
 /* Finish Screen */
 .fit-finish-screen {
 	height: 100%;
@@ -5646,7 +5858,15 @@
 }
 
 /* Session screen layout */
+.fit-session-screen {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
 .fit-session-screen .fit-content {
+	flex: 1;
+	overflow-y: auto;
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
@@ -6324,37 +6544,6 @@
 	font-size: 14px;
 }
 
-/* Skip button in panel */
-/* Panel actions container */
-.fit-panel-actions {
-	display: flex;
-	flex-direction: row;
-	gap: 16px;
-	align-items: center;
-	justify-content: center;
-	padding-top: 8px;
-}
-
-/* Skip and Cancel buttons - seamless text links */
-.fit-skip-btn-panel,
-.fit-cancel-btn-panel {
-	background: transparent;
-	border: none;
-	color: var(--fit-text-muted);
-	padding: 8px 12px;
-	font-size: 13px;
-	cursor: pointer;
-	transition: color 0.15s ease;
-}
-
-.fit-skip-btn-panel:hover {
-	color: var(--fit-text-secondary);
-}
-
-.fit-cancel-btn-panel:hover {
-	color: var(--fit-error);
-}
-
 /* Inline input styles */
 .fit-inline-input {
 	width: 100%;
@@ -6726,8 +6915,172 @@
 	border-top: 1px solid var(--background-modifier-border);
 }
 
+/* Triple-button layout: [Cancel] [DONE] [Skip] */
+.fit-action-footer-triple {
+	display: grid;
+	grid-template-columns: 1fr 2fr 1fr;
+	gap: 12px;
+	align-items: center;
+}
+
+.fit-action-secondary {
+	background: transparent;
+	border: none;
+	color: var(--text-muted);
+	font-size: 14px;
+	padding: 12px 8px;
+	cursor: pointer;
+	min-height: 44px;
+}
+
+.fit-action-secondary:active {
+	opacity: 0.7;
+}
+
+/* Placeholder when no center button */
+.fit-button-placeholder {
+	min-height: 56px;
+}
+
 .fit-button-large {
 	width: 100%;
 	min-height: 56px;
 	font-size: 18px;
+}
+
+/* ========== Program Setup Screen ========== */
+.fit-program-setup-screen {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.fit-program-setup-screen .fit-content {
+	flex: 1;
+	overflow-y: auto;
+}
+
+/* Program Introduction */
+.fit-program-intro {
+	background: white;
+	border-radius: var(--fit-border-radius);
+	padding: 20px;
+	margin-bottom: 20px;
+	box-shadow: var(--fit-shadow);
+}
+
+.fit-program-intro p {
+	margin: 0;
+	font-size: 15px;
+	line-height: 1.6;
+	color: var(--fit-text-secondary);
+}
+
+/* Training Max Section */
+.fit-tm-section {
+	background: white;
+	border-radius: var(--fit-border-radius);
+	padding: 20px;
+	box-shadow: var(--fit-shadow);
+}
+
+.fit-tm-section h2 {
+	margin: 0 0 8px 0;
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--fit-text-primary);
+}
+
+.fit-tm-explanation {
+	margin: 0 0 20px 0;
+	font-size: 14px;
+	color: var(--fit-text-muted);
+	line-height: 1.5;
+}
+
+/* Training Max Form */
+.fit-tm-form {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.fit-tm-row {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.fit-tm-label {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--fit-text-primary);
+}
+
+.fit-tm-input-group {
+	display: flex;
+	gap: 8px;
+}
+
+.fit-tm-input {
+	flex: 1;
+	padding: 14px 12px;
+	border: 1px solid #E5E7EB;
+	border-radius: var(--fit-border-radius-sm);
+	font-size: 18px;
+	font-weight: 600;
+	background: #F9FAFB;
+	color: var(--fit-text-primary);
+	text-align: center;
+	-webkit-appearance: none;
+	-moz-appearance: textfield;
+}
+
+.fit-tm-input::-webkit-outer-spin-button,
+.fit-tm-input::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+.fit-tm-input:focus {
+	outline: none;
+	border-color: var(--fit-primary);
+	background: white;
+}
+
+.fit-tm-input::placeholder {
+	color: var(--fit-text-muted);
+	font-weight: 400;
+}
+
+.fit-tm-unit-toggle {
+	display: flex;
+	border: 1px solid #E5E7EB;
+	border-radius: var(--fit-border-radius-sm);
+	overflow: hidden;
+	background: #F3F4F6;
+}
+
+.fit-tm-unit-btn {
+	padding: 12px 16px;
+	border: none;
+	background: transparent;
+	color: #6B7280;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.fit-tm-unit-btn:first-child {
+	border-right: 1px solid #E5E7EB;
+}
+
+.fit-tm-unit-btn.active {
+	background: var(--fit-primary);
+	color: white;
+}
+
+.fit-tm-unit-btn:not(.active):hover {
+	background: #E5E7EB;
 }

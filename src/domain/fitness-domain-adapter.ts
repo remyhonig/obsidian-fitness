@@ -300,6 +300,58 @@ export class FitnessDomainAdapter {
 	}
 
 	/**
+	 * Load a program with custom training max values.
+	 * User-provided TM values override the defaults from the program.
+	 */
+	async loadProgramWithTMs(
+		programPath: string,
+		trainingMaxes?: Array<{ exercise: string; value: number; unit: 'kg' | 'lbs' }>
+	): Promise<ProgramData> {
+		const file = this.app.vault.getAbstractFileByPath(programPath);
+		if (!file || !(file instanceof TFile)) {
+			throw new Error(`Program file not found: ${programPath}`);
+		}
+
+		const content = await this.app.vault.read(file);
+		this.programMarkdown = content;
+
+		// Parse the program first
+		this.programData = await this.parseProgram(content);
+
+		// If custom TM values provided, override the compiled program's training maxes
+		if (trainingMaxes && trainingMaxes.length > 0 && this.compiledProgram) {
+			for (const userTM of trainingMaxes) {
+				const existingIndex = this.compiledProgram.trainingMaxes.findIndex(
+					tm => tm.exercise.toLowerCase() === userTM.exercise.toLowerCase()
+				);
+				const existingTM = existingIndex >= 0 ? this.compiledProgram.trainingMaxes[existingIndex] : undefined;
+				if (existingTM) {
+					// Override existing TM
+					existingTM.weight = {
+						type: 'absolute',
+						value: userTM.value,
+						unit: userTM.unit
+					};
+				} else {
+					// Add new TM
+					this.compiledProgram.trainingMaxes.push({
+						exercise: userTM.exercise,
+						weight: {
+							type: 'absolute',
+							value: userTM.value,
+							unit: userTM.unit
+						}
+					});
+				}
+			}
+			// Reload program into engine with updated TMs
+			this.engine.loadProgram(this.compiledProgram);
+		}
+
+		return this.programData;
+	}
+
+	/**
 	 * Parse program markdown using fitness-dsl
 	 */
 	private async parseProgram(markdown: string): Promise<ProgramData> {
@@ -1030,7 +1082,8 @@ export class FitnessDomainAdapter {
 			exerciseTarget,
 			completedSets,
 			this.compiledProgram.globalRules,
-			[] // alternatives - could be populated from exercise data if needed
+			[], // alternatives - could be populated from exercise data if needed
+			this.compiledProgram
 		);
 
 		// Log the execution view result

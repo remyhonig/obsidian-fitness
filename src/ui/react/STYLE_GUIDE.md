@@ -186,6 +186,88 @@ The design uses **borders instead of shadows** for most cards to achieve a clean
 </div>
 ```
 
+### Action Footer (Fixed Primary Action)
+
+When a screen has a primary action button (e.g., "Start Workout", "Finish", "Save"), place it in a fixed footer **outside** the scrollable `.fit-content` div. This ensures the button is always visible and accessible, regardless of scroll position.
+
+```tsx
+<div className="fit-{screen-name}-screen">
+  <header className="fit-screen-header">...</header>
+
+  <div className="fit-content">
+    {/* Scrollable content */}
+  </div>
+
+  {/* Action footer - OUTSIDE fit-content, fixed above bottom nav */}
+  <div className="fit-action-footer">
+    <button className="fit-button-primary fit-button-large">
+      Start Workout
+    </button>
+  </div>
+</div>
+```
+
+**Important:** Never place the action footer inside `.fit-content`. Sticky positioning inside a scrollable container causes the button to float within the content instead of staying fixed at the bottom.
+
+**Use action footers for:**
+- "Start Workout" button on workout preview
+- "Finish & Save" button on session complete
+- Any primary call-to-action that should always be visible
+
+### Triple-Button Action Footer
+
+For screens with a primary action plus secondary actions (like exercise execution), use a three-column grid layout:
+
+```tsx
+<div className="fit-action-footer fit-action-footer-triple">
+  <button className="fit-action-secondary" onClick={handleCancel}>
+    Cancel
+  </button>
+  <button className="fit-button-primary fit-button-large" onClick={handleDone}>
+    DONE
+  </button>
+  <button className="fit-action-secondary" onClick={handleSkip}>
+    Skip
+  </button>
+</div>
+```
+
+**Layout:** `[Cancel] [DONE] [Skip]` - secondary actions on sides, primary action in center.
+
+**Use triple-button footer for:**
+- Exercise execution screen (Cancel Workout | DONE | Skip Exercise)
+- Any screen with one primary and two secondary actions
+
+**CSS:**
+```css
+.fit-action-footer {
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  background: var(--fit-bg-card);
+  border-top: 1px solid var(--fit-border);
+}
+
+.fit-action-footer-triple {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.fit-action-secondary {
+  background: transparent;
+  border: none;
+  color: var(--fit-text-muted);
+  font-size: 14px;
+}
+
+.fit-button-large {
+  padding: 16px 24px;
+  font-size: 18px;
+  font-weight: 600;
+}
+```
+
 ### Cards
 
 **Standard card (white with shadow):**

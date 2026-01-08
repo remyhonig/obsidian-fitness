@@ -723,54 +723,19 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 												</div>
 											</div>
 										)}
-
-										{/* Continue button */}
-										<button
-											className="fit-button-success fit-done-button"
-											onClick={() => {
-												dispatch({ type: 'next_exercise' });
-												setExerciseSummary(null);
-											}}
-										>
-											Continue to Next Exercise
-										</button>
 									</div>
 								) : !isViewingActiveExercise ? (
-									<>
-										<p className="fit-detail-hint">
-											{viewedExercise.sets.length}/{viewedExercise.targetSets} sets completed
-										</p>
-										<button
-											className="fit-button-success fit-done-button"
-											onClick={() => setViewedExerciseIndex(session.currentExerciseIndex)}
-										>
-											Return to Active Exercise
-										</button>
-									</>
+									<p className="fit-detail-hint">
+										{viewedExercise.sets.length}/{viewedExercise.targetSets} sets completed
+									</p>
 								) : detailInputMode === 'none' ? (
 									<>
-										{isSelectedSetNext && (
-											<button
-												className="fit-button-success fit-done-button"
-												onClick={handleDoneClick}
-											>
-												DONE
-											</button>
-										)}
 										{isSelectedSetDone && selectedSet && (
-											<>
-												<div className="fit-detail-stats">
-													<span>{selectedSet.reps} reps</span>
-													<span>{formatWeight(selectedSet.weight)}</span>
-													<span>RPE {selectedSet.rpe}</span>
-												</div>
-												<button
-													className="fit-button-secondary fit-edit-button"
-													onClick={handleEditClick}
-												>
-													Edit
-												</button>
-											</>
+											<div className="fit-detail-stats">
+												<span>{selectedSet.reps} reps</span>
+												<span>{formatWeight(selectedSet.weight)}</span>
+												<span>RPE {selectedSet.rpe}</span>
+											</div>
 										)}
 										{!isSelectedSetNext && !isSelectedSetDone && (
 											<p className="fit-detail-hint">Complete earlier sets first</p>
@@ -843,20 +808,58 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 									</div>
 								)}
 							</div>
-
-							{/* Skip and Cancel buttons at bottom of panel */}
-							{isViewingActiveExercise && (
-								<div className="fit-panel-actions">
-									<button className="fit-skip-btn-panel" onClick={handleSkipExercise}>
-										Skip Exercise
-									</button>
-									<button className="fit-cancel-btn-panel" onClick={handleCancel}>
-										Cancel Workout
-									</button>
-								</div>
-							)}
 						</div>
 					</div>
+
+					{/* Action footer - fixed at bottom, outside scrollable content */}
+					{isViewingActiveExercise && detailInputMode === 'none' && !exerciseSummary && (
+						<div className="fit-action-footer fit-action-footer-triple">
+							<button className="fit-action-secondary" onClick={handleCancel}>
+								Cancel
+							</button>
+							{isSelectedSetNext ? (
+								<button className="fit-button-primary fit-button-large" onClick={handleDoneClick}>
+									DONE
+								</button>
+							) : isSelectedSetDone && selectedSet ? (
+								<button className="fit-button-secondary fit-button-large" onClick={handleEditClick}>
+									Edit Set
+								</button>
+							) : (
+								<div className="fit-button-placeholder" />
+							)}
+							<button className="fit-action-secondary" onClick={handleSkipExercise}>
+								Skip
+							</button>
+						</div>
+					)}
+
+					{/* Exercise summary footer */}
+					{isViewingActiveExercise && exerciseSummary && (
+						<div className="fit-action-footer">
+							<button
+								className="fit-button-success fit-button-large"
+								onClick={() => {
+									dispatch({ type: 'next_exercise' });
+									setExerciseSummary(null);
+								}}
+							>
+								Continue to Next Exercise
+							</button>
+						</div>
+					)}
+
+					{/* Return to active footer when browsing */}
+					{!isViewingActiveExercise && (
+						<div className="fit-action-footer">
+							<button
+								className="fit-button-success fit-button-large"
+								onClick={() => setViewedExerciseIndex(session.currentExerciseIndex)}
+							>
+								Return to Active Exercise
+							</button>
+						</div>
+					)}
 				</div>
 			);
 
