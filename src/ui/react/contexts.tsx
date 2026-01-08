@@ -55,6 +55,7 @@ interface DomainContextValue {
 	program: ProgramData | null;
 	session: SessionState;
 	loadProgram: (path: string) => Promise<void>;
+	clearProgram: () => void;
 	dispatch: (event: any) => void;
 	saveSession: () => Promise<string | null>;
 	getSessionProgress: () => number;
@@ -78,6 +79,10 @@ export function DomainProvider({
 		setProgram(programData);
 	};
 
+	const clearProgram = () => {
+		setProgram(null);
+	};
+
 	const dispatch = (event: any) => {
 		const newSession = adapter.dispatch(event);
 		// Deep clone to ensure all nested arrays get new references
@@ -98,6 +103,7 @@ export function DomainProvider({
 		program,
 		session,
 		loadProgram,
+		clearProgram,
 		dispatch,
 		saveSession,
 		getSessionProgress,

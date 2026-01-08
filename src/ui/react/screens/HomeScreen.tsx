@@ -17,7 +17,7 @@ interface HomeScreenProps {
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	const app = useApp();
-	const { program, session, dispatch, loadProgram } = useDomain();
+	const { program, session, dispatch, loadProgram, clearProgram } = useDomain();
 	const [programFiles, setProgramFiles] = useState<TFile[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -124,7 +124,15 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 			<div className="fit-content">
 				{/* Program Info Card */}
 				<section className="fit-card fit-program-card">
-					<h2>{program.program.name}</h2>
+					<div className="fit-program-header">
+						<h2>{program.program.name}</h2>
+						<button
+							className="fit-button-ghost fit-change-program"
+							onClick={clearProgram}
+						>
+							Change
+						</button>
+					</div>
 					{program.program.description && (
 						<p className="fit-program-description">{program.program.description}</p>
 					)}
@@ -133,40 +141,110 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 				{/* Next Workout Card */}
 				<section className="fit-card">
 					<h2>Next Workout</h2>
-					{program.nextSession ? (
-						<div className="fit-next-workout">
-							<h3>{program.nextSession.workout}</h3>
-							{program.nextSession.scheduledFor && (
-								<p className="fit-scheduled-time">
-									Scheduled: {program.nextSession.scheduledFor}
-								</p>
-							)}
-							<button
-								className="fit-button-primary"
-								onClick={() => handleStartWorkout(program.nextSession!.workout)}
-							>
-								Start Workout
-							</button>
-						</div>
-					) : (
-						<p>No workout scheduled</p>
-					)}
+					{(() => {
+						// Use nextSession if available
+						if (program.nextSession) {
+							return (
+								<div className="fit-next-workout">
+									<h3>{program.nextSession.workout}</h3>
+									{program.nextSession.scheduledFor && (
+										<p className="fit-scheduled-time">
+											Scheduled: {program.nextSession.scheduledFor}
+										</p>
+									)}
+									<button
+										className="fit-button-primary"
+										onClick={() => handleStartWorkout(program.nextSession!.workout)}
+									>
+										Start Workout
+									</button>
+								</div>
+							);
+						}
+
+						// Fallback: find first workout with exercises from cycle pattern or workouts list
+						const cycleWorkoutNames = program.schedule.cyclePattern.map(c => c.workout);
+						const workoutsWithExercises = program.workouts.filter(w => w.exercises.length > 0);
+
+						// Prefer cycle order, but only if workout has exercises
+						const firstCycleWorkout = cycleWorkoutNames
+							.map(name => workoutsWithExercises.find(w => w.name === name))
+							.find(w => w !== undefined);
+
+						const suggestedWorkout = firstCycleWorkout ?? workoutsWithExercises[0];
+
+						if (suggestedWorkout) {
+							return (
+								<div className="fit-next-workout">
+									<h3>{suggestedWorkout.name}</h3>
+									<p className="fit-scheduled-time">Start your training cycle</p>
+									<button
+										className="fit-button-primary"
+										onClick={() => handleStartWorkout(suggestedWorkout.name)}
+									>
+										Start Workout
+									</button>
+								</div>
+							);
+						}
+
+						return <p>No workouts available</p>;
+					})()}
 				</section>
 
 				{/* Schedule Overview */}
 				<section className="fit-card">
-					<h2>This Week</h2>
-					<div className="fit-schedule">
-						{program.schedule.weeklyPattern.map((entry, index) => (
-							<div key={index} className="fit-schedule-entry">
-								<div className="fit-day">{entry.day}</div>
-								<div className="fit-time">{entry.time || '-'}</div>
-								<div className="fit-workouts">
-									{entry.workouts.join(', ')}
-								</div>
+					{program.schedule.weeklyPattern.length > 0 ? (
+						<>
+							<h2>This Week</h2>
+							<div className="fit-schedule">
+								{program.schedule.weeklyPattern.map((entry, index) => (
+									<div key={index} className="fit-schedule-entry">
+										<div className="fit-day">{entry.day}</div>
+										<div className="fit-time">{entry.time || '-'}</div>
+										<div className="fit-workouts">
+											{entry.workouts.map((workout, i) => (
+												<span key={i}>
+													{i > 0 && ', '}
+													<span
+														className="fit-workout-link"
+														onClick={() => onNavigate('workout-detail', { workoutName: workout })}
+													>
+														{workout}
+													</span>
+												</span>
+											))}
+										</div>
+									</div>
+								))}
 							</div>
-						))}
-					</div>
+						</>
+					) : program.schedule.cyclePattern.length > 0 ? (
+						<>
+							<h2>Training Cycle</h2>
+							<div className="fit-schedule">
+								{program.schedule.cyclePattern.map((entry, index) => (
+									<div key={index} className="fit-schedule-entry">
+										<div className="fit-day">Day {index + 1}</div>
+										<div className="fit-time">{entry.recovery ? `${entry.recovery} recovery` : '-'}</div>
+										<div className="fit-workouts">
+											<span
+												className="fit-workout-link"
+												onClick={() => onNavigate('workout-detail', { workoutName: entry.workout })}
+											>
+												{entry.workout}
+											</span>
+										</div>
+									</div>
+								))}
+							</div>
+						</>
+					) : (
+						<>
+							<h2>Schedule</h2>
+							<p>No schedule defined</p>
+						</>
+					)}
 				</section>
 
 				</div>

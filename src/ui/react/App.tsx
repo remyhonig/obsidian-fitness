@@ -21,12 +21,13 @@ import { WorkoutPickerScreen } from './screens/WorkoutPickerScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { FinishScreen } from './screens/FinishScreen';
 import { MoreScreen } from './screens/MoreScreen';
+import { WorkoutDetailScreen } from './screens/WorkoutDetailScreen';
 
 // Tab types for bottom navigation
 type TabType = 'home' | 'workout' | 'history' | 'more';
 
 // Screen types (tabs + full-screen modes)
-type ScreenType = TabType | 'session' | 'finish' | 'exercise-library';
+type ScreenType = TabType | 'session' | 'finish' | 'exercise-library' | 'workout-detail';
 
 interface ScreenParams {
 	[key: string]: unknown;
@@ -277,6 +278,14 @@ export function App({ app, plugin }: AppProps) {
 						<p>Coming soon...</p>
 						<button className="fit-button-secondary" onClick={goBack}>Go Back</button>
 					</div>
+				);
+			case 'workout-detail':
+				return (
+					<WorkoutDetailScreen
+						onNavigate={navigateTo}
+						workoutName={screenParams.workoutName as string}
+						onBack={goBack}
+					/>
 				);
 			case 'finish':
 				return <FinishScreen onNavigate={navigateTo} />;
