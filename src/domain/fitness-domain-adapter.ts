@@ -500,16 +500,37 @@ export class FitnessDomainAdapter {
 				this.sessionState = this.createEmptySessionState();
 				break;
 
-			case 'add_extra_rest':
-				// UI-only - engine doesn't track rest time
-				this.sessionState.extraRestTime += event.seconds;
+			case 'add_extra_rest': {
+				// Dispatch to engine for tracking
+				const addRestResult = this.engine.dispatch({
+					type: 'addExtraRest',
+					seconds: event.seconds
+				});
+				if (!isErrorResult(addRestResult)) {
+					// Sync local state from engine
+					const engineState = this.engine.getState();
+					this.sessionState.extraRestTime = engineState.extraRestSeconds;
+				}
 				break;
+			}
 
-			case 'start_rest_timer':
-				// UI-only - engine doesn't track rest time
-				this.sessionState.extraRestTime = 0;
-				this.sessionState.restStartTime = Date.now();
+			case 'start_rest_timer': {
+				// Dispatch to engine with timestamp from event (not generated internally)
+				const startRestResult = this.engine.dispatch({
+					type: 'startRest',
+					timestamp: new Date().toISOString()
+				});
+				if (!isErrorResult(startRestResult)) {
+					// Sync local state from engine
+					const engineState = this.engine.getState();
+					this.sessionState.extraRestTime = engineState.extraRestSeconds;
+					// Convert ISO string to ms timestamp for UI compatibility
+					this.sessionState.restStartTime = engineState.restStartedAt
+						? new Date(engineState.restStartedAt).getTime()
+						: null;
+				}
 				break;
+			}
 		}
 
 		return this.sessionState;
@@ -784,6 +805,23 @@ export class FitnessDomainAdapter {
 	 */
 	getSessionState(): SessionState {
 		return this.sessionState;
+	}
+
+	/**
+	 * Get rest state directly from the engine.
+	 * Returns the engine's authoritative rest state for platform-agnostic access.
+	 */
+	getRestState(): {
+		restStartedAt: string | null;
+		extraRestSeconds: number;
+		targetRestSeconds: number;
+	} {
+		const engineState = this.engine.getState();
+		return {
+			restStartedAt: engineState.restStartedAt,
+			extraRestSeconds: engineState.extraRestSeconds,
+			targetRestSeconds: engineState.targetRestSeconds,
+		};
 	}
 
 	/**
