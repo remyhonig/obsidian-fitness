@@ -18,6 +18,10 @@ import {
 	compileProgramFromString,
 	generateExecutionView,
 	evaluateSession,
+	FitnessDSLEngine,
+	isErrorResult,
+	isStartWorkoutResult,
+	isCompleteSetResult,
 	type CompiledProgram,
 	type ExerciseExecutionView,
 	type CompletedSetInput,
@@ -25,6 +29,9 @@ import {
 	type ChangeReport,
 	type ExerciseTarget,
 	type SessionResults,
+	type EventResult,
+	type StartWorkoutResult,
+	type CompleteSetResult,
 } from 'fitness-dsl';
 
 // Re-export execution view types for UI consumption
@@ -213,11 +220,13 @@ export class FitnessDomainAdapter {
 	private compiledProgram: CompiledProgram | null = null;
 	private programMarkdown: string | null = null;
 	private sessionState: SessionState;
+	private engine: FitnessDSLEngine;
 
 	constructor(app: App, basePath: string = 'Fitness') {
 		this.app = app;
 		this.basePath = basePath;
 		this.sessionState = this.createEmptySessionState();
+		this.engine = new FitnessDSLEngine({ debug: true, autoEvaluate: true });
 	}
 
 	/**
@@ -317,6 +326,8 @@ export class FitnessDomainAdapter {
 					description: r.description,
 				})),
 			});
+			// Load program into the event-driven engine
+			this.engine.loadProgram(this.compiledProgram);
 		} catch (e) {
 			console.warn('[FitnessDomainAdapter] Failed to compile program:', e);
 		}
@@ -364,61 +375,268 @@ export class FitnessDomainAdapter {
 	}
 
 	/**
-	 * Handle UI events and update session state
+	 * Handle UI events and update session state.
+	 * Delegates to the FitnessDSLEngine for core workout logic.
 	 */
 	dispatch(event: UIEvent): SessionState {
 		switch (event.type) {
-			case 'start_workout':
-				this.startWorkout(event.workoutName, event.programId);
+			case 'start_workout': {
+				const result = this.engine.dispatch({ type: 'startWorkout', workoutName: event.workoutName });
+				if (isErrorResult(result)) {
+					console.error('[FitnessDomainAdapter] Engine error:', result.error);
+					// Fall back to legacy implementation
+					this.startWorkout(event.workoutName, event.programId);
+				} else if (isStartWorkoutResult(result)) {
+					this.syncSessionStateFromEngine(result, event.workoutName, event.programId);
+				}
 				break;
+			}
 
-			case 'complete_set':
-				this.completeSet(event.exercise, event.reps, event.weight, event.rpe, event.restSeconds);
-				// Reset extra rest time when a set is completed
-				// Note: restStartTime is set by start_rest_timer when user clicks DONE
+			case 'complete_set': {
+				const exerciseIndex = this.sessionState.currentExerciseIndex;
+				const currentExercise = this.sessionState.exercises[exerciseIndex];
+
+				// Ensure the correct exercise is active in the engine (using index for duplicate names)
+				const engineState = this.engine.getState();
+				if (currentExercise && engineState.currentExerciseIndex !== exerciseIndex) {
+					const startResult = this.engine.dispatch({
+						type: 'startExercise',
+						exerciseName: currentExercise.exercise,
+						exerciseIndex: exerciseIndex
+					});
+					if (isErrorResult(startResult)) {
+						console.error('[FitnessDomainAdapter] Engine startExercise failed:', startResult.error);
+						// Fall back to local state update
+						this.recordCompletedSet(event.exercise, event.reps, event.weight, event.rpe, event.restSeconds);
+						this.sessionState.extraRestTime = 0;
+						break;
+					}
+				}
+
+				// Complete set in engine
+				const result = this.engine.dispatch({
+					type: 'completeSet',
+					setData: {
+						reps: event.reps,
+						weight: event.weight === 0 ? 'bodyweight' : `${event.weight}kg`,
+						rpe: event.rpe,
+						completedAt: new Date().toISOString(),
+					}
+				});
+
+				if (isErrorResult(result)) {
+					console.error('[FitnessDomainAdapter] Engine completeSet failed:', result.error);
+					// Fall back to local state update
+					this.recordCompletedSet(event.exercise, event.reps, event.weight, event.rpe, event.restSeconds);
+				} else {
+					// Engine succeeded - update local state to match
+					this.recordCompletedSet(event.exercise, event.reps, event.weight, event.rpe, event.restSeconds);
+				}
+
 				this.sessionState.extraRestTime = 0;
 				break;
+			}
 
 			case 'update_set':
+				// Engine doesn't support set updates - keep local implementation
 				this.updateSet(event.exerciseIndex, event.setIndex, event.reps, event.weight, event.rpe);
 				break;
 
-			case 'skip_exercise':
+			case 'skip_exercise': {
+				this.engine.dispatch({ type: 'skipExercise', exerciseName: event.exercise });
 				this.sessionState.currentExerciseIndex++;
 				this.sessionState.currentSetIndex = 0;
 				this.sessionState.extraRestTime = 0;
 				this.sessionState.restStartTime = Date.now();
-				break;
 
-			case 'next_exercise':
-				this.sessionState.currentExerciseIndex++;
+				// Start next exercise in engine with correct index
+				const nextAfterSkip = this.sessionState.exercises[this.sessionState.currentExerciseIndex];
+				if (nextAfterSkip) {
+					this.engine.dispatch({
+						type: 'startExercise',
+						exerciseName: nextAfterSkip.exercise,
+						exerciseIndex: this.sessionState.currentExerciseIndex
+					});
+				}
+				break;
+			}
+
+			case 'next_exercise': {
+				const nextIdx = this.sessionState.currentExerciseIndex + 1;
+				const nextExercise = this.sessionState.exercises[nextIdx];
+
+				// Start next exercise in engine with correct index
+				if (nextExercise) {
+					const result = this.engine.dispatch({
+						type: 'startExercise',
+						exerciseName: nextExercise.exercise,
+						exerciseIndex: nextIdx
+					});
+					if (isErrorResult(result)) {
+						console.error('[FitnessDomainAdapter] Engine startExercise failed:', result.error);
+					}
+				}
+
+				this.sessionState.currentExerciseIndex = nextIdx;
 				this.sessionState.currentSetIndex = 0;
 				this.sessionState.extraRestTime = 0;
 				this.sessionState.restStartTime = Date.now();
 				break;
+			}
 
-			case 'finish_session':
+			case 'finish_session': {
+				const result = this.engine.dispatch({ type: 'completeWorkout' });
+				if (!isErrorResult(result)) {
+					console.log('[FitnessDomainAdapter] Workout completed via engine');
+				}
 				this.sessionState.status = 'completed';
 				this.sessionState.endTime = new Date().toISOString();
 				this.sessionState.isActive = false;
 				break;
+			}
 
 			case 'cancel_session':
+				this.engine.dispatch({ type: 'abortWorkout' });
 				this.sessionState = this.createEmptySessionState();
 				break;
 
 			case 'add_extra_rest':
+				// UI-only - engine doesn't track rest time
 				this.sessionState.extraRestTime += event.seconds;
 				break;
 
 			case 'start_rest_timer':
-				// Start rest timer immediately (when user clicks DONE)
+				// UI-only - engine doesn't track rest time
 				this.sessionState.extraRestTime = 0;
 				this.sessionState.restStartTime = Date.now();
 				break;
 		}
 
 		return this.sessionState;
+	}
+
+	/**
+	 * Sync session state from engine's StartWorkoutResult
+	 */
+	private syncSessionStateFromEngine(
+		result: StartWorkoutResult,
+		workoutName: string,
+		programId?: string
+	): void {
+		const startTime = new Date().toISOString();
+		const date = startTime.split('T')[0] ?? startTime;
+		const workout = result.workout;
+
+		// Get compiled workout data for media (has richer ExerciseExport with media)
+		const compiledWorkout = this.compiledProgram?.workouts.get(workoutName);
+
+		// Map NextSessionExercise to SessionExerciseState
+		const exercises: SessionExerciseState[] = workout.exercises.map(e => {
+			// Parse weight from string like "80kg" or "bodyweight"
+			let targetWeight: number | null = null;
+			if (e.target.weight) {
+				const weightMatch = e.target.weight.match(/(\d+)/);
+				if (weightMatch?.[1]) {
+					targetWeight = parseInt(weightMatch[1], 10);
+				} else if (e.target.weight.toLowerCase().includes('body')) {
+					targetWeight = 0;
+				}
+			}
+
+			// Parse rest from timer
+			let restSeconds = 120;
+			if (e.timer?.type === 'rest' && e.timer.duration) {
+				const restMatch = e.timer.duration.match(/(\d+)/);
+				if (restMatch?.[1]) {
+					restSeconds = parseInt(restMatch[1], 10);
+				}
+			}
+
+			// Get media and note from compiled program
+			const compiledExercise = compiledWorkout?.exercises.find(ce => ce.name === e.name);
+			const media = compiledExercise?.media ?? [];
+			const note = compiledExercise?.note ?? null;
+
+			return {
+				exercise: e.name,
+				targetSets: e.target.sets,
+				targetRepsMin: e.target.reps.min,
+				targetRepsMax: e.target.reps.max,
+				targetWeight,
+				targetRPE: e.target.rpe,
+				restSeconds,
+				sets: [],
+				media,
+				note
+			};
+		});
+
+		this.sessionState = {
+			isActive: true,
+			id: this.generateSessionId(startTime, workoutName),
+			workout: workoutName,
+			programId: programId ?? null,
+			date,
+			currentExerciseIndex: 0,
+			currentSetIndex: 0,
+			exercises,
+			startTime,
+			endTime: null,
+			status: 'active',
+			extraRestTime: 0,
+			restStartTime: Date.now()
+		};
+	}
+
+	/**
+	 * Record a completed set in local state (without auto-advance logic)
+	 * Uses currentExerciseIndex to handle duplicate exercise names correctly.
+	 */
+	private recordCompletedSet(
+		exercise: string,
+		reps: number,
+		weight: number,
+		rpe: number,
+		restSeconds?: number
+	): void {
+		// Use current exercise index to get the correct exercise (handles duplicate names)
+		const exerciseIndex = this.sessionState.currentExerciseIndex;
+		let exerciseState = this.sessionState.exercises[exerciseIndex];
+
+		// Fallback: if index doesn't match, try to find by name (shouldn't happen normally)
+		if (!exerciseState || exerciseState.exercise !== exercise) {
+			console.warn(`[FitnessDomainAdapter] Exercise mismatch at index ${exerciseIndex}: expected ${exercise}, got ${exerciseState?.exercise}`);
+			exerciseState = this.sessionState.exercises.find(e => e.exercise === exercise);
+		}
+
+		if (!exerciseState) {
+			exerciseState = {
+				exercise,
+				targetSets: 3,
+				targetRepsMin: 8,
+				targetRepsMax: 12,
+				targetWeight: null,
+				targetRPE: null,
+				restSeconds: 120,
+				sets: [],
+				media: [],
+				note: null
+			};
+			this.sessionState.exercises.push(exerciseState);
+		}
+
+		const setNumber = exerciseState.sets.length + 1;
+		exerciseState.sets.push({
+			exercise,
+			setNumber,
+			reps,
+			weight,
+			rpe,
+			timestamp: new Date().toISOString(),
+			actualRestSeconds: restSeconds
+		});
+
+		this.sessionState.currentSetIndex = setNumber;
 	}
 
 	/**

@@ -480,86 +480,6 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 		setSelectedSetIndex(null); // Will default to next set
 	};
 
-	// Show exercise completion summary if set
-	if (exerciseSummary) {
-		// Calculate timer display for header
-		const totalRestTarget = currentExercise?.restSeconds ?? 120;
-		const summaryRestElapsed = session.restStartTime
-			? Math.floor((Date.now() - session.restStartTime) / 1000)
-			: 0;
-		const summaryRestRemaining = Math.max(0, totalRestTarget - summaryRestElapsed);
-		const isRestComplete = summaryRestElapsed >= totalRestTarget;
-
-		return (
-			<div className="fit-session-screen">
-				<header className="fit-screen-header">
-					<h1>Exercise Complete</h1>
-					{!isRestComplete && (
-						<span className="fit-header-timer">{formatTime(summaryRestRemaining)}</span>
-					)}
-					{isRestComplete && (
-						<span className="fit-header-timer fit-header-timer-overage">
-							{formatTime(summaryRestElapsed - totalRestTarget)}
-						</span>
-					)}
-				</header>
-
-				<div className="fit-content">
-					<div className="fit-exercise-summary">
-						<h2>{exerciseSummary.exerciseName}</h2>
-
-						{/* Completed sets recap */}
-						<div className="fit-summary-section">
-							<h3>Completed</h3>
-							<div className="fit-summary-sets">
-								{exerciseSummary.completedSets.map((set, i) => (
-									<span key={i} className="fit-summary-set-chip">
-										{set.reps} × {set.weight === 0 ? 'BW' : `${set.weight}kg`}
-									</span>
-								))}
-							</div>
-						</div>
-
-						{/* Next session target */}
-						<div className="fit-summary-section">
-							<h3>Next Session</h3>
-							<div className="fit-summary-next-target">
-								<span className="fit-summary-target-main">
-									{exerciseSummary.nextTarget.sets} × {exerciseSummary.nextTarget.reps} @ {exerciseSummary.nextTarget.weight}
-								</span>
-								{exerciseSummary.nextTarget.rpe && (
-									<span className="fit-summary-target-rpe">RPE {exerciseSummary.nextTarget.rpe}</span>
-								)}
-							</div>
-						</div>
-
-						{/* Adjustment (if rule fired) */}
-						{exerciseSummary.adjustment && (
-							<div className="fit-summary-adjustment">
-								<span className="fit-adjustment-icon">⚡</span>
-								<div className="fit-adjustment-content">
-									<span className="fit-adjustment-change">{exerciseSummary.adjustment.change}</span>
-									<span className="fit-adjustment-reason">{exerciseSummary.adjustment.reason}</span>
-								</div>
-							</div>
-						)}
-
-						{/* Continue button */}
-						<button
-							className="fit-button-success fit-log-set-button"
-							onClick={() => {
-								dispatch({ type: 'next_exercise' });
-								setExerciseSummary(null);
-							}}
-						>
-							Continue to Next Exercise
-						</button>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
 	// Render based on current step
 	switch (sessionStep) {
 		case 'workout':
@@ -632,10 +552,10 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 					</header>
 
 					<div className="fit-content">
-						{/* Exercise media row - image and comments */}
-						{(imageData || viewedExercise.note) && (
+						{/* Exercise media row - image, youtube, and comments */}
+						{(imageData || youtubeMedia || viewedExercise.note) && (
 							<div className="fit-exercise-media-row">
-								{imageData && (
+								{imageData ? (
 									<div
 										className="fit-exercise-preview"
 										onClick={() => setShowImageModal(true)}
@@ -643,7 +563,15 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 										<img src={imageData.url} alt={imageData.description || 'Exercise illustration'} />
 										{youtubeMedia && <YouTubeButton onClick={handleYouTubeClick} />}
 									</div>
-								)}
+								) : youtubeMedia ? (
+									<button
+										className="fit-youtube-standalone"
+										onClick={handleYouTubeClick}
+									>
+										<span className="fit-youtube-icon">▶</span>
+										<span>YouTube</span>
+									</button>
+								) : null}
 								{viewedExercise.note && (
 									<p className="fit-exercise-note">{viewedExercise.note}</p>
 								)}
@@ -659,6 +587,11 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 								const isJustCompleted = i === justCompletedSet && isViewingActiveExercise;
 								const isSelected = i === effectiveSelectedIndex && isViewingActiveExercise;
 								const set = viewedExercise.sets[i];
+								// Get target weight from execution view (includes rule adjustments) or fall back to static target
+								const executionSetTarget = executionView?.sets[i]?.target;
+								const targetWeightForSet = executionSetTarget?.weight
+									? parseFloat(executionSetTarget.weight) || viewedExercise.targetWeight
+									: viewedExercise.targetWeight;
 								return (
 									<div
 										key={i}
@@ -680,7 +613,7 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 											</div>
 										)}
 										<div className="fit-set-card-header">
-											{isDone && set ? formatWeight(set.weight) : formatWeight(viewedExercise.targetWeight)}
+											{isDone && set ? formatWeight(set.weight) : formatWeight(targetWeightForSet)}
 										</div>
 										{isDone && set ? (
 											<div className="fit-set-card-content">
@@ -736,7 +669,60 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 						{/* Detail panel */}
 						<div className="fit-detail-panel">
 							<div className="fit-detail-content">
-								{!isViewingActiveExercise ? (
+								{/* Exercise completion summary */}
+								{exerciseSummary && isViewingActiveExercise ? (
+									<div className="fit-exercise-summary">
+										{/* Next session target as set cards */}
+										<div className="fit-summary-section">
+											<h3>Next Session</h3>
+											<div className="fit-set-tabs">
+												{Array.from({ length: exerciseSummary.nextTarget.sets }, (_, i) => {
+													// Strip "Nx" prefix from reps if present (e.g., "3x8-10" -> "8-10")
+													const repsDisplay = exerciseSummary.nextTarget.reps.replace(/^\d+x/i, '');
+													return (
+														<div key={i} className="fit-set-card">
+															<div className="fit-set-card-header">
+																{exerciseSummary.nextTarget.weight}
+															</div>
+															<div className="fit-set-card-content">
+																<div className="fit-set-card-main">
+																	{repsDisplay}
+																</div>
+																{exerciseSummary.nextTarget.rpe && (
+																	<div className="fit-set-card-details">
+																		RPE {exerciseSummary.nextTarget.rpe}
+																	</div>
+																)}
+															</div>
+														</div>
+													);
+												})}
+											</div>
+										</div>
+
+										{/* Adjustment (if rule fired) - coach speech bubble */}
+										{exerciseSummary.adjustment && (
+											<div className="fit-coach-bubble">
+												<div className="fit-coach-avatar">🏋️</div>
+												<div className="fit-coach-speech">
+													<span className="fit-coach-change">{exerciseSummary.adjustment.change}</span>
+													<span className="fit-coach-reason">{exerciseSummary.adjustment.reason}</span>
+												</div>
+											</div>
+										)}
+
+										{/* Continue button */}
+										<button
+											className="fit-button-success fit-done-button"
+											onClick={() => {
+												dispatch({ type: 'next_exercise' });
+												setExerciseSummary(null);
+											}}
+										>
+											Continue to Next Exercise
+										</button>
+									</div>
+								) : !isViewingActiveExercise ? (
 									<>
 										<p className="fit-detail-hint">
 											{viewedExercise.sets.length}/{viewedExercise.targetSets} sets completed
