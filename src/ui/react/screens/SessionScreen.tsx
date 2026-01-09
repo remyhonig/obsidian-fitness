@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDomain } from '../contexts';
+import { SetCard } from '../components/SetCard';
 import type { ExerciseExecutionView, MediaReference } from '../../../domain/fitness-domain-adapter';
 
 type SessionStep = 'workout' | 'reps' | 'rpe' | 'weight';
@@ -106,11 +107,22 @@ interface PendingSet {
 	weight: number;
 }
 
-interface SessionScreenProps {
-	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
+/** Exercise summary state for completion display */
+export interface ExerciseSummaryState {
+	exerciseName: string;
+	exerciseIndex: number;
+	completedSets: Array<{ reps: number; weight: number; rpe: number }>;
+	nextTarget: { sets: number; reps: string; weight: string; rpe: number | null };
+	adjustment: { change: string; reason: string } | null;
 }
 
-export function SessionScreen({ onNavigate }: SessionScreenProps) {
+interface SessionScreenProps {
+	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
+	/** Initial exercise summary state for Storybook testing */
+	initialExerciseSummary?: ExerciseSummaryState | null;
+}
+
+export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScreenProps) {
 	const { adapter, session, dispatch, saveSession, getSessionProgress, isSessionComplete } = useDomain();
 
 	// Step flow state
@@ -144,13 +156,9 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 	const [showImageModal, setShowImageModal] = useState(false);
 
 	// Exercise completion summary state
-	const [exerciseSummary, setExerciseSummary] = useState<{
-		exerciseName: string;
-		exerciseIndex: number;
-		completedSets: Array<{ reps: number; weight: number; rpe: number }>;
-		nextTarget: { sets: number; reps: string; weight: string; rpe: number | null };
-		adjustment: { change: string; reason: string } | null;
-	} | null>(null);
+	const [exerciseSummary, setExerciseSummary] = useState<ExerciseSummaryState | null>(
+		initialExerciseSummary ?? null
+	);
 
 	// Viewed exercise index - allows browsing other exercises while tracking active one
 	// Defaults to current active exercise, resets when active changes
@@ -605,49 +613,23 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 								const targetWeightForSet = executionSetTarget?.weight
 									? parseFloat(executionSetTarget.weight) || viewedExercise.targetWeight
 									: viewedExercise.targetWeight;
+
+								// Format reps for display
+								const repsDisplay = viewedExercise.targetRepsMin === viewedExercise.targetRepsMax
+									? String(viewedExercise.targetRepsMin)
+									: `${viewedExercise.targetRepsMin}-${viewedExercise.targetRepsMax}`;
+
 								return (
-									<div
+									<SetCard
 										key={i}
-										className={`fit-set-card ${isDone ? 'done' : ''} ${isNext ? 'next' : ''} ${isJustCompleted ? 'just-completed' : ''} ${isSelected ? 'selected' : ''}`}
+										weight={isDone && set ? set.weight : targetWeightForSet ?? 0}
+										reps={isDone && set ? set.reps : repsDisplay}
+										rpe={isDone && set ? set.rpe : viewedExercise.targetRPE ?? 7}
+										variant={isDone ? 'done' : isNext ? 'next' : 'pending'}
+										isSelected={isSelected}
+										isAnimating={isJustCompleted}
 										onClick={() => handleSetCardTap(i)}
-									>
-										{isJustCompleted && (
-											<div className="fit-stars">
-												<span className="fit-star fit-star-1">✦</span>
-												<span className="fit-star fit-star-2">★</span>
-												<span className="fit-star fit-star-3">✦</span>
-												<span className="fit-star fit-star-4">★</span>
-												<span className="fit-star fit-star-5">✦</span>
-												<span className="fit-star fit-star-6">★</span>
-												<span className="fit-star fit-star-7">✦</span>
-												<span className="fit-star fit-star-8">★</span>
-												<span className="fit-star fit-star-9">✦</span>
-												<span className="fit-star fit-star-10">★</span>
-											</div>
-										)}
-										<div className="fit-set-card-header">
-											{isDone && set ? formatWeight(set.weight) : formatWeight(targetWeightForSet)}
-										</div>
-										{isDone && set ? (
-											<div className="fit-set-card-content">
-												<div className="fit-set-card-main">{set.reps}</div>
-												<div className="fit-set-card-details">
-													RPE {set.rpe}
-												</div>
-											</div>
-										) : (
-											<div className="fit-set-card-content">
-												<div className="fit-set-card-main">
-													{viewedExercise.targetRepsMin === viewedExercise.targetRepsMax
-														? String(viewedExercise.targetRepsMin)
-														: `${viewedExercise.targetRepsMin}-${viewedExercise.targetRepsMax}`}
-												</div>
-												<div className="fit-set-card-details">
-													RPE {viewedExercise.targetRPE ?? 7}
-												</div>
-											</div>
-										)}
-									</div>
+									/>
 								);
 							})}
 						</div>
@@ -692,37 +674,21 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 												{Array.from({ length: exerciseSummary.nextTarget.sets }, (_, i) => {
 													// Strip "Nx" prefix from reps if present (e.g., "3x8-10" -> "8-10")
 													const repsDisplay = exerciseSummary.nextTarget.reps.replace(/^\d+x/i, '');
+													// Parse weight string to number (e.g., "100kg" -> 100, "bodyweight" -> 0)
+													const weightStr = exerciseSummary.nextTarget.weight.toLowerCase();
+													const weightNum = weightStr.includes('body') ? 0 : parseFloat(weightStr) || 0;
 													return (
-														<div key={i} className="fit-set-card">
-															<div className="fit-set-card-header">
-																{exerciseSummary.nextTarget.weight}
-															</div>
-															<div className="fit-set-card-content">
-																<div className="fit-set-card-main">
-																	{repsDisplay}
-																</div>
-																{exerciseSummary.nextTarget.rpe && (
-																	<div className="fit-set-card-details">
-																		RPE {exerciseSummary.nextTarget.rpe}
-																	</div>
-																)}
-															</div>
-														</div>
+														<SetCard
+															key={i}
+															weight={weightNum}
+															reps={repsDisplay}
+															rpe={exerciseSummary.nextTarget.rpe ?? 8}
+															variant="pending"
+														/>
 													);
 												})}
 											</div>
 										</div>
-
-										{/* Adjustment (if rule fired) - coach speech bubble */}
-										{exerciseSummary.adjustment && (
-											<div className="fit-coach-bubble">
-												<div className="fit-coach-avatar">🏋️</div>
-												<div className="fit-coach-speech">
-													<span className="fit-coach-change">{exerciseSummary.adjustment.change}</span>
-													<span className="fit-coach-reason">{exerciseSummary.adjustment.reason}</span>
-												</div>
-											</div>
-										)}
 									</div>
 								) : !isViewingActiveExercise ? (
 									<p className="fit-detail-hint">
@@ -834,9 +800,21 @@ export function SessionScreen({ onNavigate }: SessionScreenProps) {
 						</div>
 					)}
 
-					{/* Exercise summary footer */}
+					{/* Exercise summary footer with coaching tips */}
 					{isViewingActiveExercise && exerciseSummary && (
-						<div className="fit-action-footer">
+						<div className={`fit-action-footer fit-action-footer-summary${
+							exerciseSummary.adjustment?.change.startsWith('-') ? ' adjustment-down' : ''
+						}`}>
+							{/* Coach speech bubble for adjustment */}
+							{exerciseSummary.adjustment && (
+								<div className="fit-coach-bubble">
+									<div className="fit-coach-avatar">🏋️</div>
+									<div className="fit-coach-speech">
+										<span className="fit-coach-change">{exerciseSummary.adjustment.change}</span>
+										<span className="fit-coach-reason">{exerciseSummary.adjustment.reason}</span>
+									</div>
+								</div>
+							)}
 							<button
 								className="fit-button-success fit-button-large"
 								onClick={() => {

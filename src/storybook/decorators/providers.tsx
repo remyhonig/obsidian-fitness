@@ -61,6 +61,7 @@ interface StoryArgs {
 	programMarkdown?: string;
 	sessionState?: Record<string, unknown>;
 	files?: Record<string, string>;
+	exerciseAdjustment?: { change: string; reason: string } | null;
 }
 
 /**
@@ -71,6 +72,7 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 	const programMarkdown = args.programMarkdown ?? DEFAULT_PROGRAM;
 	const sessionState = args.sessionState;
 	const files = args.files;
+	const exerciseAdjustment = args.exerciseAdjustment;
 
 	// Set up mock files if provided
 	if (files) {
@@ -87,6 +89,7 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 	const adapter = createMockDomainAdapter({
 		programMarkdown,
 		sessionState,
+		exerciseAdjustment,
 	});
 
 	return (

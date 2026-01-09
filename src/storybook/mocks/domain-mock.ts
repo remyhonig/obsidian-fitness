@@ -24,6 +24,8 @@ import type {
 export interface MockDomainConfig {
 	programMarkdown?: string;
 	sessionState?: Partial<SessionState>;
+	/** Mock adjustment to return from evaluateExerciseCompletion */
+	exerciseAdjustment?: { change: string; reason: string } | null;
 }
 
 /**
@@ -110,7 +112,7 @@ export function createMockDomainAdapter(config: MockDomainConfig = {}) {
 					weight: exercise?.targetWeight ? `${exercise.targetWeight}kg` : 'bodyweight',
 					rpe: exercise?.targetRPE ?? null,
 				},
-				adjustment: null,
+				adjustment: config.exerciseAdjustment ?? null,
 			};
 		},
 
