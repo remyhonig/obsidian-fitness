@@ -75,7 +75,7 @@
 	color: var(--text-normal);
 }
 
-/* ========== Buttons ========== */
+/* ========== Buttons - Duolingo 3D Style ========== */
 .fit-button {
 	display: inline-flex;
 	align-items: center;
@@ -85,17 +85,18 @@
 	min-width: 48px;
 	padding: 12px 20px;
 	font-size: 16px;
-	font-weight: 500;
+	font-weight: 700;
 	border-radius: 12px;
 	border: none;
 	cursor: pointer;
-	transition: opacity 0.15s, transform 0.1s;
+	transition: transform 0.1s, box-shadow 0.1s;
 	-webkit-tap-highlight-color: transparent;
+	text-transform: lowercase;
 }
 
 .fit-button:active {
-	transform: scale(0.98);
-	opacity: 0.9;
+	transform: translateY(4px);
+	box-shadow: none !important;
 }
 
 .fit-button:disabled {
@@ -104,29 +105,41 @@
 }
 
 .fit-button.fit-button-primary {
-	background: var(--interactive-accent) !important;
-	color: var(--text-on-accent) !important;
+	background: #58CC02 !important;
+	color: white !important;
 	border: none;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+	box-shadow: 0 4px 0 #46A302;
 }
 
 .fit-button.fit-button-primary:hover {
-	opacity: 0.9;
+	background: #89E219 !important;
 }
 
 .fit-button.fit-button-primary:active {
-	transform: scale(0.98);
-	opacity: 0.9;
+	transform: translateY(4px);
+	box-shadow: none;
 }
 
 .fit-button-secondary {
-	background: var(--background-secondary);
-	color: var(--text-normal);
+	background: #E5E5E5;
+	color: #4B4B4B;
+	box-shadow: 0 4px 0 #C4C4C4;
+}
+
+.fit-button-secondary:active {
+	transform: translateY(4px);
+	box-shadow: none;
 }
 
 .fit-button-danger {
-	background: var(--text-error);
+	background: #FF4B4B;
 	color: white;
+	box-shadow: 0 4px 0 #EA2B2B;
+}
+
+.fit-button-danger:active {
+	transform: translateY(4px);
+	box-shadow: none;
 }
 
 .fit-button-ghost {
@@ -3961,36 +3974,51 @@
    React UI Components - Mobile First Design
    ============================================ */
 
-/* CSS Custom Properties for the fitness app theme */
+/* CSS Custom Properties for the fitness app theme - Duolingo Design System */
 .fit-app {
-	/* Primary colors */
-	--fit-primary: #22C55E;
-	--fit-primary-dark: #16A34A;
-	--fit-primary-light: #DCFCE7;
+	/* === Duolingo Primary Colors === */
+	--fit-primary: #58CC02;           /* Feather Green - primary actions, success */
+	--fit-primary-dark: #46A302;      /* Shadow for 3D effect */
+	--fit-primary-light: #89E219;     /* Mask Green - highlights, hover */
 
-	/* Accent colors */
-	--fit-accent: #F59E0B;
-	--fit-accent-light: #FEF3C7;
-	--fit-danger: #EF4444;
-	--fit-danger-light: #FEE2E2;
+	/* === Duolingo Secondary Colors === */
+	--fit-accent: #FFC800;            /* Bee - current/active state */
+	--fit-accent-dark: #E6B400;       /* Shadow for 3D effect */
+	--fit-accent-light: #FFF5D3;      /* Canary - light tint */
+	--fit-info: #1CB0F6;              /* Macaw - info, links */
+	--fit-info-dark: #1899D6;         /* Shadow for 3D effect */
+	--fit-danger: #FF4B4B;            /* Cardinal - errors, warnings */
+	--fit-danger-dark: #EA2B2B;       /* Shadow for 3D effect */
+	--fit-danger-light: #FFDFE0;      /* Walking Fish - light tint */
+	--fit-caution: #FF9600;           /* Fox - negative adjustments */
+	--fit-caution-dark: #E68600;      /* Shadow for 3D effect */
 
-	/* Neutral colors */
-	--fit-text-primary: #111827;
-	--fit-text-secondary: #6B7280;
-	--fit-text-muted: #9CA3AF;
-	--fit-border: #E5E7EB;
-	--fit-bg: #F9FAFB;
-	--fit-bg-card: #FFFFFF;
+	/* === Duolingo Neutrals === */
+	--fit-text-primary: #4B4B4B;      /* Eel - primary text */
+	--fit-text-secondary: #777777;    /* Wolf - secondary text */
+	--fit-text-muted: #AFAFAF;        /* Hare - tertiary text */
+	--fit-border: #E5E5E5;            /* Swan - borders, dividers */
+	--fit-bg: #F7F7F7;                /* Polar - subtle backgrounds */
+	--fit-bg-card: #FFFFFF;           /* Snow - primary background */
+	--fit-bg-secondary: #E5E5E5;      /* Swan - secondary backgrounds */
 
-	/* Card tints */
-	--fit-card-green: #F0FDF4;
-	--fit-card-orange: #FFFBEB;
-	--fit-card-blue: #EFF6FF;
+	/* === Card Tints === */
+	--fit-card-green: #d4f5d4;        /* Success card background */
+	--fit-card-orange: #fff3e0;       /* Caution card background */
+	--fit-card-blue: #DDF4FF;         /* Iguana - info card background */
 
-	/* Sizing */
+	/* === 3D Shadow Effects (Duolingo signature style) === */
+	--fit-shadow-green: 0 4px 0 #46A302;
+	--fit-shadow-yellow: 0 4px 0 #E6B400;
+	--fit-shadow-gray: 0 4px 0 #C4C4C4;
+	--fit-shadow-blue: 0 4px 0 #1899D6;
+	--fit-shadow-red: 0 4px 0 #EA2B2B;
+
+	/* === Sizing === */
 	--fit-border-radius: 12px;
 	--fit-border-radius-sm: 8px;
 	--fit-border-radius-lg: 16px;
+	--fit-border-radius-xl: 20px;     /* Pills/tags */
 	--fit-spacing: 16px;
 	--fit-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 	--fit-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -3998,7 +4026,8 @@
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	/* Duolingo-style rounded font stack */
+	font-family: -apple-system, BlinkMacSystemFont, 'Nunito', 'DIN Next Rounded', 'Segoe UI', Roboto, sans-serif;
 	background: var(--fit-bg);
 	color: var(--fit-text-primary);
 }
@@ -4645,71 +4674,166 @@
 	color: #15803D;
 }
 
-/* Buttons */
+/* Buttons - Duolingo 3D Style */
 .fit-button-primary {
-	background: var(--fit-accent);
-	color: white;
-	border: none;
-	border-radius: var(--fit-border-radius);
-	padding: 14px 24px;
-	font-size: 16px;
-	font-weight: 600;
+	background: #58CC02 !important;
+	color: white !important;
+	border: none !important;
+	border-radius: 12px !important;
+	padding: 14px 24px !important;
+	font-size: 16px !important;
+	font-weight: 700 !important;
 	cursor: pointer;
 	width: 100%;
 	min-height: 48px;
-	transition: transform 0.1s, opacity 0.1s;
+	transition: transform 0.1s, box-shadow 0.1s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	box-shadow: 0 4px 0 #46A302 !important;
+	text-transform: lowercase;
+}
+
+.fit-button-primary:hover {
+	background: #89E219 !important;
+}
+
+.fit-button-primary:active {
+	transform: translateY(4px);
+	box-shadow: none !important;
+}
+
+.fit-button-primary:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	box-shadow: none !important;
+}
+
+/* Yellow/Gold variant for primary CTA (Start Workout, etc.) */
+.fit-button-accent {
+	background: #FFC800 !important;
+	color: #4B4B4B !important;
+	border: none !important;
+	border-radius: 12px !important;
+	padding: 14px 24px !important;
+	font-size: 16px !important;
+	font-weight: 700 !important;
+	cursor: pointer;
+	width: 100%;
+	min-height: 48px;
+	transition: transform 0.1s, box-shadow 0.1s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	box-shadow: 0 4px 0 #E6B400 !important;
+	text-transform: lowercase;
+}
+
+.fit-button-accent:active {
+	transform: translateY(4px);
+	box-shadow: none !important;
+}
+
+/* Green variant for confirmations - Duolingo 3D */
+.fit-button-success {
+	background: #58CC02 !important;
+	color: white !important;
+	border: none !important;
+	border-radius: 12px !important;
+	padding: 14px 24px !important;
+	font-size: 16px !important;
+	font-weight: 700 !important;
+	cursor: pointer;
+	width: 100%;
+	min-height: 48px;
+	transition: transform 0.1s, box-shadow 0.1s;
+	box-shadow: 0 4px 0 #46A302 !important;
+	text-transform: lowercase;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
 }
 
-.fit-button-primary:active {
-	transform: scale(0.98);
-	opacity: 0.9;
-}
-
-.fit-button-primary:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-/* Green variant for confirmations */
-.fit-button-success {
-	background: var(--fit-primary);
-	color: white;
-	border: none;
-	border-radius: var(--fit-border-radius);
-	padding: 14px 24px;
-	font-size: 16px;
-	font-weight: 600;
-	cursor: pointer;
-	width: 100%;
-	min-height: 48px;
-	transition: transform 0.1s, opacity 0.1s;
-}
-
 .fit-button-success:active {
-	transform: scale(0.98);
-	opacity: 0.9;
+	transform: translateY(4px);
+	box-shadow: none !important;
 }
 
+/* Secondary button - Gray 3D style */
 .fit-button-secondary {
-	background: #F3F4F6;
-	color: var(--fit-text-primary);
-	border: none;
-	border-radius: var(--fit-border-radius);
-	padding: 14px 24px;
-	font-size: 16px;
-	font-weight: 600;
+	background: #E5E5E5 !important;
+	color: #4B4B4B !important;
+	border: none !important;
+	border-radius: 12px !important;
+	padding: 14px 24px !important;
+	font-size: 16px !important;
+	font-weight: 700 !important;
 	cursor: pointer;
 	width: 100%;
 	min-height: 48px;
-	transition: background 0.1s;
+	transition: transform 0.1s, box-shadow 0.1s;
+	box-shadow: 0 4px 0 #C4C4C4 !important;
+	text-transform: lowercase;
 }
 
 .fit-button-secondary:active {
-	background: #E5E7EB;
+	transform: translateY(4px);
+	box-shadow: none !important;
+}
+
+/* Danger button - Red 3D style */
+.fit-button-danger {
+	background: #FF4B4B !important;
+	color: white !important;
+	border: none !important;
+	border-radius: 12px !important;
+	padding: 14px 24px !important;
+	font-size: 16px !important;
+	font-weight: 700 !important;
+	cursor: pointer;
+	width: 100%;
+	min-height: 48px;
+	transition: transform 0.1s, box-shadow 0.1s;
+	box-shadow: 0 4px 0 #EA2B2B !important;
+	text-transform: lowercase;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+.fit-button-danger:active {
+	transform: translateY(4px);
+	box-shadow: none !important;
+}
+
+/* Info button - Blue 3D style */
+.fit-button-info {
+	background: #1CB0F6 !important;
+	color: white !important;
+	border: none !important;
+	border-radius: 12px !important;
+	padding: 14px 24px !important;
+	font-size: 16px !important;
+	font-weight: 700 !important;
+	cursor: pointer;
+	width: 100%;
+	min-height: 48px;
+	transition: transform 0.1s, box-shadow 0.1s;
+	box-shadow: 0 4px 0 #1899D6 !important;
+	text-transform: lowercase;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+.fit-button-info:active {
+	transform: translateY(4px);
+	box-shadow: none !important;
 }
 
 .fit-button-ghost {
@@ -4719,7 +4843,7 @@
 	border-radius: var(--fit-border-radius);
 	padding: 14px 24px;
 	font-size: 15px;
-	font-weight: 500;
+	font-weight: 600;
 	cursor: pointer;
 	width: 100%;
 	min-height: 48px;
@@ -4727,6 +4851,7 @@
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
+	text-transform: lowercase;
 }
 
 .fit-button-ghost:active {
@@ -7136,19 +7261,19 @@
 	margin-top: 2px;
 }
 
-/* Make the continue button extra prominent */
+/* Make the continue button extra prominent - Duolingo 3D */
 .fit-action-footer-summary .fit-button-success {
 	background: #58cc02;
 	border: none;
 	box-shadow: 0 4px 0 #46a302;
 	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
+	text-transform: lowercase;
+	letter-spacing: 0;
 }
 
 .fit-action-footer-summary .fit-button-success:active {
-	transform: translateY(2px);
-	box-shadow: 0 2px 0 #46a302;
+	transform: translateY(4px);
+	box-shadow: none;
 }
 
 /* Negative adjustment variant (weight decrease) */
@@ -7180,18 +7305,30 @@
 	box-shadow: 0 2px 0 #e65100;
 }
 
+/* Secondary action buttons (Cancel, Skip) - Duolingo 3D Gray */
 .fit-action-secondary {
-	background: transparent;
+	background: var(--fit-bg-secondary, #E5E5E5);
 	border: none;
-	color: var(--text-muted);
+	color: var(--fit-text-primary, #4B4B4B);
 	font-size: 14px;
+	font-weight: 700;
 	padding: 12px 8px;
 	cursor: pointer;
 	min-height: 44px;
+	border-radius: var(--fit-border-radius, 12px);
+	box-shadow: 0 4px 0 #C4C4C4;
+	transition: transform 0.1s, box-shadow 0.1s;
+	text-transform: lowercase;
+}
+
+.theme-dark .fit-action-secondary {
+	background: var(--background-secondary);
+	box-shadow: 0 4px 0 var(--background-modifier-border);
 }
 
 .fit-action-secondary:active {
-	opacity: 0.7;
+	transform: translateY(4px);
+	box-shadow: none;
 }
 
 /* Placeholder when no center button */
@@ -7199,10 +7336,13 @@
 	min-height: 56px;
 }
 
+/* Large button - Duolingo 3D */
 .fit-button-large {
 	width: 100%;
 	min-height: 56px;
 	font-size: 18px;
+	font-weight: 700;
+	text-transform: lowercase;
 }
 
 /* ========== Program Setup Screen ========== */
