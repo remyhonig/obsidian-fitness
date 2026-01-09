@@ -6,7 +6,7 @@
  * and scrollable session cards below.
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { TFile } from 'obsidian';
 import { useApp } from '../contexts';
 
@@ -32,7 +32,7 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 		const now = new Date();
 		return { year: now.getFullYear(), month: now.getMonth() };
 	});
-	const sessionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+	const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
 	useEffect(() => {
 		loadSessions();
@@ -86,8 +86,15 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 		return dates;
 	}, [sessions]);
 
-	// Get sessions for current month (for the list below calendar)
-	const currentMonthSessions = useMemo(() => {
+	// Get sessions for current month, filtered by selected date if any
+	const filteredSessions = useMemo(() => {
+		// If a specific date is selected, only show sessions from that date
+		if (selectedDate) {
+			return sessions.filter(s => s.date === selectedDate)
+				.sort((a, b) => b.date.localeCompare(a.date));
+		}
+
+		// Otherwise show all sessions from the current month
 		const monthStart = new Date(currentMonth.year, currentMonth.month, 1);
 		const monthEnd = new Date(currentMonth.year, currentMonth.month + 1, 0);
 
@@ -95,7 +102,7 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 			const date = new Date(s.date + 'T00:00:00');
 			return date >= monthStart && date <= monthEnd;
 		}).sort((a, b) => b.date.localeCompare(a.date));
-	}, [sessions, currentMonth]);
+	}, [sessions, currentMonth, selectedDate]);
 
 	// Generate calendar days
 	const calendarDays = useMemo(() => {
@@ -133,6 +140,7 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 
 	// Navigate months
 	const goToPrevMonth = () => {
+		setSelectedDate(null); // Clear filter when changing month
 		setCurrentMonth(prev => {
 			if (prev.month === 0) {
 				return { year: prev.year - 1, month: 11 };
@@ -142,6 +150,7 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 	};
 
 	const goToNextMonth = () => {
+		setSelectedDate(null); // Clear filter when changing month
 		setCurrentMonth(prev => {
 			if (prev.month === 11) {
 				return { year: prev.year + 1, month: 0 };
@@ -150,13 +159,11 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 		});
 	};
 
-	// Handle day click - scroll to session
+	// Handle day click - filter sessions by date (toggle)
 	const handleDayClick = (dateStr: string | null) => {
 		if (!dateStr) return;
-		const ref = sessionRefs.current.get(dateStr);
-		if (ref) {
-			ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
-		}
+		// Toggle: if already selected, clear filter; otherwise set filter
+		setSelectedDate(prev => prev === dateStr ? null : dateStr);
 	};
 
 	// Format duration
@@ -217,7 +224,7 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 								{calendarDays.map((dayInfo, index) => (
 									<div
 										key={index}
-										className={`fit-calendar-day ${dayInfo.day === null ? 'empty' : ''} ${dayInfo.hasWorkout ? 'has-workout' : ''} ${dayInfo.date === todayStr ? 'today' : ''}`}
+										className={`fit-calendar-day ${dayInfo.day === null ? 'empty' : ''} ${dayInfo.hasWorkout ? 'has-workout' : ''} ${dayInfo.date === todayStr ? 'today' : ''} ${dayInfo.date === selectedDate ? 'selected' : ''}`}
 										onClick={() => dayInfo.hasWorkout && handleDayClick(dayInfo.date)}
 									>
 										{dayInfo.day !== null && (
@@ -237,18 +244,15 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 								<p>No workout history yet.</p>
 								<p>Complete your first workout to see it here!</p>
 							</div>
-						) : currentMonthSessions.length === 0 ? (
+						) : filteredSessions.length === 0 ? (
 							<div className="fit-empty-state">
-								<p>No workouts this month.</p>
+								<p>{selectedDate ? 'No workouts on this day.' : 'No workouts this month.'}</p>
 							</div>
 						) : (
 							<div className="fit-session-list">
-								{currentMonthSessions.map((session) => (
+								{filteredSessions.map((session) => (
 									<div
 										key={session.id}
-										ref={(el) => {
-											if (el) sessionRefs.current.set(session.date, el);
-										}}
 										className="fit-session-card fit-session-card-detailed"
 										onClick={() => {
 											const file = app.vault.getAbstractFileByPath(session.path);

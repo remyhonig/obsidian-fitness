@@ -5201,6 +5201,26 @@
 	background: var(--fit-primary);
 }
 
+/* Selected day (filter active) - use ring instead of fill */
+.fit-calendar-day.selected:not(.empty) {
+	box-shadow: inset 0 0 0 2px var(--fit-primary);
+	border-radius: 50%;
+}
+
+.fit-calendar-day.selected:not(.empty) .fit-day-number {
+	color: var(--fit-primary);
+	font-weight: 700;
+}
+
+/* Selected + today: show ring around the filled circle */
+.fit-calendar-day.selected.today {
+	box-shadow: 0 0 0 2px var(--fit-primary), inset 0 0 0 20px var(--fit-primary);
+}
+
+.fit-calendar-day.selected.today .fit-day-number {
+	color: white;
+}
+
 .fit-day-dot {
 	width: 6px;
 	height: 6px;
@@ -5402,6 +5422,74 @@
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+}
+
+/* Program browser counter */
+.fit-program-counter {
+	font-size: 12px;
+	color: var(--fit-text-muted);
+	font-weight: 400;
+}
+
+/* Program browser content area */
+.fit-program-browser-content {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	overflow: hidden;
+}
+
+/* Program description area - fills available space */
+.fit-program-description-area {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px;
+}
+
+/* Markdown content styling */
+.fit-markdown-content {
+	color: var(--fit-text-primary);
+	font-size: 15px;
+	line-height: 1.7;
+}
+
+.fit-markdown-content p {
+	margin: 0 0 1em 0;
+}
+
+.fit-markdown-content p:last-child {
+	margin-bottom: 0;
+}
+
+.fit-markdown-content ul,
+.fit-markdown-content ol {
+	margin: 0 0 1em 0;
+	padding-left: 1.5em;
+}
+
+.fit-markdown-content h1,
+.fit-markdown-content h2,
+.fit-markdown-content h3 {
+	margin: 1.5em 0 0.5em 0;
+	font-weight: 600;
+}
+
+.fit-markdown-content h1:first-child,
+.fit-markdown-content h2:first-child,
+.fit-markdown-content h3:first-child {
+	margin-top: 0;
+}
+
+.fit-markdown-content strong {
+	font-weight: 600;
+}
+
+.fit-markdown-content em {
+	font-style: italic;
+}
+
+.fit-markdown-content a {
+	color: var(--fit-primary);
 }
 
 /* Placeholder Screen */

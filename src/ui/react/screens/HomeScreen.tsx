@@ -7,35 +7,93 @@
  * - Quick actions (start workout, view history, etc.)
  */
 
-import React, { useState, useEffect } from 'react';
-import { TFile } from 'obsidian';
+import React, { useState, useEffect, useRef } from 'react';
+import { TFile, MarkdownRenderer, Component } from 'obsidian';
+import { compileProgramFromString } from 'fitness-dsl';
 import { useApp, useDomain } from '../contexts';
+
+interface ProgramPreview {
+	path: string;
+	name: string;
+	description: string;
+}
 
 interface HomeScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
 }
 
+/** Component that renders markdown using Obsidian's renderer */
+function MarkdownContent({ markdown, sourcePath }: { markdown: string; sourcePath: string }) {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const app = useApp();
+
+	useEffect(() => {
+		if (!containerRef.current || !markdown) return;
+
+		// Clear previous content
+		containerRef.current.empty();
+
+		// Create a component for the renderer lifecycle
+		const component = new Component();
+		component.load();
+
+		// Render markdown
+		MarkdownRenderer.render(
+			app,
+			markdown,
+			containerRef.current,
+			sourcePath,
+			component
+		);
+
+		return () => {
+			component.unload();
+		};
+	}, [markdown, sourcePath, app]);
+
+	return <div ref={containerRef} className="fit-markdown-content" />;
+}
+
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	const app = useApp();
 	const { program, dispatch, clearProgram } = useDomain();
-	const [programFiles, setProgramFiles] = useState<TFile[]>([]);
+	const [programPreviews, setProgramPreviews] = useState<ProgramPreview[]>([]);
+	const [currentProgramIndex, setCurrentProgramIndex] = useState(0);
 
-	// Load available program files on mount
+	// Load available programs with their descriptions
 	useEffect(() => {
-		const loadProgramFiles = () => {
+		const loadPrograms = async () => {
 			const programsPath = 'Fitness/Programs';
 			const files = app.vault.getMarkdownFiles()
 				.filter(f => f.path.startsWith(programsPath + '/'))
 				.sort((a, b) => a.basename.localeCompare(b.basename));
-			console.log('[HomeScreen] Found program files:', files.map(f => f.path));
-			setProgramFiles(files);
+
+			const previews: ProgramPreview[] = [];
+			for (const file of files) {
+				try {
+					const content = await app.vault.read(file);
+					const compiled = compileProgramFromString(content);
+					previews.push({
+						path: file.path,
+						name: compiled.programName || file.basename,
+						description: compiled.programDescription || ''
+					});
+				} catch (err) {
+					// If compilation fails, still show the program with basic info
+					previews.push({
+						path: file.path,
+						name: file.basename,
+						description: ''
+					});
+				}
+			}
+			setProgramPreviews(previews);
 		};
 
-		// Load immediately
-		loadProgramFiles();
+		loadPrograms();
 
-		// Also reload when vault changes (file created/deleted)
-		const handleVaultChange = () => loadProgramFiles();
+		// Also reload when vault changes
+		const handleVaultChange = () => { void loadPrograms(); };
 		app.vault.on('create', handleVaultChange);
 		app.vault.on('delete', handleVaultChange);
 		app.vault.on('rename', handleVaultChange);
@@ -46,6 +104,22 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 			app.vault.off('rename', handleVaultChange);
 		};
 	}, [app]);
+
+	// Current program being browsed
+	const currentPreview = programPreviews[currentProgramIndex];
+
+	// Navigate between programs
+	const goToPrevProgram = () => {
+		setCurrentProgramIndex(prev =>
+			prev === 0 ? programPreviews.length - 1 : prev - 1
+		);
+	};
+
+	const goToNextProgram = () => {
+		setCurrentProgramIndex(prev =>
+			prev === programPreviews.length - 1 ? 0 : prev + 1
+		);
+	};
 
 	const handleSelectProgram = (path: string) => {
 		// Navigate to program setup screen instead of loading directly
@@ -61,40 +135,50 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 		return (
 			<div className="fit-home-screen">
 				<header className="fit-screen-header">
-					<h1>Fitness</h1>
-				</header>
-				<div className="fit-content">
-					<section className="fit-card">
-						<h2>Select Program</h2>
-						{programFiles.length === 0 ? (
-							<div className="fit-empty-state">
-								<p>No programs found in Fitness/Programs/</p>
-								<p>Create a program markdown file to get started</p>
-							</div>
-						) : (
-							<div className="fit-program-loader">
-								{programFiles.map((file) => (
-									<button
-										key={file.path}
-										className="fit-button-secondary"
-										onClick={() => handleSelectProgram(file.path)}
-									>
-										{file.basename}
-									</button>
-								))}
-							</div>
+					{programPreviews.length > 1 && (
+						<button className="fit-header-nav" onClick={goToPrevProgram}>‹</button>
+					)}
+					<div className="fit-header-title">
+						<h1>{currentPreview?.name || 'Select Program'}</h1>
+						{programPreviews.length > 1 && (
+							<span className="fit-program-counter">
+								{currentProgramIndex + 1} / {programPreviews.length}
+							</span>
 						)}
-					</section>
+					</div>
+					{programPreviews.length > 1 && (
+						<button className="fit-header-nav" onClick={goToNextProgram}>›</button>
+					)}
+				</header>
+				<div className="fit-content fit-program-browser-content">
+					{programPreviews.length === 0 ? (
+						<div className="fit-empty-state">
+							<p>No programs found in Fitness/Programs/</p>
+							<p>Create a program markdown file to get started</p>
+						</div>
+					) : currentPreview ? (
+						<>
+							{/* Program Description - rendered markdown */}
+							{currentPreview.description && (
+								<div className="fit-program-description-area">
+									<MarkdownContent
+										markdown={currentPreview.description}
+										sourcePath={currentPreview.path}
+									/>
+								</div>
+							)}
 
-					{/* Quick Actions when no program loaded */}
-					<section className="fit-quick-actions">
-						<button
-							className="fit-button-secondary"
-							onClick={() => onNavigate('history')}
-						>
-							View History
-						</button>
-					</section>
+							{/* Select Button */}
+							<div className="fit-action-footer">
+								<button
+									className="fit-button-primary fit-button-large"
+									onClick={() => handleSelectProgram(currentPreview.path)}
+								>
+									Select Program
+								</button>
+							</div>
+						</>
+					) : null}
 				</div>
 			</div>
 		);

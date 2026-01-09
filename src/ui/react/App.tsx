@@ -193,7 +193,14 @@ export function App({ app, plugin }: AppProps) {
 
 			const stateDump = dumpFullStateAsJSON(program, { sessionResults });
 
-			await navigator.clipboard.writeText(stateDump);
+			// Truncate description for debugging readability
+			const stateObj = JSON.parse(stateDump);
+			if (stateObj.programDescription && stateObj.programDescription.length > 100) {
+				stateObj.programDescription = stateObj.programDescription.substring(0, 100) + '...';
+			}
+			const truncatedDump = JSON.stringify(stateObj, null, 2);
+
+			await navigator.clipboard.writeText(truncatedDump);
 			new Notice('Program state copied to clipboard');
 
 		} catch (error) {
