@@ -10,7 +10,9 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint .",
 		"test": "vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build"
 	},
 	"keywords": [
 		"obsidian",
@@ -18,6 +20,11 @@
 	],
 	"license": "MIT",
 	"devDependencies": {
+		"@storybook/addon-essentials": "^8.5.0",
+		"@storybook/react": "^8.5.0",
+		"@storybook/react-vite": "^8.5.0",
+		"storybook": "^8.5.0",
+		"vite": "^6.0.0",
 		"@eslint/js": "9.30.1",
 		"@eslint/json": "^0.14.0",
 		"@testing-library/dom": "^10.4.1",

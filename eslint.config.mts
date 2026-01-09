@@ -64,5 +64,8 @@ export default tseslint.config(
 		"src/**/*.test.ts",
 		"src/test/**",
 		"vitest.config.ts",
+		".storybook/**",
+		"src/storybook/**",
+		"src/**/*.stories.tsx",
 	]),
 );
