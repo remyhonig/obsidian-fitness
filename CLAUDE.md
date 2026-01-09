@@ -174,8 +174,44 @@ Mock implementations in `src/storybook/mocks/` simulate Obsidian APIs and domain
 - Split files exceeding ~200-300 lines into focused modules
 - Never commit `node_modules/` or `main.js`
 
+## Visual Design
+
+This plugin follows the **Duolingo Design System** for a playful, motivating fitness tracking experience.
+
+**See `STYLE_GUIDE.md` for the complete design reference.**
+
+### Quick Reference
+
+**Colors:**
+- Primary Green: `#58CC02` (success, completed)
+- Active Yellow: `#FFC800` (current set, "next")
+- Inactive Gray: `#E5E5E5` (pending)
+- Warning Orange: `#FF9600` (negative adjustments)
+- Text: `#4B4B4B` (primary), `#777777` (secondary)
+
+**3D Button Effect:**
+```css
+background: #58CC02;
+box-shadow: 0 4px 0 #46A302;
+border-radius: 12px;
+```
+
+**Typography:**
+- Always lowercase (except abbreviations like AMRAP, RPE)
+- Bold weights for headings and values
+- Minimum 14px font size
+
+**Key Principles:**
+- Chunky rounded corners (12-16px radius)
+- 3D shadow effects on interactive elements
+- Vibrant, saturated colors
+- Clear visual feedback on all interactions
+
 ## Instructions
 
 - Never work around the linter or add linter ignore comments. Fix the root cause in the code.
 - When writing Storybook stories, use the correct fitness-dsl syntax (see above).
 - Prefer React components over legacy vanilla JS for new features.
+- Follow the Duolingo-inspired style guide in `STYLE_GUIDE.md` for all UI work.
+- Use 3D button/card effects with `box-shadow: 0 4px 0` for interactive elements.
+- Keep text lowercase in UI (capitals only for abbreviations like AMRAP, RPE, TM).
