@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { FinishScreen } from './FinishScreen';
+import { withBottomNav } from './storyDecorators';
 
 const meta: Meta<typeof FinishScreen> = {
 	title: 'Screens/FinishScreen',
@@ -8,6 +9,7 @@ const meta: Meta<typeof FinishScreen> = {
 	parameters: {
 		layout: 'fullscreen',
 	},
+	decorators: [withBottomNav('workout')],
 };
 
 export default meta;

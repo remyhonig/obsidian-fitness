@@ -11,6 +11,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { TFile, MarkdownRenderer, Component } from 'obsidian';
 import { compileProgramFromString } from 'fitness-dsl';
 import { useApp, useDomain } from '../contexts';
+import { TopNav, type TimerConfig } from '../components/TopNav';
 
 interface ProgramPreview {
 	path: string;
@@ -56,9 +57,46 @@ function MarkdownContent({ markdown, sourcePath }: { markdown: string; sourcePat
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	const app = useApp();
-	const { program, dispatch, clearProgram } = useDomain();
+	const { program, session, dispatch, clearProgram } = useDomain();
 	const [programPreviews, setProgramPreviews] = useState<ProgramPreview[]>([]);
 	const [currentProgramIndex, setCurrentProgramIndex] = useState(0);
+	const [restElapsed, setRestElapsed] = useState(0);
+
+	// Get current exercise for rest target calculation
+	const currentExercise = session.isActive
+		? session.exercises[session.currentExerciseIndex]
+		: null;
+	const restTarget = (currentExercise?.restSeconds ?? 120) + session.extraRestTime;
+
+	// Timer effect - calculates elapsed time from session.restStartTime
+	useEffect(() => {
+		if (!session.isActive || !session.restStartTime) {
+			setRestElapsed(0);
+			return;
+		}
+
+		const updateElapsed = () => {
+			const elapsed = Math.floor((Date.now() - session.restStartTime!) / 1000);
+			setRestElapsed(elapsed);
+		};
+
+		updateElapsed();
+		const interval = setInterval(updateElapsed, 1000);
+		return () => clearInterval(interval);
+	}, [session.isActive, session.restStartTime]);
+
+	// Build timer config for active session
+	const getTimerConfig = (): TimerConfig | undefined => {
+		if (!session.isActive) return undefined;
+
+		const isRestComplete = restElapsed >= restTarget;
+		const restRemaining = Math.max(0, restTarget - restElapsed);
+		const overageTime = restElapsed - restTarget;
+
+		return isRestComplete
+			? { type: 'countup', seconds: overageTime, label: 'Ready' }
+			: { type: 'countdown', seconds: restRemaining, totalSeconds: restTarget, label: 'Rest' };
+	};
 
 	// Load available programs with their descriptions
 	useEffect(() => {
@@ -132,24 +170,18 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	};
 
 	if (!program) {
+		const hasMultiplePrograms = programPreviews.length > 1;
 		return (
 			<div className="fit-home-screen">
-				<header className="fit-screen-header">
-					{programPreviews.length > 1 && (
-						<button className="fit-header-nav" onClick={goToPrevProgram}>‹</button>
-					)}
-					<div className="fit-header-title">
-						<h1>{currentPreview?.name || 'Select Program'}</h1>
-						{programPreviews.length > 1 && (
-							<span className="fit-program-counter">
-								{currentProgramIndex + 1} / {programPreviews.length}
-							</span>
-						)}
-					</div>
-					{programPreviews.length > 1 && (
-						<button className="fit-header-nav" onClick={goToNextProgram}>›</button>
-					)}
-				</header>
+				<TopNav
+					title={currentPreview?.name || 'Select Program'}
+					subtitle={hasMultiplePrograms ? `${currentProgramIndex + 1} / ${programPreviews.length}` : undefined}
+					variant={hasMultiplePrograms ? 'arrows' : 'simple'}
+					onPrev={goToPrevProgram}
+					onNext={goToNextProgram}
+					timer={getTimerConfig()}
+					onTitleClick={session.isActive ? () => onNavigate('session') : undefined}
+				/>
 				<div className="fit-content fit-program-browser-content">
 					{programPreviews.length === 0 ? (
 						<div className="fit-empty-state">
@@ -186,9 +218,11 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 
 	return (
 		<div className="fit-home-screen">
-			<header className="fit-screen-header">
-				<h1>Home</h1>
-			</header>
+			<TopNav
+				title="Home"
+				timer={getTimerConfig()}
+				onTitleClick={session.isActive ? () => onNavigate('session') : undefined}
+			/>
 
 			<div className="fit-content">
 				{/* Program Info Card */}

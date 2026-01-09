@@ -11,6 +11,7 @@ import { compileProgramFromString } from 'fitness-dsl';
 import { useApp, useDomain } from '../contexts';
 import { TrainingMaxForm, TrainingMaxValue } from '../components/TrainingMaxForm';
 import { UserTrainingMaxRepository, UserTrainingMax } from '../../../data/user-training-max-repository';
+import { TopNav } from '../components/TopNav';
 
 interface ProgramSetupScreenProps {
 	programPath: string;
@@ -146,11 +147,15 @@ export function ProgramSetupScreen({
 
 	return (
 		<div className="fit-program-setup-screen">
-			<header className="fit-screen-header">
-				<button onClick={handleBack}>Cancel</button>
-				<h1>{programInfo?.name ?? 'Loading...'}</h1>
-				<div style={{ width: 44 }} />
-			</header>
+			<TopNav
+				title={programInfo?.name ?? 'Loading...'}
+				variant="actions"
+				leftAction={
+					<button className="fit-button-text" onClick={handleBack}>
+						Cancel
+					</button>
+				}
+			/>
 
 			<div className="fit-content">
 				{loading ? (

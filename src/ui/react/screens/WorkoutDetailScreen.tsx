@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { useDomain } from '../contexts';
+import { TopNav } from '../components/TopNav';
 
 interface WorkoutDetailScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
@@ -44,13 +45,7 @@ export function WorkoutDetailScreen({ onNavigate, workoutName, onBack }: Workout
 	if (!workout) {
 		return (
 			<div className="fit-workout-detail-screen">
-				<header className="fit-screen-header">
-					<button className="fit-back-button" onClick={handleBack}>
-						← Back
-					</button>
-					<h1>Workout</h1>
-					<div style={{ width: 44 }} />
-				</header>
+				<TopNav title="Workout" variant="back" onBack={handleBack} />
 				<div className="fit-content">
 					<div className="fit-empty-state">
 						<p>Workout "{workoutName}" not found.</p>
@@ -68,13 +63,7 @@ export function WorkoutDetailScreen({ onNavigate, workoutName, onBack }: Workout
 
 	return (
 		<div className="fit-workout-detail-screen">
-			<header className="fit-screen-header">
-				<button className="fit-back-button" onClick={handleBack}>
-					← Back
-				</button>
-				<h1>Workout</h1>
-				<div style={{ width: 44 }} />
-			</header>
+			<TopNav title="Workout" variant="back" onBack={handleBack} />
 
 			<div className="fit-content">
 				{/* Workout Info */}

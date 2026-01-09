@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDomain } from '../contexts';
 import { SetCard } from '../components/SetCard';
+import { TopNav, type TimerConfig } from '../components/TopNav';
 import type { ExerciseExecutionView, MediaReference } from '../../../domain/fitness-domain-adapter';
 
 type SessionStep = 'workout' | 'reps' | 'rpe' | 'weight';
@@ -205,13 +206,6 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 		return () => clearInterval(interval);
 	}, [sessionStep, session.restStartTime]);
 
-	// Format seconds to M:SS
-	const formatTime = (seconds: number): string => {
-		const mins = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${mins}:${secs.toString().padStart(2, '0')}`;
-	};
-
 	// Auto-save after each set
 	useEffect(() => {
 		if (session.isActive && session.exercises.some(e => e.sets.length > 0)) {
@@ -272,9 +266,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 
 		return (
 			<div className="fit-session-screen">
-				<header className="fit-screen-header">
-					<h1>{session.workout}</h1>
-				</header>
+				<TopNav title={session.workout} />
 
 				<div className="fit-content">
 					<div className="fit-workout-complete">
@@ -522,6 +514,22 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 				window.open(youtubeMedia.url, '_blank');
 			};
 
+			// Build timer config for TopNav
+			const timerConfig: TimerConfig | undefined = isViewingActiveExercise
+				? isRestComplete
+					? { type: 'countup', seconds: setDuration, label: 'Ready' }
+					: { type: 'countdown', seconds: restRemaining, totalSeconds: totalRestTarget, label: 'Rest' }
+				: undefined;
+
+			// Handle title click - add extra rest when resting, return to active when browsing
+			const handleTitleClick = () => {
+				if (!isViewingActiveExercise) {
+					setViewedExerciseIndex(session.currentExerciseIndex);
+				} else if (!isRestComplete) {
+					dispatch({ type: 'add_extra_rest', seconds: 15 });
+				}
+			};
+
 			return (
 				<div className="fit-session-screen">
 					{/* Image modal */}
@@ -533,44 +541,17 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 						/>
 					)}
 
-					<header
-						className={`fit-screen-header fit-screen-header-nav ${!isRestComplete && isViewingActiveExercise ? 'fit-header-resting' : ''}`}
-						onClick={!isRestComplete && isViewingActiveExercise ? () => dispatch({ type: 'add_extra_rest', seconds: 15 }) : undefined}
-						style={{
-							'--rest-progress': !isRestComplete && isViewingActiveExercise ? `${restProgress}%` : '0%',
-							cursor: !isRestComplete && isViewingActiveExercise ? 'pointer' : undefined
-						} as React.CSSProperties}
-					>
-						<button
-							className="fit-header-nav-btn"
-							onClick={(e) => { e.stopPropagation(); setViewedExerciseIndex(i => Math.max(0, i - 1)); }}
-							disabled={viewedExerciseIndex === 0}
-						>
-							‹
-						</button>
-						<div
-							className={`fit-exercise-title ${!isViewingActiveExercise ? 'fit-exercise-title-browsing' : ''}`}
-							onClick={(e) => { e.stopPropagation(); setViewedExerciseIndex(session.currentExerciseIndex); }}
-						>
-							<h1>{viewedExercise.exercise}</h1>
-							{!isViewingActiveExercise && (
-								<span className="fit-return-hint">Tap to return to active</span>
-							)}
-							{isViewingActiveExercise && !isRestComplete && (
-								<span className="fit-header-timer">{formatTime(restRemaining)}</span>
-							)}
-							{isViewingActiveExercise && isRestComplete && (
-								<span className="fit-header-timer fit-header-timer-overage">{formatTime(setDuration)}</span>
-							)}
-						</div>
-						<button
-							className="fit-header-nav-btn"
-							onClick={(e) => { e.stopPropagation(); setViewedExerciseIndex(i => Math.min(session.exercises.length - 1, i + 1)); }}
-							disabled={viewedExerciseIndex === session.exercises.length - 1}
-						>
-							›
-						</button>
-					</header>
+					<TopNav
+						title={viewedExercise.exercise}
+						subtitle={!isViewingActiveExercise ? 'Tap to return to active' : undefined}
+						variant="arrows"
+						onPrev={() => setViewedExerciseIndex(i => Math.max(0, i - 1))}
+						onNext={() => setViewedExerciseIndex(i => Math.min(session.exercises.length - 1, i + 1))}
+						prevDisabled={viewedExerciseIndex === 0}
+						nextDisabled={viewedExerciseIndex === session.exercises.length - 1}
+						timer={timerConfig}
+						onTitleClick={handleTitleClick}
+					/>
 
 					<div className="fit-content">
 						{/* Exercise media row - image, youtube, and comments */}
@@ -844,15 +825,12 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 		case 'reps':
 			return (
 				<div className="fit-session-screen">
-					<header className="fit-screen-header">
-						<button className="fit-header-btn-back" onClick={handleBack}>
-							← Back
-						</button>
-						<h1>Reps</h1>
-						<button className="fit-header-btn-cancel" onClick={handleCancel}>
-							Cancel
-						</button>
-					</header>
+					<TopNav
+						title="Reps"
+						variant="actions"
+						leftAction={<button className="fit-button-text" onClick={handleBack}>← Back</button>}
+						rightAction={<button className="fit-button-text" onClick={handleCancel}>Cancel</button>}
+					/>
 
 					<div className="fit-content">
 						<div className="fit-number-step">
@@ -880,15 +858,12 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 		case 'rpe':
 			return (
 				<div className="fit-session-screen">
-					<header className="fit-screen-header">
-						<button className="fit-header-btn-back" onClick={handleBack}>
-							← Back
-						</button>
-						<h1>RPE</h1>
-						<button className="fit-header-btn-cancel" onClick={handleCancel}>
-							Cancel
-						</button>
-					</header>
+					<TopNav
+						title="RPE"
+						variant="actions"
+						leftAction={<button className="fit-button-text" onClick={handleBack}>← Back</button>}
+						rightAction={<button className="fit-button-text" onClick={handleCancel}>Cancel</button>}
+					/>
 
 					<div className="fit-content">
 						<div className="fit-number-step">
@@ -915,15 +890,12 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 		case 'weight':
 			return (
 				<div className="fit-session-screen">
-					<header className="fit-screen-header">
-						<button className="fit-header-btn-back" onClick={handleBack}>
-							← Back
-						</button>
-						<h1>Weight</h1>
-						<button className="fit-header-btn-cancel" onClick={handleCancel}>
-							Cancel
-						</button>
-					</header>
+					<TopNav
+						title="Weight"
+						variant="actions"
+						leftAction={<button className="fit-button-text" onClick={handleBack}>← Back</button>}
+						rightAction={<button className="fit-button-text" onClick={handleCancel}>Cancel</button>}
+					/>
 
 					<div className="fit-content">
 						<div className="fit-weight-step">

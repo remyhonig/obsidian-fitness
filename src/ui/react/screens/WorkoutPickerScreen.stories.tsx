@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { WorkoutPickerScreen } from './WorkoutPickerScreen';
+import { withBottomNav } from './storyDecorators';
 
 const SAMPLE_PROGRAM = `# Full Program
 
@@ -68,6 +69,7 @@ const meta: Meta<typeof WorkoutPickerScreen> = {
 	parameters: {
 		layout: 'fullscreen',
 	},
+	decorators: [withBottomNav('workout')],
 };
 
 export default meta;

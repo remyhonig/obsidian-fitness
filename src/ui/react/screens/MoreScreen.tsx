@@ -9,6 +9,7 @@
  */
 
 import React from 'react';
+import { TopNav } from '../components/TopNav';
 
 interface MoreScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
@@ -17,9 +18,7 @@ interface MoreScreenProps {
 export function MoreScreen({ onNavigate }: MoreScreenProps) {
 	return (
 		<div className="fit-more-screen">
-			<header className="fit-screen-header">
-				<h1>More</h1>
-			</header>
+			<TopNav title="More" />
 
 			<div className="fit-content">
 				<div className="fit-menu-list">

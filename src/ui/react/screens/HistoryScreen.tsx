@@ -9,6 +9,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TFile } from 'obsidian';
 import { useApp } from '../contexts';
+import { TopNav } from '../components/TopNav';
 
 interface SessionSummary {
 	id: string;
@@ -196,16 +197,14 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 
 	return (
 		<div className="fit-history-screen">
-			<header className="fit-screen-header">
-				<button className="fit-header-nav" onClick={goToPrevMonth}>‹</button>
-				<div className="fit-header-title" onClick={!isCurrentMonth ? goToCurrentMonth : undefined}>
-					<h1>{monthName}</h1>
-					{!isCurrentMonth && (
-						<span className="fit-return-hint">Tap to return to current month</span>
-					)}
-				</div>
-				<button className="fit-header-nav" onClick={goToNextMonth}>›</button>
-			</header>
+			<TopNav
+				title={monthName}
+				subtitle={!isCurrentMonth ? 'Tap to return to current month' : undefined}
+				variant="arrows"
+				onPrev={goToPrevMonth}
+				onNext={goToNextMonth}
+				onTitleClick={!isCurrentMonth ? goToCurrentMonth : undefined}
+			/>
 
 			<div className="fit-content">
 				{loading ? (

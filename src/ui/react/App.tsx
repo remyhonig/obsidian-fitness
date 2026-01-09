@@ -14,7 +14,7 @@ import { compileProgramFromString, dumpFullStateAsJSON } from 'fitness-dsl';
 import type { SetResult } from 'fitness-dsl';
 import type MainPlugin from '../../main';
 import { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
-import { AppProvider, PluginProvider, DomainProvider, useDomain } from './contexts';
+import { AppProvider, PluginProvider, DomainProvider } from './contexts';
 import { HomeScreen } from './screens/HomeScreen';
 import { SessionScreen } from './screens/SessionScreen';
 import { WorkoutPickerScreen } from './screens/WorkoutPickerScreen';
@@ -23,9 +23,10 @@ import { FinishScreen } from './screens/FinishScreen';
 import { MoreScreen } from './screens/MoreScreen';
 import { WorkoutDetailScreen } from './screens/WorkoutDetailScreen';
 import { ProgramSetupScreen } from './screens/ProgramSetupScreen';
+import { BottomNav, type DefaultTabType } from './components/BottomNav';
 
 // Tab types for bottom navigation
-type TabType = 'home' | 'workout' | 'history' | 'more';
+type TabType = DefaultTabType;
 
 // Screen types (tabs + full-screen modes)
 type ScreenType = TabType | 'session' | 'finish' | 'exercise-library' | 'workout-detail' | 'program-setup';
@@ -37,118 +38,6 @@ interface ScreenParams {
 interface AppProps {
 	app: ObsidianApp;
 	plugin: MainPlugin;
-}
-
-// SVG Icons for bottom navigation
-const NavIcons = {
-	home: (
-		<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-			<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-			<polyline points="9 22 9 12 15 12 15 22" />
-		</svg>
-	),
-	workout: (
-		<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-			<path d="M6.5 6.5h-2a1 1 0 00-1 1v9a1 1 0 001 1h2M17.5 6.5h2a1 1 0 011 1v9a1 1 0 01-1 1h-2" />
-			<rect x="6.5" y="8.5" width="3" height="7" rx="0.5" />
-			<rect x="14.5" y="8.5" width="3" height="7" rx="0.5" />
-			<line x1="9.5" y1="12" x2="14.5" y2="12" />
-		</svg>
-	),
-	history: (
-		<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-			<path d="M3 3v5h5" />
-			<path d="M3.05 13A9 9 0 106 5.3L3 8" />
-			<path d="M12 7v5l4 2" />
-		</svg>
-	),
-	more: (
-		<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-			<circle cx="12" cy="12" r="1" fill="currentColor" />
-			<circle cx="12" cy="5" r="1" fill="currentColor" />
-			<circle cx="12" cy="19" r="1" fill="currentColor" />
-		</svg>
-	)
-};
-
-// Bottom navigation item component
-interface BottomNavItemProps {
-	tab: TabType;
-	icon: React.ReactNode;
-	label: string;
-	isActive: boolean;
-	onClick: () => void;
-}
-
-function BottomNavItem({ icon, label, isActive, onClick }: BottomNavItemProps) {
-	return (
-		<button
-			className={`fit-bottom-nav-item ${isActive ? 'active' : ''}`}
-			onClick={onClick}
-		>
-			<span className="fit-bottom-nav-icon">{icon}</span>
-			<span className="fit-bottom-nav-label">{label}</span>
-		</button>
-	);
-}
-
-// Session banner - shows on non-session screens when workout is active
-interface SessionBannerProps {
-	onClick: () => void;
-}
-
-function SessionBanner({ onClick }: SessionBannerProps) {
-	const { session } = useDomain();
-	const currentExercise = session.exercises[session.currentExerciseIndex];
-	// Timer state - calculated from session.restStartTime
-	const [restElapsed, setRestElapsed] = useState(0);
-	// Include extra rest time from session state (added by tapping header in SessionScreen)
-	const restTarget = (currentExercise?.restSeconds ?? 120) + session.extraRestTime;
-
-	// Timer effect - calculates elapsed time from session.restStartTime
-	useEffect(() => {
-		if (!session.isActive || !session.restStartTime) return;
-
-		const updateRest = () => {
-			const elapsed = Math.floor((Date.now() - session.restStartTime!) / 1000);
-			setRestElapsed(elapsed);
-		};
-
-		updateRest();
-		const interval = setInterval(updateRest, 1000);
-		return () => clearInterval(interval);
-	}, [session.isActive, session.restStartTime]);
-
-	if (!session.isActive) return null;
-
-	const exerciseName = currentExercise?.exercise ?? 'Workout';
-
-	// Format time as M:SS
-	const formatTime = (seconds: number): string => {
-		const mins = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${mins}:${secs.toString().padStart(2, '0')}`;
-	};
-
-	// Calculate rest progress (0-100%)
-	const isResting = restElapsed < restTarget;
-	const restProgress = Math.min(100, (restElapsed / restTarget) * 100);
-
-	// Show rest remaining if resting, otherwise show overage time
-	const restRemaining = Math.max(0, restTarget - restElapsed);
-	const overageTime = restElapsed - restTarget;
-	const timeDisplay = isResting ? formatTime(restRemaining) : formatTime(overageTime);
-
-	return (
-		<div
-			className={`fit-session-banner ${isResting ? 'resting' : 'ready'}`}
-			onClick={onClick}
-			style={{ '--rest-progress': `${restProgress}%` } as React.CSSProperties}
-		>
-			<span className="fit-session-banner-exercise">{exerciseName}</span>
-			<span className="fit-session-banner-time">{timeDisplay}</span>
-		</div>
-	);
 }
 
 export function App({ app, plugin }: AppProps) {
@@ -309,51 +198,19 @@ export function App({ app, plugin }: AppProps) {
 		}
 	};
 
-	// Show session banner on non-session screens
-	const showSessionBanner = currentScreen !== 'session' && currentScreen !== 'finish';
-
 	return (
 		<AppProvider app={app}>
 			<PluginProvider plugin={plugin}>
 				<DomainProvider adapter={adapter}>
 					<div className="fit-app">
-						{showSessionBanner && (
-							<SessionBanner onClick={() => navigateTo('session')} />
-						)}
 						<div className="fit-main-content">
 							{renderScreen()}
 						</div>
 						{showBottomNav && (
-							<nav className="fit-bottom-nav">
-								<BottomNavItem
-									tab="home"
-									icon={NavIcons.home}
-									label="Home"
-									isActive={getActiveTab() === 'home'}
-									onClick={() => navigateToTab('home')}
-								/>
-								<BottomNavItem
-									tab="workout"
-									icon={NavIcons.workout}
-									label="Workout"
-									isActive={getActiveTab() === 'workout'}
-									onClick={() => navigateToTab('workout')}
-								/>
-								<BottomNavItem
-									tab="history"
-									icon={NavIcons.history}
-									label="History"
-									isActive={getActiveTab() === 'history'}
-									onClick={() => navigateToTab('history')}
-								/>
-								<BottomNavItem
-									tab="more"
-									icon={NavIcons.more}
-									label="More"
-									isActive={getActiveTab() === 'more'}
-									onClick={() => navigateToTab('more')}
-								/>
-							</nav>
+							<BottomNav
+								activeTab={getActiveTab()}
+								onTabChange={navigateToTab}
+							/>
 						)}
 					</div>
 				</DomainProvider>

@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { useDomain } from '../contexts';
+import { TopNav } from '../components/TopNav';
 
 interface WorkoutPickerScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
@@ -45,11 +46,11 @@ export function WorkoutPickerScreen({ onNavigate, isTab = false }: WorkoutPicker
 
 	return (
 		<div className="fit-workout-picker-screen">
-			<header className="fit-screen-header">
-				{!isTab && <button onClick={() => onNavigate('home')}>← Back</button>}
-				<h1>{isTab ? 'Workouts' : 'Start Workout'}</h1>
-				{!isTab && <div style={{ width: 44 }} />}
-			</header>
+			<TopNav
+				title={isTab ? 'Workouts' : 'Start Workout'}
+				variant={isTab ? 'simple' : 'back'}
+				onBack={() => onNavigate('home')}
+			/>
 
 			<div className="fit-content">
 				{/* Search */}

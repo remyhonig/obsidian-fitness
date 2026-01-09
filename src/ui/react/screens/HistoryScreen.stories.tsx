@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { HistoryScreen } from './HistoryScreen';
+import { withBottomNav } from './storyDecorators';
 
 // Helper to generate session markdown
 function createSessionMarkdown(options: {
@@ -121,6 +122,7 @@ const meta: Meta<typeof HistoryScreen> = {
 	parameters: {
 		layout: 'fullscreen',
 	},
+	decorators: [withBottomNav('history')],
 };
 
 export default meta;

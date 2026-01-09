@@ -1,0 +1,187 @@
+import type { Meta, StoryObj } from '@storybook/react';
+import { action } from '@storybook/addon-actions';
+import { ActionFooter } from './ActionFooter';
+
+const meta: Meta<typeof ActionFooter> = {
+	title: 'Components/ActionFooter',
+	component: ActionFooter,
+	parameters: {
+		layout: 'fullscreen',
+	},
+	decorators: [
+		(Story) => (
+			<div className="fit-app" style={{ height: '300px', display: 'flex', flexDirection: 'column' }}>
+				<div style={{ flex: 1, padding: '16px', background: 'var(--fit-bg)' }}>
+					<p style={{ color: 'var(--fit-text-secondary)' }}>Content area above the footer</p>
+				</div>
+				<Story />
+			</div>
+		),
+	],
+};
+
+export default meta;
+type Story = StoryObj<typeof ActionFooter>;
+
+// Triple layout - Cancel/DONE/Skip
+export const TripleDone: Story = {
+	args: {
+		layout: 'triple',
+		leftAction: {
+			label: 'Cancel',
+			onClick: action('cancel'),
+			variant: 'ghost',
+		},
+		primaryAction: {
+			label: 'DONE',
+			onClick: action('done'),
+			variant: 'primary',
+		},
+		rightAction: {
+			label: 'Skip',
+			onClick: action('skip'),
+			variant: 'ghost',
+		},
+	},
+};
+
+// Triple layout - Cancel/Edit Set/Skip
+export const TripleEdit: Story = {
+	args: {
+		layout: 'triple',
+		leftAction: {
+			label: 'Cancel',
+			onClick: action('cancel'),
+			variant: 'ghost',
+		},
+		primaryAction: {
+			label: 'Edit Set',
+			onClick: action('edit'),
+			variant: 'secondary',
+		},
+		rightAction: {
+			label: 'Skip',
+			onClick: action('skip'),
+			variant: 'ghost',
+		},
+	},
+};
+
+// Triple layout - with placeholder center (no action available)
+export const TripleNoCenter: Story = {
+	args: {
+		layout: 'triple',
+		leftAction: {
+			label: 'Cancel',
+			onClick: action('cancel'),
+			variant: 'ghost',
+		},
+		primaryAction: {
+			label: '',
+			onClick: () => {},
+			disabled: true,
+		},
+		rightAction: {
+			label: 'Skip',
+			onClick: action('skip'),
+			variant: 'ghost',
+		},
+	},
+};
+
+// Single action - Continue
+export const SingleContinue: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'Continue to Next Exercise',
+			onClick: action('continue'),
+			variant: 'success',
+		},
+	},
+};
+
+// Single action - Return
+export const SingleReturn: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'Return to Active Exercise',
+			onClick: action('return'),
+			variant: 'success',
+		},
+	},
+};
+
+// Single action - Finish
+export const SingleFinish: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'Finish & Save',
+			onClick: action('finish'),
+			variant: 'success',
+		},
+	},
+};
+
+// Single action - Disabled
+export const SingleDisabled: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'Saving...',
+			onClick: action('save'),
+			variant: 'success',
+			disabled: true,
+		},
+	},
+};
+
+// With coach tip - weight increase
+export const WithCoachTipUp: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'Continue to Next Exercise',
+			onClick: action('continue'),
+			variant: 'success',
+		},
+		coachTip: {
+			change: '+2.5kg',
+			reason: 'Great work! All reps hit with good form.',
+		},
+	},
+};
+
+// With coach tip - weight decrease
+export const WithCoachTipDown: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'Continue to Next Exercise',
+			onClick: action('continue'),
+			variant: 'success',
+		},
+		coachTip: {
+			change: '-5kg',
+			reason: 'Missed reps. Lower weight to build back up.',
+		},
+	},
+};
+
+// With coach tip - maintain weight
+export const WithCoachTipMaintain: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'Continue to Next Exercise',
+			onClick: action('continue'),
+			variant: 'success',
+		},
+		coachTip: {
+			change: 'Same weight',
+			reason: 'Keep working at this weight until all reps are solid.',
+		},
+	},
+};

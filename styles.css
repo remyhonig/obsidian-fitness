@@ -49,31 +49,6 @@
 	flex: 1;
 }
 
-.fit-header-title {
-	flex: 1;
-}
-
-.fit-header-timer {
-	cursor: pointer;
-}
-
-.fit-header-action {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	height: 32px;
-	border: none;
-	background: transparent;
-	color: var(--text-muted);
-	border-radius: 6px;
-	cursor: pointer;
-}
-
-.fit-header-action:hover {
-	background: var(--background-modifier-hover);
-	color: var(--text-normal);
-}
 
 /* ========== Buttons - Duolingo 3D Style ========== */
 .fit-button {
@@ -1667,12 +1642,6 @@
 	gap: 8px;
 }
 
-.fit-exercise-title {
-	font-size: 1.25rem;
-	font-weight: 600;
-	margin: 0;
-	color: var(--text-normal);
-}
 
 /* Integrated sets row */
 .fit-sets-integrated {
@@ -4032,221 +4001,6 @@
 	color: var(--fit-text-primary);
 }
 
-/* Session Banner - shows on non-session screens when workout is active */
-.fit-session-banner {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 12px var(--fit-spacing);
-	background: var(--fit-bg-card);
-	border-bottom: 1px solid var(--fit-border);
-	cursor: pointer;
-	position: relative;
-	overflow: hidden;
-}
-
-.fit-session-banner::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;
-	height: 100%;
-	width: var(--rest-progress, 0%);
-	background: var(--fit-primary);
-	opacity: 0.2;
-	transition: width 0.5s linear;
-}
-
-.fit-session-banner.ready::before {
-	width: 100%;
-	opacity: 0.15;
-}
-
-.fit-session-banner:active {
-	background: var(--fit-bg-secondary);
-}
-
-.fit-session-banner-exercise {
-	position: relative;
-	z-index: 1;
-	font-weight: 600;
-	font-size: 15px;
-	color: var(--fit-text-primary);
-}
-
-.fit-session-banner-time {
-	position: relative;
-	z-index: 1;
-	font-size: 15px;
-	font-weight: 600;
-	color: var(--fit-primary);
-	font-variant-numeric: tabular-nums;
-}
-
-.fit-session-banner.ready .fit-session-banner-time {
-	color: var(--fit-primary);
-}
-
-/* Screen Header */
-.fit-screen-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 12px var(--fit-spacing);
-	background: var(--fit-bg-card);
-	min-height: 52px;
-	/* Fixed header - stays visible when scrolling */
-	position: sticky;
-	top: 0;
-	z-index: 10;
-	border-bottom: 1px solid var(--fit-border);
-}
-
-.fit-screen-header h1 {
-	margin: 0;
-	font-size: 20px;
-	font-weight: 700;
-	color: var(--fit-text-primary);
-	flex: 1;
-	text-align: center;
-}
-
-.fit-screen-header p {
-	display: none;
-}
-
-.fit-screen-header button {
-	background: none;
-	border: none;
-	color: var(--fit-primary);
-	cursor: pointer;
-	padding: 8px;
-	font-size: 16px;
-	font-weight: 500;
-	min-width: 44px;
-	min-height: 44px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.fit-screen-header button:active {
-	opacity: 0.7;
-}
-
-/* Navigation header variant */
-.fit-screen-header-nav {
-	justify-content: space-between;
-	gap: 8px;
-}
-
-.fit-header-nav-btn,
-.fit-header-nav {
-	font-size: 28px !important;
-	font-weight: 300 !important;
-	color: var(--fit-primary) !important;
-	width: 44px;
-	min-width: 44px;
-	max-width: 44px;
-	height: 44px;
-	display: flex !important;
-	align-items: center;
-	justify-content: center;
-	opacity: 1;
-	transition: opacity 0.15s ease;
-	flex-shrink: 0;
-	flex-grow: 0;
-}
-
-.fit-header-nav-btn:disabled {
-	opacity: 0.25;
-	cursor: default;
-}
-
-/* Header with rest timer - uses ::before pseudo-element for progress */
-.fit-screen-header-nav {
-	position: relative;
-}
-
-.fit-screen-header-nav::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;
-	height: 100%;
-	width: var(--rest-progress, 0%);
-	background: var(--fit-primary);
-	opacity: 0.15;
-	transition: width 0.3s linear;
-	z-index: 0;
-	pointer-events: none;
-}
-
-.fit-screen-header-nav > button,
-.fit-screen-header-nav > .fit-exercise-title {
-	position: relative;
-	z-index: 1;
-}
-
-/* Exercise title with YouTube button */
-.fit-exercise-title {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 2px;
-	flex: 1;
-	cursor: pointer;
-	padding: 4px 8px;
-	border-radius: 8px;
-	transition: background 0.15s ease;
-}
-
-.fit-exercise-title:active {
-	background: var(--fit-bg-secondary);
-}
-
-.fit-exercise-title h1 {
-	flex: 0;
-	text-align: center;
-	font-size: 18px;
-	line-height: 1.2;
-}
-
-/* Browsing mode - viewing non-active exercise */
-.fit-exercise-title-browsing {
-	background: var(--fit-bg-secondary);
-}
-
-.fit-exercise-title-browsing h1 {
-	color: var(--fit-text-secondary);
-}
-
-.fit-header-title {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	flex: 1;
-	cursor: pointer;
-}
-
-.fit-header-title h1 {
-	margin: 0;
-}
-
-.fit-return-hint {
-	font-size: 11px;
-	color: var(--fit-primary);
-	font-weight: 500;
-}
-
-.fit-header-timer {
-	font-size: 14px;
-	font-weight: 600;
-	color: var(--fit-primary);
-	font-variant-numeric: tabular-nums;
-}
-
 /* YouTube button */
 .fit-youtube-btn {
 	display: flex;
@@ -4527,68 +4281,6 @@
 	width: 100%;
 	height: 100%;
 	border: none;
-}
-
-/* Header action buttons */
-.fit-header-actions {
-	display: flex;
-	gap: 8px;
-}
-
-.fit-header-btn {
-	padding: 8px 16px;
-	border-radius: var(--fit-border-radius-sm);
-	font-size: 14px;
-	font-weight: 600;
-	border: none;
-	cursor: pointer;
-	min-height: 36px;
-}
-
-.fit-header-btn-primary {
-	background: var(--fit-primary);
-	color: white;
-}
-
-.fit-header-btn-danger {
-	background: var(--fit-danger);
-	color: white;
-}
-
-/* Cancel button - orange/coral like reference app */
-.fit-header-btn-cancel {
-	background: var(--fit-danger);
-	color: white;
-	padding: 8px 16px;
-	border-radius: var(--fit-border-radius-sm);
-	font-size: 14px;
-	font-weight: 600;
-	border: none;
-	cursor: pointer;
-	min-height: 36px;
-}
-
-.fit-header-btn-cancel:active {
-	opacity: 0.8;
-}
-
-/* Back button in header */
-.fit-header-btn-back {
-	background: none;
-	border: none;
-	color: var(--fit-primary);
-	cursor: pointer;
-	padding: 8px;
-	font-size: 16px;
-	font-weight: 500;
-	min-width: 44px;
-	min-height: 44px;
-	display: flex;
-	align-items: center;
-}
-
-.fit-header-btn-back:active {
-	opacity: 0.7;
 }
 
 /* Content Area */
@@ -5762,6 +5454,203 @@
 	color: var(--fit-primary);
 }
 
+/* ========================================
+   TopNav Component
+   ======================================== */
+
+.fit-top-nav {
+	display: flex;
+	flex-direction: column;
+	background: var(--fit-bg-card, #ffffff);
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	border-bottom: 1px solid var(--fit-border, #E5E5E5);
+}
+
+.fit-top-nav-main {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px var(--fit-spacing, 16px);
+	min-height: 52px;
+}
+
+.fit-top-nav-spacer {
+	width: 44px;
+	min-width: 44px;
+	flex-shrink: 0;
+}
+
+.fit-top-nav-center {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	min-width: 0;
+}
+
+.fit-top-nav-center--clickable {
+	cursor: pointer;
+}
+
+.fit-top-nav-center--clickable:active {
+	opacity: 0.7;
+}
+
+.fit-top-nav-title {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--fit-text-primary, #1F2937);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.fit-top-nav-subtitle {
+	font-size: 12px;
+	color: var(--fit-text-secondary, #6B7280);
+	margin-top: 2px;
+}
+
+/* Back button */
+.fit-top-nav .fit-back-button {
+	background: none !important;
+	border: 2px solid var(--fit-primary, #58CC02) !important;
+	box-shadow: none !important;
+	border-radius: 12px;
+	color: var(--fit-primary, #58CC02);
+	cursor: pointer;
+	padding: 8px 16px;
+	font-size: 14px;
+	font-weight: 600;
+	min-height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s, transform 0.1s;
+}
+
+.fit-top-nav .fit-back-button:hover {
+	background: rgba(88, 204, 2, 0.1) !important;
+}
+
+.fit-top-nav .fit-back-button:active {
+	transform: scale(0.95);
+}
+
+/* Navigation arrows */
+.fit-nav-arrow {
+	background: none !important;
+	border: 2px solid var(--fit-primary, #58CC02) !important;
+	box-shadow: none !important;
+	border-radius: 12px;
+	color: var(--fit-primary, #58CC02);
+	cursor: pointer;
+	font-size: 24px;
+	font-weight: 300;
+	width: 40px;
+	min-width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s, opacity 0.15s, transform 0.1s;
+	flex-shrink: 0;
+}
+
+.fit-nav-arrow:hover {
+	background: rgba(88, 204, 2, 0.1) !important;
+}
+
+.fit-nav-arrow:active {
+	transform: scale(0.95);
+}
+
+.fit-nav-arrow:disabled {
+	opacity: 0.25;
+	cursor: default;
+}
+
+.fit-nav-arrow:disabled:hover {
+	background: none !important;
+}
+
+/* Text button for actions variant */
+.fit-top-nav .fit-button-text {
+	background: none !important;
+	border: none !important;
+	box-shadow: none !important;
+	color: var(--fit-primary, #58CC02);
+	cursor: pointer;
+	padding: 8px 12px;
+	font-size: 14px;
+	font-weight: 600;
+	min-height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.fit-top-nav .fit-button-text:active {
+	opacity: 0.7;
+}
+
+/* TopNav Timer */
+.fit-top-nav-timer {
+	padding: 8px var(--fit-spacing, 16px) 12px;
+}
+
+.fit-top-nav-timer-content {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	margin-bottom: 6px;
+}
+
+.fit-top-nav-timer-label {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--fit-text-secondary, #6B7280);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.fit-top-nav-timer-time {
+	font-size: 24px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: var(--fit-text-primary, #1F2937);
+}
+
+.fit-top-nav-timer--countdown .fit-top-nav-timer-time {
+	color: var(--fit-primary, #58CC02);
+}
+
+.fit-top-nav-timer--countup .fit-top-nav-timer-time {
+	color: var(--fit-text-primary, #1F2937);
+}
+
+/* Progress bar track */
+.fit-top-nav-timer-track {
+	height: 6px;
+	background: var(--fit-bg-secondary, #F3F4F6);
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+/* Progress bar fill */
+.fit-top-nav-timer-progress {
+	height: 100%;
+	background: var(--fit-primary, #58CC02);
+	border-radius: 3px;
+	transition: width 0.3s ease-out;
+}
+
 /* Bottom Navigation */
 .fit-bottom-nav {
 	display: flex;
@@ -5782,8 +5671,9 @@
 	justify-content: center;
 	gap: 2px;
 	padding: 8px 4px;
-	background: none;
-	border: none;
+	background: none !important;
+	border: none !important;
+	box-shadow: none !important;
 	cursor: pointer;
 	color: #6B7280;
 	min-height: 56px;
@@ -7305,30 +7195,29 @@
 	box-shadow: 0 2px 0 #e65100;
 }
 
-/* Secondary action buttons (Cancel, Skip) - Duolingo 3D Gray */
+/* Secondary action buttons (Cancel, Skip) - Outline style */
 .fit-action-secondary {
-	background: var(--fit-bg-secondary, #E5E5E5);
-	border: none;
-	color: var(--fit-text-primary, #4B4B4B);
+	background: none !important;
+	border: 2px solid var(--fit-primary, #58CC02) !important;
+	box-shadow: none !important;
+	border-radius: 12px;
+	color: var(--fit-primary, #58CC02);
 	font-size: 14px;
-	font-weight: 700;
-	padding: 12px 8px;
+	font-weight: 600;
+	padding: 10px 16px;
 	cursor: pointer;
 	min-height: 44px;
-	border-radius: var(--fit-border-radius, 12px);
-	box-shadow: 0 4px 0 #C4C4C4;
-	transition: transform 0.1s, box-shadow 0.1s;
+	transition: background 0.15s, transform 0.1s;
 	text-transform: lowercase;
 }
 
-.theme-dark .fit-action-secondary {
-	background: var(--background-secondary);
-	box-shadow: 0 4px 0 var(--background-modifier-border);
+.fit-action-secondary:hover {
+	background: rgba(88, 204, 2, 0.1) !important;
 }
 
 .fit-action-secondary:active {
-	transform: translateY(4px);
-	box-shadow: none;
+	transform: scale(0.95);
+	box-shadow: none !important;
 }
 
 /* Placeholder when no center button */

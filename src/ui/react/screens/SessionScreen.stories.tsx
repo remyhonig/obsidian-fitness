@@ -3,6 +3,7 @@ import React from 'react';
 import { action } from '@storybook/addon-actions';
 import { SessionScreen } from './SessionScreen';
 import { withActiveSession } from '../../../storybook/decorators/providers';
+import { withBottomNav } from './storyDecorators';
 
 const SAMPLE_PROGRAM = `# Simple Program
 
@@ -46,6 +47,7 @@ const meta: Meta<typeof SessionScreen> = {
 	parameters: {
 		layout: 'fullscreen',
 	},
+	decorators: [withBottomNav('workout')],
 };
 
 export default meta;

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { ProgramSetupScreen } from './ProgramSetupScreen';
+import { withBottomNav } from './storyDecorators';
 
 // Program with training maxes
 const PROGRAM_WITH_TMS = `# Strength Program
@@ -165,6 +166,7 @@ const meta: Meta<typeof ProgramSetupScreen> = {
 	parameters: {
 		layout: 'fullscreen',
 	},
+	decorators: [withBottomNav('home')],
 };
 
 export default meta;

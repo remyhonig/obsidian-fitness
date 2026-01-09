@@ -8,6 +8,7 @@
 import React from 'react';
 import { TFile } from 'obsidian';
 import { useApp, useDomain } from '../contexts';
+import { TopNav } from '../components/TopNav';
 
 interface FinishScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
@@ -49,9 +50,7 @@ export function FinishScreen({ onNavigate }: FinishScreenProps) {
 
 	return (
 		<div className="fit-finish-screen">
-			<header className="fit-screen-header">
-				<h1>Complete</h1>
-			</header>
+			<TopNav title="Complete" />
 
 			<div className="fit-content">
 				<div className="fit-finish-content">
