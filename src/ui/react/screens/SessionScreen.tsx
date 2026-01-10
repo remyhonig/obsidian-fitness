@@ -15,7 +15,7 @@ import { useDomain } from '../contexts';
 import { ExerciseGroup, type ExerciseSetData } from '../components/ExerciseGroup';
 import { TopNav, type TimerConfig } from '../components/TopNav';
 import { ExerciseInfoModal } from '../components/ExerciseInfoModal';
-import { ActionFooter, type CoachTip } from '../components/ActionFooter';
+import { ActionFooter, type CoachTip, type PostSetQuestion } from '../components/ActionFooter';
 import type { ExerciseExecutionView, MediaReference, ExerciseRuleProgress } from '../../../domain/fitness-domain-adapter';
 
 type SessionStep = 'workout' | 'reps' | 'rpe' | 'weight';
@@ -137,6 +137,12 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	const [exerciseSummary, setExerciseSummary] = useState<ExerciseSummaryState | null>(
 		initialExerciseSummary ?? null
 	);
+
+	// Post-set feedback state (for in-exercise adjustments like next_set rules)
+	const [postSetFeedback, setPostSetFeedback] = useState<{
+		change: string;
+		reason: string;
+	} | null>(null);
 
 	// Viewed exercise index - allows browsing other exercises while tracking active one
 	// Defaults to current active exercise, resets when active changes
@@ -428,6 +434,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 			const exerciseIndexForSummary = session.currentExerciseIndex;
 			const exerciseNameForSummary = currentExercise.exercise;
 			const existingSets = [...currentExercise.sets];
+			const completingSetIndex = currentExercise.sets.length;
 
 			dispatch({
 				type: 'complete_set',
@@ -439,7 +446,6 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 			});
 
 			// Always show animation for completed set
-			const completingSetIndex = currentExercise.sets.length;
 			setJustCompletedSet(completingSetIndex);
 
 			if (isLastSet) {
@@ -463,8 +469,40 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 					});
 				}, 600);
 			} else {
-				// Clear animation after it completes
-				setTimeout(() => setJustCompletedSet(null), 600);
+				// Non-last set: check for rule-triggered weight changes
+				setTimeout(() => {
+					setJustCompletedSet(null);
+
+					// Get fresh execution view after state update
+					const newExecutionView = adapter.getExecutionView(exerciseIndexForSummary);
+					const nextSetIndex = completingSetIndex + 1;
+
+					if (newExecutionView?.sets[nextSetIndex]) {
+						const nextTargetWeightStr = newExecutionView.sets[nextSetIndex].target.weight;
+						// Parse weight string (e.g., "55kg" -> 55)
+						const match = nextTargetWeightStr.match(/(\d+(?:\.\d+)?)/);
+						const nextTargetWeight = match?.[1] ? parseFloat(match[1]) : completedWeight;
+
+						if (nextTargetWeight !== completedWeight) {
+							// Weight changed - a rule fired!
+							const diff = nextTargetWeight - completedWeight;
+							const changeStr = diff > 0 ? `+${diff}kg` : `${diff}kg`;
+
+							// Find which rule fired by checking execution view
+							const firedRule = newExecutionView.ruleProgress?.rules.find(r =>
+								r.timing === 'next_set' && r.currentlyMet
+							);
+
+							setPostSetFeedback({
+								change: changeStr,
+								reason: firedRule?.ruleDescription || 'weight adjusted for next set',
+							});
+
+							// Auto-dismiss after 3 seconds
+							setTimeout(() => setPostSetFeedback(null), 3000);
+						}
+					}
+				}, 100); // Small delay to let state update
 			}
 		}
 
@@ -554,8 +592,24 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 										const isJustCompleted = i === justCompletedSet && isActive && isViewingActiveExercise;
 										const set = exercise.sets[i];
 
+										// For pending sets on the active exercise, use execution view for dynamic weights
+										// (reflects next_set rule adjustments)
+										let pendingWeight = exercise.targetWeight ?? 0;
+										if (!isDone && isActive && executionView?.sets[i]) {
+											const targetWeightStr = executionView.sets[i].target.weight;
+											// Parse weight string (e.g., "55kg" -> 55, "bodyweight" -> 0)
+											if (targetWeightStr.toLowerCase().includes('body')) {
+												pendingWeight = 0;
+											} else {
+												const match = targetWeightStr.match(/(\d+(?:\.\d+)?)/);
+												if (match?.[1]) {
+													pendingWeight = parseFloat(match[1]);
+												}
+											}
+										}
+
 										return {
-											weight: isDone && set ? set.weight : exercise.targetWeight ?? 0,
+											weight: isDone && set ? set.weight : pendingWeight,
 											reps: isDone && set ? set.reps : repsDisplay,
 											rpe: isDone && set ? set.rpe : exercise.targetRPE ?? 7,
 											variant: isDone ? 'done' : isNext ? 'next' : 'pending',
@@ -579,102 +633,93 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 						)}
 
 
-						{/* Detail panel - only for input modes */}
-						{detailInputMode !== 'none' && !exerciseSummary && (
-						<div className="fit-detail-panel">
-							<div className="fit-detail-content">
-
-								{isViewingActiveExercise && detailInputMode === 'reps' && (
-									<div className="fit-inline-input">
-										<h3>How many reps?</h3>
-										<div className="fit-number-grid fit-number-grid-inline">
-											{Array.from({ length: 20 }, (_, i) => i + 1).map(num => {
-												const inRange = num >= currentExercise.targetRepsMin &&
-													num <= currentExercise.targetRepsMax;
-												return (
-													<button
-														key={num}
-														className={`fit-number-button ${inRange ? 'in-range' : ''}`}
-														onClick={() => handleInlineReps(num)}
-													>
-														{num}
-													</button>
-												);
-											})}
-										</div>
-									</div>
-								)}
-
-								{isViewingActiveExercise && detailInputMode === 'rpe' && (
-									<div className="fit-inline-input">
-										<h3>RPE?</h3>
-										<div className="fit-number-grid fit-number-grid-inline fit-number-grid-rpe">
-											{Array.from({ length: 10 }, (_, i) => i + 1).map(num => {
-												const isTarget = num === targetRPE;
-												return (
-													<button
-														key={num}
-														className={`fit-number-button ${isTarget ? 'in-range' : ''}`}
-														onClick={() => handleInlineRPE(num)}
-													>
-														{num}
-													</button>
-												);
-											})}
-										</div>
-									</div>
-								)}
-
-								{isViewingActiveExercise && detailInputMode === 'weight' && (
-									<div className="fit-inline-input">
-										<h3>Weight (kg)</h3>
-										<div className="fit-weight-inline">
-											<div className="fit-weight-display-inline">
-												{pendingSet.weight === 0 ? 'BW' : pendingSet.weight}
-												{pendingSet.weight > 0 && <span className="fit-weight-unit-inline">kg</span>}
-											</div>
-											<div className="fit-weight-buttons-inline">
-												<button onClick={() => setPendingSet(p => ({ ...p, weight: Math.max(0, p.weight - 5) }))}>-5</button>
-												<button onClick={() => setPendingSet(p => ({ ...p, weight: Math.max(0, p.weight - 1) }))}>-1</button>
-												<button onClick={() => setPendingSet(p => ({ ...p, weight: p.weight + 1 }))}>+1</button>
-												<button onClick={() => setPendingSet(p => ({ ...p, weight: p.weight + 5 }))}>+5</button>
-											</div>
-											<button
-												className="fit-button-success fit-confirm-inline"
-												onClick={handleInlineWeightConfirm}
-											>
-												Confirm ({pendingSet.reps} reps @ {pendingSet.weight === 0 ? 'BW' : `${pendingSet.weight}kg`})
-											</button>
-										</div>
-									</div>
-								)}
-							</div>
-						</div>
-						)}
 					</div>
 
-					{/* Action footer - fixed at bottom, outside scrollable content */}
-					{isViewingActiveExercise && detailInputMode === 'none' && !exerciseSummary && (
-						<div className="fit-action-footer fit-action-footer-triple">
-							<button className="fit-action-secondary" onClick={handleCancel}>
-								Cancel
-							</button>
-							{isSelectedSetNext ? (
-								<button className="fit-button-primary fit-button-large" onClick={handleDoneClick}>
-									DONE
-								</button>
-							) : isSelectedSetDone && selectedSet ? (
-								<button className="fit-button-secondary fit-button-large" onClick={handleEditClick}>
-									Edit Set
-								</button>
-							) : (
-								<div className="fit-button-placeholder" />
-							)}
-							<button className="fit-action-secondary" onClick={handleSkipExercise}>
-								Skip
-							</button>
-						</div>
-					)}
+					{/* Unified ActionFooter - handles all states */}
+					{isViewingActiveExercise && !exerciseSummary && (() => {
+						// Build question prop based on current input mode
+						const buildQuestion = (): PostSetQuestion | undefined => {
+							switch (detailInputMode) {
+								case 'reps':
+									return {
+										type: 'reps',
+										min: currentExercise.targetRepsMin,
+										max: currentExercise.targetRepsMax,
+										onSelect: handleInlineReps,
+									};
+								case 'rpe':
+									return {
+										type: 'rpe',
+										target: targetRPE,
+										onSelect: handleInlineRPE,
+									};
+								case 'weight':
+									return {
+										type: 'weight',
+										value: pendingSet.weight,
+										pendingReps: pendingSet.reps ?? 0,
+										onChange: (weight: number) => setPendingSet(p => ({ ...p, weight })),
+										onConfirm: handleInlineWeightConfirm,
+									};
+								default:
+									return undefined;
+							}
+						};
+
+						const question = buildQuestion();
+
+						// When showing a question, don't show action buttons
+						if (question) {
+							return (
+								<ActionFooter
+									layout="single"
+									question={question}
+								/>
+							);
+						}
+
+						// Show post-set feedback if there's a recent adjustment
+						if (postSetFeedback) {
+							return (
+								<ActionFooter
+									layout="single"
+									primaryAction={{
+										label: 'continue',
+										onClick: () => setPostSetFeedback(null),
+										variant: 'success',
+									}}
+									coachTip={{
+										change: postSetFeedback.change,
+										reason: postSetFeedback.reason,
+									}}
+								/>
+							);
+						}
+
+						// Default triple layout with Cancel/DONE/Skip
+						return (
+							<ActionFooter
+								layout="triple"
+								leftAction={{
+									label: 'Cancel',
+									onClick: handleCancel,
+									variant: 'ghost',
+								}}
+								primaryAction={
+									isSelectedSetNext
+										? { label: 'DONE', onClick: handleDoneClick, variant: 'primary' }
+										: isSelectedSetDone && selectedSet
+											? { label: 'Edit Set', onClick: handleEditClick, variant: 'secondary' }
+											: { label: '', onClick: () => {}, disabled: true }
+								}
+								rightAction={{
+									label: 'Skip',
+									onClick: handleSkipExercise,
+									variant: 'ghost',
+								}}
+							/>
+						);
+					})()}
 
 					{/* Exercise completion feedback with coach tip */}
 					{isViewingActiveExercise && exerciseSummary && (() => {

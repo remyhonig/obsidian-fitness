@@ -249,3 +249,56 @@ export const WithRuleComplete: Story = {
 		},
 	},
 };
+
+// Question mode - Reps
+export const QuestionReps: Story = {
+	args: {
+		layout: 'single',
+		question: {
+			type: 'reps',
+			min: 8,
+			max: 10,
+			onSelect: action('selectReps'),
+		},
+	},
+};
+
+// Question mode - RPE
+export const QuestionRPE: Story = {
+	args: {
+		layout: 'single',
+		question: {
+			type: 'rpe',
+			target: 7,
+			onSelect: action('selectRPE'),
+		},
+	},
+};
+
+// Question mode - Weight
+export const QuestionWeight: Story = {
+	args: {
+		layout: 'single',
+		question: {
+			type: 'weight',
+			value: 80,
+			pendingReps: 10,
+			onChange: action('changeWeight'),
+			onConfirm: action('confirmWeight'),
+		},
+	},
+};
+
+// Question mode - Weight (bodyweight)
+export const QuestionWeightBodyweight: Story = {
+	args: {
+		layout: 'single',
+		question: {
+			type: 'weight',
+			value: 0,
+			pendingReps: 12,
+			onChange: action('changeWeight'),
+			onConfirm: action('confirmWeight'),
+		},
+	},
+};

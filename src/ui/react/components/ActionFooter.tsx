@@ -6,6 +6,7 @@
  * - Triple: left/center/right actions (e.g., Cancel/DONE/Skip)
  * - Single: one primary action button
  * - With coach tip: displays a coaching message above the action
+ * - With question: displays post-set question input (reps/RPE/weight)
  */
 
 import { RuleProgressPill } from './RuleProgressPill';
@@ -29,6 +30,42 @@ export interface CoachTip {
 	streakBroken?: boolean;
 }
 
+/** Reps question configuration */
+export interface RepsQuestion {
+	type: 'reps';
+	/** Minimum target reps (highlighted in range) */
+	min: number;
+	/** Maximum target reps (highlighted in range) */
+	max: number;
+	/** Called when user selects a rep count */
+	onSelect: (reps: number) => void;
+}
+
+/** RPE question configuration */
+export interface RPEQuestion {
+	type: 'rpe';
+	/** Target RPE (highlighted) */
+	target: number;
+	/** Called when user selects an RPE */
+	onSelect: (rpe: number) => void;
+}
+
+/** Weight question configuration */
+export interface WeightQuestion {
+	type: 'weight';
+	/** Current weight value */
+	value: number;
+	/** Reps from previous question (for confirm button label) */
+	pendingReps: number;
+	/** Called when weight changes */
+	onChange: (weight: number) => void;
+	/** Called when user confirms */
+	onConfirm: () => void;
+}
+
+/** Union type for all question types */
+export type PostSetQuestion = RepsQuestion | RPEQuestion | WeightQuestion;
+
 /** Action button configuration */
 export interface ActionButton {
 	/** Button label */
@@ -45,8 +82,8 @@ export interface ActionFooterProps {
 	/** Layout mode */
 	layout: 'single' | 'triple';
 
-	/** Primary/center action (required) */
-	primaryAction: ActionButton;
+	/** Primary/center action (required for single/triple, ignored when question is provided) */
+	primaryAction?: ActionButton;
 
 	/** Left action (triple layout only) */
 	leftAction?: ActionButton;
@@ -56,6 +93,9 @@ export interface ActionFooterProps {
 
 	/** Optional coaching tip displayed above actions */
 	coachTip?: CoachTip;
+
+	/** Optional post-set question (replaces action buttons) */
+	question?: PostSetQuestion;
 
 	/** Additional CSS class for styling variants */
 	className?: string;
@@ -67,6 +107,7 @@ export function ActionFooter({
 	leftAction,
 	rightAction,
 	coachTip,
+	question,
 	className = '',
 }: ActionFooterProps) {
 	const getButtonClass = (variant: ActionButton['variant'] = 'primary', isLarge = false): string => {
@@ -100,11 +141,168 @@ export function ActionFooter({
 
 	const footerClasses = [
 		'fit-action-footer',
-		layout === 'triple' ? 'fit-action-footer-triple' : '',
+		question ? 'fit-action-footer-question' : '',
+		layout === 'triple' && !question ? 'fit-action-footer-triple' : '',
 		coachTip ? 'fit-action-footer-summary' : '',
 		isStreakBroken ? 'streak-broken' : isAdjustmentDown ? 'adjustment-down' : '',
 		className,
 	].filter(Boolean).join(' ');
+
+	// Render reps question grid
+	const renderRepsQuestion = (q: RepsQuestion) => (
+		<div className="fit-footer-question">
+			<h3 className="fit-footer-question-title">how many reps?</h3>
+			<div className="fit-number-grid fit-number-grid-reps">
+				{Array.from({ length: 20 }, (_, i) => i + 1).map(num => {
+					const inRange = num >= q.min && num <= q.max;
+					return (
+						<button
+							key={num}
+							className={`fit-number-button ${inRange ? 'in-range' : ''}`}
+							onClick={() => q.onSelect(num)}
+						>
+							{num}
+						</button>
+					);
+				})}
+			</div>
+		</div>
+	);
+
+	// Render RPE question grid
+	const renderRPEQuestion = (q: RPEQuestion) => (
+		<div className="fit-footer-question">
+			<h3 className="fit-footer-question-title">RPE?</h3>
+			<div className="fit-number-grid fit-number-grid-rpe">
+				{Array.from({ length: 10 }, (_, i) => i + 1).map(num => {
+					const isTarget = num === q.target;
+					return (
+						<button
+							key={num}
+							className={`fit-number-button ${isTarget ? 'in-range' : ''}`}
+							onClick={() => q.onSelect(num)}
+						>
+							{num}
+						</button>
+					);
+				})}
+			</div>
+		</div>
+	);
+
+	// Render weight question with +/- buttons
+	const renderWeightQuestion = (q: WeightQuestion) => (
+		<div className="fit-footer-question">
+			<h3 className="fit-footer-question-title">weight</h3>
+			<div className="fit-footer-weight">
+				<div className="fit-footer-weight-display">
+					{q.value === 0 ? 'BW' : q.value}
+					{q.value > 0 && <span className="fit-footer-weight-unit">kg</span>}
+				</div>
+				<div className="fit-footer-weight-buttons">
+					<button
+						className="fit-weight-adjust"
+						onClick={() => q.onChange(Math.max(0, q.value - 5))}
+					>
+						-5
+					</button>
+					<button
+						className="fit-weight-adjust"
+						onClick={() => q.onChange(Math.max(0, q.value - 1))}
+					>
+						-1
+					</button>
+					<button
+						className="fit-weight-adjust"
+						onClick={() => q.onChange(q.value + 1)}
+					>
+						+1
+					</button>
+					<button
+						className="fit-weight-adjust"
+						onClick={() => q.onChange(q.value + 5)}
+					>
+						+5
+					</button>
+				</div>
+				<button
+					className="fit-button-success fit-footer-weight-confirm"
+					onClick={q.onConfirm}
+				>
+					confirm ({q.pendingReps} reps @ {q.value === 0 ? 'BW' : `${q.value}kg`})
+				</button>
+			</div>
+		</div>
+	);
+
+	// Render question input if provided
+	const renderQuestion = () => {
+		if (!question) return null;
+
+		switch (question.type) {
+			case 'reps':
+				return renderRepsQuestion(question);
+			case 'rpe':
+				return renderRPEQuestion(question);
+			case 'weight':
+				return renderWeightQuestion(question);
+		}
+	};
+
+	// Render action buttons (only when no question)
+	const renderActions = () => {
+		if (question || !primaryAction) return null;
+
+		const action = primaryAction; // TypeScript narrowing helper
+
+		if (layout === 'triple') {
+			return (
+				<>
+					{leftAction ? (
+						<button
+							className={getButtonClass(leftAction.variant ?? 'ghost')}
+							onClick={leftAction.onClick}
+							disabled={leftAction.disabled}
+						>
+							{leftAction.label}
+						</button>
+					) : (
+						<div className="fit-button-placeholder" />
+					)}
+
+					<button
+						className={getButtonClass(action.variant, true)}
+						onClick={action.onClick}
+						disabled={action.disabled}
+					>
+						{action.label}
+					</button>
+
+					{rightAction ? (
+						<button
+							className={getButtonClass(rightAction.variant ?? 'ghost')}
+							onClick={rightAction.onClick}
+							disabled={rightAction.disabled}
+						>
+							{rightAction.label}
+						</button>
+					) : (
+						<div className="fit-button-placeholder" />
+					)}
+				</>
+			);
+		}
+
+		return (
+			<button
+				className={getButtonClass(action.variant ?? 'success', true)}
+				onClick={action.onClick}
+				disabled={action.disabled}
+			>
+				{action.label}
+			</button>
+		);
+	};
 
 	return (
 		<div className={footerClasses}>
@@ -129,49 +327,8 @@ export function ActionFooter({
 				</div>
 			)}
 
-			{layout === 'triple' ? (
-				<>
-					{leftAction ? (
-						<button
-							className={getButtonClass(leftAction.variant ?? 'ghost')}
-							onClick={leftAction.onClick}
-							disabled={leftAction.disabled}
-						>
-							{leftAction.label}
-						</button>
-					) : (
-						<div className="fit-button-placeholder" />
-					)}
-
-					<button
-						className={getButtonClass(primaryAction.variant, true)}
-						onClick={primaryAction.onClick}
-						disabled={primaryAction.disabled}
-					>
-						{primaryAction.label}
-					</button>
-
-					{rightAction ? (
-						<button
-							className={getButtonClass(rightAction.variant ?? 'ghost')}
-							onClick={rightAction.onClick}
-							disabled={rightAction.disabled}
-						>
-							{rightAction.label}
-						</button>
-					) : (
-						<div className="fit-button-placeholder" />
-					)}
-				</>
-			) : (
-				<button
-					className={getButtonClass(primaryAction.variant ?? 'success', true)}
-					onClick={primaryAction.onClick}
-					disabled={primaryAction.disabled}
-				>
-					{primaryAction.label}
-				</button>
-			)}
+			{renderQuestion()}
+			{renderActions()}
 		</div>
 	);
 }
