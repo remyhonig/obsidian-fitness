@@ -7554,27 +7554,45 @@
 	gap: 8px;
 }
 
+/* Duolingo-style 3D inline weight buttons */
 .fit-weight-buttons-inline button {
-	padding: 10px 16px;
-	font-size: 14px;
-	font-weight: 600;
-	border: 1px solid var(--fit-border);
-	background: var(--fit-bg);
-	color: var(--fit-text-primary);
-	border-radius: var(--fit-border-radius);
+	padding: 12px 20px;
+	font-size: 16px;
+	font-weight: 700;
+	border: none;
+	border-bottom: 4px solid #c4c4c4;
+	background: #f0f0f0;
+	color: #4b4b4b;
+	border-radius: 12px;
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: transform 0.1s, border-bottom-width 0.1s;
 }
 
-.fit-weight-buttons-inline button:hover {
-	background: var(--fit-bg-secondary);
+.fit-weight-buttons-inline button:active {
+	transform: translateY(4px);
+	border-bottom-width: 0;
+	background: #e0e0e0;
 }
 
+/* Duolingo-style 3D confirm button */
 .fit-confirm-inline {
-	margin-top: 8px;
-	padding: 14px 24px;
-	font-size: 15px;
+	margin-top: 12px;
+	padding: 16px 24px;
+	font-size: 16px;
+	font-weight: 700;
 	width: 100%;
+	background: #58CC02 !important;
+	border: none !important;
+	border-bottom: 4px solid #46a302 !important;
+	border-radius: 14px !important;
+	color: white !important;
+	text-transform: none;
+}
+
+.fit-confirm-inline:active {
+	transform: translateY(4px);
+	border-bottom-width: 0 !important;
+	background: #4db800 !important;
 }
 
 /* Skip exercise button (legacy) */
@@ -7619,32 +7637,39 @@
 	grid-template-columns: repeat(5, 1fr);
 }
 
+/* Duolingo-style 3D number buttons */
 .fit-number-button {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: white;
-	border: 2px solid #E5E7EB;
+	background: #f0f0f0;
+	border: none;
+	border-bottom: 4px solid #c4c4c4;
 	border-radius: 12px;
 	font-size: 24px;
 	font-weight: 700;
-	color: var(--fit-text-primary);
+	color: #4b4b4b;
 	cursor: pointer;
 	min-height: 56px;
-	transition: transform 0.1s, background 0.1s;
+	transition: transform 0.1s, border-bottom-width 0.1s;
 }
 
 .fit-number-button:active {
-	transform: scale(0.95);
-	background: var(--fit-primary);
-	border-color: var(--fit-primary);
-	color: white;
+	transform: translateY(4px);
+	border-bottom-width: 0;
+	background: #e0e0e0;
 }
 
-/* Highlighted target range */
+/* Highlighted target range - subtle blue accent to indicate target */
 .fit-number-button.in-range {
-	border-color: var(--fit-primary);
-	background: var(--fit-primary-light);
+	background: #e8f4fc;
+	border-bottom-color: #1CB0F6;
+	color: #1899d6;
+}
+
+.fit-number-button.in-range:active {
+	background: #1CB0F6;
+	color: white;
 }
 
 /* Weight selector step */
@@ -7691,25 +7716,28 @@
 	margin: 32px 0;
 }
 
+/* Duolingo-style 3D weight adjustment buttons */
 .fit-weight-adjust {
 	width: 64px;
 	height: 64px;
-	border-radius: 50%;
-	border: 2px solid #E5E7EB;
-	background: white;
+	border-radius: 16px;
+	border: none;
+	border-bottom: 4px solid #c4c4c4;
+	background: #f0f0f0;
 	font-size: 20px;
-	font-weight: 600;
-	color: var(--fit-text-primary);
+	font-weight: 700;
+	color: #4b4b4b;
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: transform 0.1s, background 0.1s;
+	transition: transform 0.1s, border-bottom-width 0.1s;
 }
 
 .fit-weight-adjust:active {
-	transform: scale(0.95);
-	background: #F3F4F6;
+	transform: translateY(4px);
+	border-bottom-width: 0;
+	background: #e0e0e0;
 }
 
 .fit-weight-adjust-large {

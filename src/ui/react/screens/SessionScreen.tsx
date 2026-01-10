@@ -88,18 +88,20 @@ interface SessionScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
 	/** Initial exercise summary state for Storybook testing */
 	initialExerciseSummary?: ExerciseSummaryState | null;
+	/** Initial detail input mode for Storybook testing (reps/rpe/weight questions) */
+	initialDetailInputMode?: 'none' | 'reps' | 'rpe' | 'weight';
+	/** Initial pending set data for Storybook testing */
+	initialPendingSet?: { reps: number | null; rpe: number | null; weight: number };
 }
 
-export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScreenProps) {
+export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetailInputMode, initialPendingSet }: SessionScreenProps) {
 	const { adapter, session, dispatch, saveSession, getSessionProgress, isSessionComplete } = useDomain();
 
 	// Step flow state
 	const [sessionStep, setSessionStep] = useState<SessionStep>('workout');
-	const [pendingSet, setPendingSet] = useState<PendingSet>({
-		reps: null,
-		rpe: null,
-		weight: 0
-	});
+	const [pendingSet, setPendingSet] = useState<PendingSet>(
+		initialPendingSet ?? { reps: null, rpe: null, weight: 0 }
+	);
 
 	// Timer state - calculated from session.restStartTime
 	const [restElapsed, setRestElapsed] = useState(0);
@@ -115,7 +117,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 	const [selectedSetIndex, setSelectedSetIndex] = useState<number | null>(null);
 
 	// Input mode for inline editing in detail panel
-	const [detailInputMode, setDetailInputMode] = useState<'none' | 'reps' | 'rpe' | 'weight'>('none');
+	const [detailInputMode, setDetailInputMode] = useState<'none' | 'reps' | 'rpe' | 'weight'>(initialDetailInputMode ?? 'none');
 
 	// Track if we're editing an existing set (null = new set, number = set index being edited)
 	const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null);

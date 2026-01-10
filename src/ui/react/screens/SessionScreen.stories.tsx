@@ -374,3 +374,75 @@ export const ExerciseCompleteWithDownAdjustment: Story = {
 		},
 	},
 };
+
+// Post-set question stories - shows the input flow after marking a set as done
+
+const POST_SET_SESSION_STATE = {
+	isActive: true,
+	id: 'test-session',
+	workout: 'Upper Body',
+	programId: null,
+	date: new Date().toISOString().split('T')[0],
+	currentExerciseIndex: 0,
+	currentSetIndex: 1,
+	exercises: [
+		{
+			exercise: 'Bench Press',
+			targetSets: 3,
+			targetRepsMin: 8,
+			targetRepsMax: 10,
+			targetWeight: 80,
+			targetRPE: 8,
+			restSeconds: 180,
+			sets: [
+				{ exercise: 'Bench Press', setNumber: 1, reps: 10, weight: 80, rpe: 7, timestamp: new Date().toISOString() },
+			],
+			media: [],
+			note: 'Keep shoulders retracted',
+		},
+		{
+			exercise: 'Barbell Row',
+			targetSets: 3,
+			targetRepsMin: 8,
+			targetRepsMax: 10,
+			targetWeight: 70,
+			targetRPE: 8,
+			restSeconds: 180,
+			sets: [],
+			media: [],
+			note: null,
+		},
+	],
+	startTime: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+	endTime: null,
+	status: 'active',
+	extraRestTime: 0,
+	restStartTime: Date.now() - 30 * 1000,
+};
+
+export const PostSetRepsQuestion: Story = {
+	args: {
+		onNavigate: action('navigate'),
+		sessionState: POST_SET_SESSION_STATE,
+		initialDetailInputMode: 'reps',
+		initialPendingSet: { reps: null, rpe: null, weight: 80 },
+	},
+};
+
+export const PostSetRPEQuestion: Story = {
+	args: {
+		onNavigate: action('navigate'),
+		sessionState: POST_SET_SESSION_STATE,
+		initialDetailInputMode: 'rpe',
+		initialPendingSet: { reps: 9, rpe: null, weight: 80 },
+	},
+};
+
+export const PostSetWeightConfirm: Story = {
+	args: {
+		onNavigate: action('navigate'),
+		sessionState: POST_SET_SESSION_STATE,
+		initialDetailInputMode: 'weight',
+		initialPendingSet: { reps: 9, rpe: 8, weight: 80 },
+	},
+};
