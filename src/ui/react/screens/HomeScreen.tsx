@@ -2,23 +2,26 @@
  * HomeScreen Component
  *
  * Main landing screen showing:
- * - Active program
+ * - Active program schedule
  * - Next workout recommendation
  * - Quick actions (start workout, view history, etc.)
+ *
+ * Note: This screen requires a program to be loaded.
+ * Use WelcomeScreen for the initial no-program state.
  */
 
 import { useState, useEffect } from 'react';
 import { useDomain } from '../contexts';
 import { TopNav, type TimerConfig } from '../components/TopNav';
 import { Mascot } from '../components/Mascot';
-import { ActionFooter } from '../components/ActionFooter';
+import { ExerciseGroup } from '../components/ExerciseGroup';
 
 interface HomeScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
 }
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
-	const { program, session, dispatch } = useDomain();
+	const { program, session } = useDomain();
 	const [restElapsed, setRestElapsed] = useState(0);
 
 	// Get current exercise for rest target calculation
@@ -57,45 +60,51 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 			: { type: 'countdown', seconds: restRemaining, totalSeconds: restTarget, label: 'Rest' };
 	};
 
-	const handleStartWorkout = (workoutName: string) => {
-		dispatch({ type: 'start_workout', workoutName, programId: program?.program.name });
-		onNavigate('session');
+	// Determine suggested workout for highlighting
+	const getSuggestedWorkout = (): { name: string; subtitle?: string } | null => {
+		if (!program) return null;
+
+		// Use nextSession if available
+		if (program.nextSession) {
+			return {
+				name: program.nextSession.workout,
+				subtitle: program.nextSession.scheduledFor
+					? `scheduled: ${program.nextSession.scheduledFor.toLowerCase()}`
+					: undefined
+			};
+		}
+
+		// Fallback: find first workout with exercises from cycle pattern or workouts list
+		const cycleWorkoutNames = program.schedule.cyclePattern.map(c => c.workout);
+		const workoutsWithExercises = program.workouts.filter(w => w.exercises.length > 0);
+
+		// Prefer cycle order, but only if workout has exercises
+		const firstCycleWorkout = cycleWorkoutNames
+			.map(name => workoutsWithExercises.find(w => w.name === name))
+			.find(w => w !== undefined);
+
+		const suggestedWorkout = firstCycleWorkout ?? workoutsWithExercises[0];
+
+		if (suggestedWorkout) {
+			return {
+				name: suggestedWorkout.name,
+			};
+		}
+
+		return null;
 	};
 
-	// Welcome screen - no program selected
+	// No program loaded - should use WelcomeScreen instead
 	if (!program) {
-		return (
-			<div className="fit-home-screen">
-				<TopNav
-					title="welcome"
-					timer={getTimerConfig()}
-					onTitleClick={session.isActive ? () => onNavigate('session') : undefined}
-				/>
-				<div className="fit-content fit-welcome-content">
-					<div className="fit-welcome-screen">
-						<Mascot
-							mood="neutral"
-							size="large"
-							message="Yo! Ready to crush it? Let's get those gains!"
-						/>
-					</div>
-				</div>
-				<ActionFooter
-					layout="single"
-					primaryAction={{
-						label: 'continue',
-						onClick: () => onNavigate('program-picker'),
-						variant: 'primary'
-					}}
-				/>
-			</div>
-		);
+		return null;
 	}
+
+	const suggestedWorkout = getSuggestedWorkout();
 
 	return (
 		<div className="fit-home-screen">
 			<TopNav
-				title="Home"
+				title="Brorilla"
 				timer={getTimerConfig()}
 				onTitleClick={session.isActive ? () => onNavigate('session') : undefined}
 			/>
@@ -109,114 +118,63 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 					className="fit-home-mascot"
 				/>
 
-				{/* Next Workout Card - with program name as title */}
-				<section className="fit-card">
-					<h2>{program.program.name}</h2>
-					{(() => {
-						// Use nextSession if available
-						if (program.nextSession) {
-							return (
-								<div className="fit-next-workout">
-									<h3>{program.nextSession.workout}</h3>
-									{program.nextSession.scheduledFor && (
-										<p className="fit-scheduled-time">
-											Scheduled: {program.nextSession.scheduledFor}
-										</p>
-									)}
-									<button
-										className="fit-button-primary"
-										onClick={() => handleStartWorkout(program.nextSession!.workout)}
-									>
-										start workout
-									</button>
-								</div>
-							);
-						}
-
-						// Fallback: find first workout with exercises from cycle pattern or workouts list
-						const cycleWorkoutNames = program.schedule.cyclePattern.map(c => c.workout);
-						const workoutsWithExercises = program.workouts.filter(w => w.exercises.length > 0);
-
-						// Prefer cycle order, but only if workout has exercises
-						const firstCycleWorkout = cycleWorkoutNames
-							.map(name => workoutsWithExercises.find(w => w.name === name))
-							.find(w => w !== undefined);
-
-						const suggestedWorkout = firstCycleWorkout ?? workoutsWithExercises[0];
-
-						if (suggestedWorkout) {
-							return (
-								<div className="fit-next-workout">
-									<h3>{suggestedWorkout.name}</h3>
-									<p className="fit-scheduled-time">start your training cycle</p>
-									<button
-										className="fit-button-primary"
-										onClick={() => handleStartWorkout(suggestedWorkout.name)}
-									>
-										start workout
-									</button>
-								</div>
-							);
-						}
-
-						return <p>no workouts available</p>;
-					})()}
-				</section>
-
-				{/* Schedule Overview */}
-				<section className="fit-card fit-schedule-card">
-					{program.schedule.weeklyPattern.length > 0 ? (
-						<>
-							<h2>this week</h2>
-							<div className="fit-schedule-list">
-								{program.schedule.weeklyPattern.map((entry, index) => (
-									<button
-										key={index}
-										className="fit-schedule-item"
-										onClick={() => entry.workouts[0] && onNavigate('workout-detail', { workoutName: entry.workouts[0] })}
-									>
-										<div className="fit-schedule-item-day">{entry.day.toLowerCase()}</div>
-										<div className="fit-schedule-item-workout">
-											{entry.workouts.join(', ')}
-										</div>
-										<span className="fit-schedule-item-arrow">›</span>
-									</button>
-								))}
-							</div>
-						</>
-					) : program.schedule.cyclePattern.length > 0 ? (
-						<>
-							<h2>training cycle</h2>
-							<div className="fit-schedule-list">
-								{program.schedule.cyclePattern.map((entry, index) => (
-									<button
-										key={index}
-										className="fit-schedule-item"
-										onClick={() => onNavigate('workout-detail', { workoutName: entry.workout })}
-									>
-										<div className="fit-schedule-item-day">day {index + 1}</div>
-										<div className="fit-schedule-item-workout">
-											{entry.workout}
-											{entry.recovery && (
-												<span className="fit-schedule-item-recovery">
-													{entry.recovery} rest
-												</span>
-											)}
-										</div>
-										<span className="fit-schedule-item-arrow">›</span>
-									</button>
-								))}
-							</div>
-						</>
-					) : (
-						<>
-							<h2>schedule</h2>
-							<p>no schedule defined</p>
-						</>
-					)}
-				</section>
-
-				</div>
+				{/* Schedule Overview - uses ExerciseGroup with SetCard items */}
+				{program.schedule.weeklyPattern.length > 0 ? (
+					<ExerciseGroup
+						exerciseName={program.program.name}
+						variant="next"
+						width="100%"
+						sets={program.schedule.weeklyPattern.map((entry) => {
+							const isSuggested = suggestedWorkout && entry.workouts.includes(suggestedWorkout.name);
+							const isInProgress = session.isActive && entry.workouts.includes(session.workout ?? '');
+							const variant = isInProgress ? 'next' as const : isSuggested ? 'suggested' as const : 'pending' as const;
+							return {
+								weight: 0,
+								reps: entry.workouts.join(', '),
+								rpe: 0,
+								variant,
+								headerText: entry.day,
+								detailText: 'not done yet',
+								onClick: () => entry.workouts[0] && onNavigate('workout-detail', { workoutName: entry.workouts[0] }),
+							};
+						})}
+					/>
+				) : program.schedule.cyclePattern.length > 0 ? (
+					<ExerciseGroup
+						exerciseName={program.program.name}
+						variant="next"
+						width="100%"
+						sets={program.schedule.cyclePattern.map((entry, index) => {
+							const isSuggested = suggestedWorkout && entry.workout === suggestedWorkout.name;
+							const isInProgress = session.isActive && session.workout === entry.workout;
+							const variant = isInProgress ? 'next' as const : isSuggested ? 'suggested' as const : 'pending' as const;
+							return {
+								weight: 0,
+								reps: entry.workout,
+								rpe: 0,
+								variant,
+								headerText: `Day ${index + 1}`,
+								detailText: 'not done yet',
+								onClick: () => onNavigate('workout-detail', { workoutName: entry.workout }),
+							};
+						})}
+					/>
+				) : (
+					<ExerciseGroup
+						exerciseName={program.program.name}
+						variant="next"
+						width="100%"
+						sets={[{
+							weight: 0,
+							reps: 'no schedule defined',
+							rpe: 0,
+							variant: 'pending' as const,
+							headerText: '',
+							detailText: '',
+						}]}
+					/>
+				)}
+			</div>
 		</div>
 	);
 }

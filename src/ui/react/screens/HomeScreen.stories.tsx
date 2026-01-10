@@ -2,6 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { HomeScreen } from './HomeScreen';
 import { withProviders } from '../../../storybook/decorators/providers';
+import { withBottomNav } from './storyDecorators';
+
+// Note: Welcome screen is now a separate component (WelcomeScreen)
 
 const SAMPLE_PROGRAM = `# Jim Wendler's 5/3/1
 
@@ -114,30 +117,18 @@ const meta: Meta<typeof HomeScreen> = {
 	parameters: {
 		layout: 'fullscreen',
 	},
-	decorators: [withProviders],
+	decorators: [withProviders, withBottomNav('home')],
 };
 
 export default meta;
 type Story = StoryObj<typeof HomeScreen>;
 
 /**
- * Welcome screen - shown when no program is selected.
- * Shows the mascot with a welcome message and continue button
- * that leads to the program picker.
- */
-export const Welcome: Story = {
-	args: {
-		onNavigate: action('navigate'),
-		noProgram: true,
-	},
-};
-
-/**
- * Program Selected - the main home screen shown when user
+ * Default - the main home screen shown when user
  * has already chosen and loaded a program. Shows program info,
  * next workout, and weekly schedule.
  */
-export const ProgramSelected: Story = {
+export const Default: Story = {
 	args: {
 		onNavigate: action('navigate'),
 		programMarkdown: SAMPLE_PROGRAM,

@@ -18,8 +18,8 @@ export function ScreenWrapper({ children, activeTab = 'home' }: ScreenWrapperPro
 	const [tab, setTab] = useState<DefaultTabType>(activeTab);
 
 	return (
-		<div className="fit-app" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '600px' }}>
-			<div className="fit-main-content" style={{ flex: 1, overflow: 'auto' }}>
+		<div className="fit-app fit-app-shell">
+			<div className="fit-app-main">
 				{children}
 			</div>
 			<BottomNav<DefaultTabType> activeTab={tab} onTabChange={setTab} />

@@ -4001,6 +4001,22 @@
 	color: var(--fit-text-primary);
 }
 
+/* App shell layout - used by Storybook decorators */
+.fit-app-shell {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 600px;
+}
+
+.fit-app-main {
+	flex: 1;
+	min-height: 0; /* Allow flex shrinking */
+	overflow: hidden; /* Child screens handle their own scroll */
+	display: flex;
+	flex-direction: column;
+}
+
 /* YouTube button */
 .fit-youtube-btn {
 	display: flex;
@@ -5229,6 +5245,7 @@
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	min-height: 0; /* Allow flex shrinking */
 }
 
 .fit-home-screen .fit-content {
@@ -5236,6 +5253,20 @@
 	flex-direction: column;
 	gap: var(--fit-spacing);
 	flex: 1;
+	overflow-y: auto;
+	padding-bottom: 16px; /* Space before ActionFooter */
+}
+
+/* TopNav in home screen - not sticky, part of flex layout */
+.fit-home-screen .fit-top-nav {
+	position: relative;
+	flex-shrink: 0;
+}
+
+/* ActionFooter in home screen - not sticky, part of flex layout */
+.fit-home-screen .fit-action-footer {
+	position: relative;
+	flex-shrink: 0;
 }
 
 .fit-program-loader {
@@ -6625,6 +6656,28 @@
 	animation: pulse-glow-duo 2s ease-in-out infinite;
 }
 
+/* Suggested variant - light blue for next workout (not in progress) */
+.fit-set-card.suggested {
+	background: #B8E5FB;
+	box-shadow: 0 4px 0 #8ED4F5;
+}
+
+.fit-set-card.suggested:active {
+	box-shadow: 0 2px 0 #8ED4F5;
+}
+
+.fit-set-card.suggested .fit-set-card-header {
+	color: #1899d6;
+}
+
+.fit-set-card.suggested .fit-set-card-main {
+	color: #1899d6;
+}
+
+.fit-set-card.suggested .fit-set-card-details {
+	color: #4BABDB;
+}
+
 /* Selected card - scale up slightly */
 .fit-set-card.selected {
 	transform: scale(1.08);
@@ -7875,69 +7928,31 @@
 	opacity: 0.7;
 }
 
-/* ========== Schedule List (Improved UI) ========== */
-.fit-schedule-card h2 {
-	margin-bottom: 12px;
-}
-
-.fit-schedule-list {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.fit-schedule-card .fit-schedule-item {
+/* ========== Schedule in ExerciseGroup ========== */
+/* Day header with icon - centered like SetCard */
+.fit-schedule-day-header {
 	display: flex;
 	align-items: center;
-	gap: 12px;
-	width: 100%;
-	padding: 14px 16px;
-	background: #FFFFFF;
-	border: 2px solid #E5E5E5;
-	border-bottom-width: 4px;
-	border-radius: 12px;
-	box-shadow: none;
-	cursor: pointer;
-	text-align: left;
-	font-family: inherit;
-	font-size: inherit;
-	transition: transform 0.1s, border-bottom-width 0.1s;
+	justify-content: center;
+	gap: 6px;
 }
 
-.fit-schedule-card .fit-schedule-item:hover {
-	background: #FAFAFA;
-}
-
-.fit-schedule-card .fit-schedule-item:active {
-	transform: translateY(2px);
-	border-bottom-width: 2px;
-}
-
-.fit-schedule-item-day {
-	font-weight: 700;
-	font-size: 14px;
-	color: #4B4B4B;
-	min-width: 60px;
-}
-
-.fit-schedule-item-workout {
-	flex: 1;
-	font-size: 14px;
-	color: #777777;
+.fit-schedule-day-icon {
 	display: flex;
-	flex-direction: column;
-	gap: 2px;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
 }
 
-.fit-schedule-item-recovery {
-	font-size: 12px;
-	color: #AFAFAF;
-}
-
-.fit-schedule-item-arrow {
-	font-size: 18px;
-	color: #AFAFAF;
-	font-weight: 600;
+.fit-schedule-day-icon svg {
+	width: 100%;
+	height: 100%;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
 }
 
 /* ========== Workout Detail Screen ========== */
@@ -7952,6 +7967,12 @@
 	overflow-y: auto;
 	padding: 8px;
 	padding-bottom: 100px;
+}
+
+.fit-workout-exercises {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
 }
 
 .fit-workout-meta {
@@ -8167,6 +8188,55 @@
 /* Coach progress pill container */
 .fit-coach-progress {
 	margin-top: 8px;
+}
+
+/* Workout info footer - similar to summary but for home screen */
+.fit-action-footer-workout {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	background: linear-gradient(135deg, #e8f4ff 0%, #d4ebff 100%);
+	border-top: 3px solid #1cb0f6;
+	padding: 20px 16px;
+}
+
+.theme-dark .fit-action-footer-workout {
+	background: linear-gradient(135deg, rgba(28, 176, 246, 0.15) 0%, rgba(28, 176, 246, 0.25) 100%);
+	border-top-color: #1cb0f6;
+}
+
+.fit-workout-info-panel {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.fit-workout-info-content {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: 1;
+	/* No background - blends with footer gradient */
+}
+
+.fit-workout-info-program {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--fit-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.fit-workout-info-workout {
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--fit-text-primary);
+}
+
+.fit-workout-info-subtitle {
+	font-size: 13px;
+	color: var(--fit-text-secondary);
+	margin-top: 2px;
 }
 
 /* ActionFooter question mode - inherits sticky positioning from base .fit-action-footer */
@@ -8929,16 +8999,35 @@
 
 /* ========== Mascot & Welcome Screen - Duolingo Style ========== */
 
-/* Welcome Screen Layout */
+/* Welcome Screen - Full page standalone screen (no nav bars) */
 .fit-welcome-screen {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	background: var(--fit-bg, #F7F7F7);
+}
+
+.fit-welcome-content {
+	flex: 1;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	min-height: 60vh;
 	padding: 24px;
 	text-align: center;
 	gap: 24px;
+}
+
+/* TopNav in welcome screen - not sticky, part of flex layout */
+.fit-welcome-screen .fit-top-nav {
+	position: relative;
+	flex-shrink: 0;
+}
+
+/* ActionFooter in welcome screen - at bottom, not sticky */
+.fit-welcome-screen .fit-action-footer {
+	position: relative;
+	flex-shrink: 0;
 }
 
 .fit-welcome-hint {

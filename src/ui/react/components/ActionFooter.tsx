@@ -31,6 +31,16 @@ export interface CoachTip {
 	streakBroken?: boolean;
 }
 
+/** Workout info configuration for home screen */
+export interface WorkoutInfo {
+	/** Program name (optional) */
+	programName?: string;
+	/** Next workout name */
+	workoutName: string;
+	/** Optional subtitle (e.g., "scheduled for today") */
+	subtitle?: string;
+}
+
 /** Reps question configuration */
 export interface RepsQuestion {
 	type: 'reps';
@@ -95,6 +105,9 @@ export interface ActionFooterProps {
 	/** Optional coaching tip displayed above actions */
 	coachTip?: CoachTip;
 
+	/** Optional workout info displayed above actions (for home screen) */
+	workoutInfo?: WorkoutInfo;
+
 	/** Optional post-set question (replaces action buttons) */
 	question?: PostSetQuestion;
 
@@ -111,6 +124,7 @@ export function ActionFooter({
 	leftAction,
 	rightAction,
 	coachTip,
+	workoutInfo,
 	question,
 	className = '',
 	coachTipLayoutId,
@@ -149,6 +163,7 @@ export function ActionFooter({
 		question ? 'fit-action-footer-question' : '',
 		layout === 'triple' && !question ? 'fit-action-footer-triple' : '',
 		coachTip ? 'fit-action-footer-summary' : '',
+		workoutInfo ? 'fit-action-footer-workout' : '',
 		isStreakBroken ? 'streak-broken' : isAdjustmentDown ? 'adjustment-down' : '',
 		className,
 	].filter(Boolean).join(' ');
@@ -327,6 +342,21 @@ export function ActionFooter({
 
 	return (
 		<div className={footerClasses}>
+			{/* Workout info panel for home screen */}
+			{workoutInfo && (
+				<div className="fit-workout-info-panel">
+					<div className="fit-workout-info-content">
+						{workoutInfo.programName && (
+							<span className="fit-workout-info-program">{workoutInfo.programName}</span>
+						)}
+						<span className="fit-workout-info-workout">{workoutInfo.workoutName}</span>
+						{workoutInfo.subtitle && (
+							<span className="fit-workout-info-subtitle">{workoutInfo.subtitle}</span>
+						)}
+					</div>
+				</div>
+			)}
+
 			{/* Coach speech bubble - optionally animated with layoutId */}
 			{coachTip && (
 				coachTipLayoutId ? (

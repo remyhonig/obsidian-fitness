@@ -20,7 +20,7 @@ export interface ExerciseSetData {
 	rpe: number;
 
 	/** Visual state */
-	variant: 'done' | 'next' | 'pending';
+	variant: 'done' | 'next' | 'pending' | 'suggested';
 
 	/** Result indicator for completed sets */
 	result?: 'good' | 'ok' | 'bad';
@@ -30,6 +30,12 @@ export interface ExerciseSetData {
 
 	/** Rule badge to show on this set (indicates a rule was triggered) */
 	ruleBadge?: Omit<RuleBadgeProps, 'layoutId'> & { layoutId?: string };
+
+	/** Override header content (bypasses weight formatting) */
+	headerText?: React.ReactNode;
+
+	/** Override details text (bypasses RPE formatting) */
+	detailText?: string;
 }
 
 export interface ExerciseGroupProps {
@@ -64,13 +70,15 @@ export function ExerciseGroup({ exerciseName, sets, onInfoClick, width = 280, va
 		<div className={classNames} style={style}>
 			<div className="fit-exercise-group-header">
 				<span className="fit-exercise-group-header-title">{exerciseName}</span>
-				<button
-					className="fit-exercise-group-info-btn"
-					onClick={onInfoClick}
-					aria-label="Exercise info"
-				>
-					i
-				</button>
+				{onInfoClick && (
+					<button
+						className="fit-exercise-group-info-btn"
+						onClick={onInfoClick}
+						aria-label="Exercise info"
+					>
+						i
+					</button>
+				)}
 			</div>
 			<div className="fit-exercise-group-body">
 				{sets.map((set, index) => (
@@ -83,6 +91,8 @@ export function ExerciseGroup({ exerciseName, sets, onInfoClick, width = 280, va
 						result={set.result}
 						onClick={set.onClick}
 						ruleBadge={set.ruleBadge}
+						headerText={set.headerText}
+						detailText={set.detailText}
 					/>
 				))}
 			</div>

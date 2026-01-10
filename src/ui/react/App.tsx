@@ -173,13 +173,43 @@ export function App({ app, plugin }: AppProps) {
 		// Clear navigation stack when switching tabs
 		setNavigationStack([]);
 
-		// If navigating to workout tab and there's an active session, go to session screen
+		// If navigating to workout tab
 		if (tab === 'workout') {
 			const session = adapter.getSessionState();
+
+			// If there's an active session, go to session screen
 			if (session.isActive) {
 				setCurrentScreen('session');
 				setScreenParams({});
 				return;
+			}
+
+			// Otherwise, go to workout detail for the suggested workout
+			const program = adapter.getProgram();
+			if (program) {
+				// Use nextSession if available
+				let suggestedWorkout: string | null = null;
+
+				if (program.nextSession) {
+					suggestedWorkout = program.nextSession.workout;
+				} else {
+					// Fallback: find first workout with exercises from cycle pattern or workouts list
+					const cycleWorkoutNames = program.schedule.cyclePattern.map(c => c.workout);
+					const workoutsWithExercises = program.workouts.filter(w => w.exercises.length > 0);
+
+					// Prefer cycle order, but only if workout has exercises
+					const firstCycleWorkout = cycleWorkoutNames
+						.map(name => workoutsWithExercises.find(w => w.name === name))
+						.find(w => w !== undefined);
+
+					suggestedWorkout = firstCycleWorkout?.name ?? workoutsWithExercises[0]?.name ?? null;
+				}
+
+				if (suggestedWorkout) {
+					setCurrentScreen('workout-detail');
+					setScreenParams({ workoutName: suggestedWorkout });
+					return;
+				}
 			}
 		}
 

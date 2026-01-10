@@ -18,7 +18,7 @@ export interface SetCardProps {
 	rpe: number;
 
 	/** Visual state */
-	variant: 'done' | 'next' | 'pending';
+	variant: 'done' | 'next' | 'pending' | 'suggested';
 
 	/** Selected for detail view */
 	isSelected?: boolean;
@@ -37,6 +37,12 @@ export interface SetCardProps {
 
 	/** Rule badge to show on this set (indicates a rule was triggered) */
 	ruleBadge?: Omit<RuleBadgeProps, 'layoutId'> & { layoutId?: string };
+
+	/** Override header content (bypasses weight formatting) */
+	headerText?: React.ReactNode;
+
+	/** Override details text (bypasses RPE formatting) */
+	detailText?: string;
 }
 
 /**
@@ -78,11 +84,14 @@ export function SetCard({
 	exerciseName,
 	result,
 	ruleBadge,
+	headerText,
+	detailText,
 }: SetCardProps) {
 	const classNames = [
 		'fit-set-card',
 		variant === 'done' ? 'done' : '',
 		variant === 'next' ? 'next' : '',
+		variant === 'suggested' ? 'suggested' : '',
 		isSelected ? 'selected' : '',
 		isAnimating ? 'just-completed' : '',
 		exerciseName ? 'with-header-banner' : '',
@@ -93,6 +102,10 @@ export function SetCard({
 
 	const isDone = variant === 'done';
 
+	// Use override text or default formatting
+	const displayHeader = headerText ?? formatWeight(weight);
+	const displayDetails = detailText ?? `RPE ${rpe}`;
+
 	// When exerciseName is provided, show header banner style (Duolingo-like)
 	if (exerciseName) {
 		return (
@@ -101,10 +114,10 @@ export function SetCard({
 				<div className="fit-set-card-body">
 					{isAnimating && <StarBurst />}
 					{isDone && <span className="fit-set-card-checkmark">✓</span>}
-					<div className="fit-set-card-header">{formatWeight(weight)}</div>
+					<div className="fit-set-card-header">{displayHeader}</div>
 					<div className="fit-set-card-content">
 						<div className="fit-set-card-main">{reps}</div>
-						<div className="fit-set-card-details">RPE {rpe}</div>
+						{displayDetails && <div className="fit-set-card-details">{displayDetails}</div>}
 					</div>
 					{/* Rule badge - shows when a rule was triggered by this set */}
 					{ruleBadge && (
@@ -128,11 +141,11 @@ export function SetCard({
 			{isAnimating && <StarBurst />}
 			{isDone && <span className="fit-set-card-checkmark">✓</span>}
 
-			<div className="fit-set-card-header">{formatWeight(weight)}</div>
+			<div className="fit-set-card-header">{displayHeader}</div>
 
 			<div className="fit-set-card-content">
 				<div className="fit-set-card-main">{reps}</div>
-				<div className="fit-set-card-details">RPE {rpe}</div>
+				{displayDetails && <div className="fit-set-card-details">{displayDetails}</div>}
 			</div>
 
 			{/* Rule badge - shows when a rule was triggered by this set */}
