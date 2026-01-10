@@ -5,7 +5,7 @@
  * Used in session views to display both completed and pending sets.
  */
 
-import React from 'react';
+import { RuleBadge, type RuleBadgeProps } from './RuleBadge';
 
 export interface SetCardProps {
 	/** Weight in kg (0 = bodyweight) */
@@ -34,6 +34,9 @@ export interface SetCardProps {
 
 	/** Result indicator for completed sets - shows colored background */
 	result?: 'good' | 'ok' | 'bad';
+
+	/** Rule badge to show on this set (indicates a rule was triggered) */
+	ruleBadge?: Omit<RuleBadgeProps, 'layoutId'> & { layoutId?: string };
 }
 
 /**
@@ -74,6 +77,7 @@ export function SetCard({
 	onClick,
 	exerciseName,
 	result,
+	ruleBadge,
 }: SetCardProps) {
 	const classNames = [
 		'fit-set-card',
@@ -102,6 +106,17 @@ export function SetCard({
 						<div className="fit-set-card-main">{reps}</div>
 						<div className="fit-set-card-details">RPE {rpe}</div>
 					</div>
+					{/* Rule badge - shows when a rule was triggered by this set */}
+					{ruleBadge && (
+						<div className="fit-set-card-rule-badge">
+							<RuleBadge
+								change={ruleBadge.change}
+								layoutId={ruleBadge.layoutId}
+								isNegative={ruleBadge.isNegative}
+								isStreakBroken={ruleBadge.isStreakBroken}
+							/>
+						</div>
+					)}
 				</div>
 			</div>
 		);
@@ -119,6 +134,18 @@ export function SetCard({
 				<div className="fit-set-card-main">{reps}</div>
 				<div className="fit-set-card-details">RPE {rpe}</div>
 			</div>
+
+			{/* Rule badge - shows when a rule was triggered by this set */}
+			{ruleBadge && (
+				<div className="fit-set-card-rule-badge">
+					<RuleBadge
+						change={ruleBadge.change}
+						layoutId={ruleBadge.layoutId}
+						isNegative={ruleBadge.isNegative}
+						isStreakBroken={ruleBadge.isStreakBroken}
+					/>
+				</div>
+			)}
 		</div>
 	);
 }

@@ -9,6 +9,7 @@
  * - With question: displays post-set question input (reps/RPE/weight)
  */
 
+import { motion } from 'framer-motion';
 import { RuleProgressPill } from './RuleProgressPill';
 
 /** Rule progress info for coach tip */
@@ -99,6 +100,9 @@ export interface ActionFooterProps {
 
 	/** Additional CSS class for styling variants */
 	className?: string;
+
+	/** Layout ID for coach tip animation (enables shared element transition) */
+	coachTipLayoutId?: string;
 }
 
 export function ActionFooter({
@@ -109,6 +113,7 @@ export function ActionFooter({
 	coachTip,
 	question,
 	className = '',
+	coachTipLayoutId,
 }: ActionFooterProps) {
 	const getButtonClass = (variant: ActionButton['variant'] = 'primary', isLarge = false): string => {
 		const base = isLarge ? 'fit-button-large' : '';
@@ -299,27 +304,52 @@ export function ActionFooter({
 		);
 	};
 
+	// Render coach bubble content
+	const coachBubbleContent = coachTip ? (
+		<>
+			<div className="fit-coach-avatar">{isStreakBroken ? '💔' : '🏋️'}</div>
+			<div className="fit-coach-speech">
+				<span className="fit-coach-change">{coachTip.change}</span>
+				<span className="fit-coach-reason">{coachTip.reason}</span>
+				{coachTip.ruleProgress && (
+					<div className="fit-coach-progress">
+						<RuleProgressPill
+							current={coachTip.ruleProgress.current}
+							required={coachTip.ruleProgress.required}
+							unit={coachTip.ruleProgress.unit}
+							variant={getProgressVariant()}
+						/>
+					</div>
+				)}
+			</div>
+		</>
+	) : null;
+
 	return (
 		<div className={footerClasses}>
-			{/* Coach speech bubble */}
+			{/* Coach speech bubble - optionally animated with layoutId */}
 			{coachTip && (
-				<div className="fit-coach-bubble">
-					<div className="fit-coach-avatar">{isStreakBroken ? '💔' : '🏋️'}</div>
-					<div className="fit-coach-speech">
-						<span className="fit-coach-change">{coachTip.change}</span>
-						<span className="fit-coach-reason">{coachTip.reason}</span>
-						{coachTip.ruleProgress && (
-							<div className="fit-coach-progress">
-								<RuleProgressPill
-									current={coachTip.ruleProgress.current}
-									required={coachTip.ruleProgress.required}
-									unit={coachTip.ruleProgress.unit}
-									variant={getProgressVariant()}
-								/>
-							</div>
-						)}
+				coachTipLayoutId ? (
+					<motion.div
+						className="fit-coach-bubble"
+						layoutId={coachTipLayoutId}
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, scale: 0.8 }}
+						style={{ zIndex: 9999, position: 'relative' }}
+						transition={{
+							type: 'spring',
+							stiffness: 400,
+							damping: 30,
+						}}
+					>
+						{coachBubbleContent}
+					</motion.div>
+				) : (
+					<div className="fit-coach-bubble">
+						{coachBubbleContent}
 					</div>
-				</div>
+				)
 			)}
 
 			{renderQuestion()}

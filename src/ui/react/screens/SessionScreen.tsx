@@ -142,6 +142,17 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	const [postSetFeedback, setPostSetFeedback] = useState<{
 		change: string;
 		reason: string;
+		triggerSetIndex: number; // Which set triggered the rule
+	} | null>(null);
+
+	// Rule badge state - tracks which set should show a badge after animation
+	const [ruleBadge, setRuleBadge] = useState<{
+		exerciseIndex: number;
+		setIndex: number;
+		change: string;
+		isNegative: boolean;
+		isStreakBroken: boolean;
+		layoutId: string;
 	} | null>(null);
 
 	// Viewed exercise index - allows browsing other exercises while tracking active one
@@ -496,10 +507,10 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 							setPostSetFeedback({
 								change: `${changeStr} next set`,
 								reason: firedRule?.ruleDescription || 'weight adjusted',
+								triggerSetIndex: completingSetIndex,
 							});
 
-							// Auto-dismiss after 3 seconds
-							setTimeout(() => setPostSetFeedback(null), 3000);
+							// Don't auto-dismiss - wait for user to click Continue
 						}
 					}
 				}, 100); // Small delay to let state update
@@ -607,6 +618,11 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 											}
 										}
 
+										// Check if this set should show a rule badge
+										const shouldShowBadge = ruleBadge &&
+											ruleBadge.exerciseIndex === exerciseIndex &&
+											ruleBadge.setIndex === i;
+
 										return {
 											weight: isDone && set ? set.weight : pendingWeight,
 											reps: isDone && set ? set.reps : repsDisplay,
@@ -614,6 +630,12 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 											variant: isDone ? 'done' : isNext ? 'next' : 'pending',
 											result: isDone ? 'good' : undefined, // TODO: Calculate actual result based on performance
 											onClick: isActive && isViewingActiveExercise ? () => handleSetCardTap(i) : undefined,
+											ruleBadge: shouldShowBadge ? {
+												change: ruleBadge.change,
+												isNegative: ruleBadge.isNegative,
+												isStreakBroken: ruleBadge.isStreakBroken,
+												layoutId: ruleBadge.layoutId,
+											} : undefined,
 										};
 									});
 
@@ -677,18 +699,37 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 						// Show post-set feedback if there's a recent adjustment
 						if (postSetFeedback) {
+							const feedbackLayoutId = `coach-tip-${session.currentExerciseIndex}-${postSetFeedback.triggerSetIndex}`;
+							const isNegative = postSetFeedback.change.startsWith('-');
+
 							return (
 								<ActionFooter
 									layout="single"
 									primaryAction={{
 										label: 'continue',
-										onClick: () => setPostSetFeedback(null),
+										onClick: () => {
+											// Transition: hide coach tip, show rule badge on set card
+											const changePart = postSetFeedback.change.split(' ')[0] ?? postSetFeedback.change;
+											setRuleBadge({
+												exerciseIndex: session.currentExerciseIndex,
+												setIndex: postSetFeedback.triggerSetIndex,
+												change: changePart, // Just "+2.5kg" part
+												isNegative,
+												isStreakBroken: false,
+												layoutId: feedbackLayoutId,
+											});
+											setPostSetFeedback(null);
+
+											// Clear badge after animation settles
+											setTimeout(() => setRuleBadge(null), 2000);
+										},
 										variant: 'success',
 									}}
 									coachTip={{
 										change: postSetFeedback.change,
 										reason: postSetFeedback.reason,
 									}}
+									coachTipLayoutId={feedbackLayoutId}
 								/>
 							);
 						}
@@ -720,6 +761,10 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 					{/* Exercise completion feedback with coach tip */}
 					{isViewingActiveExercise && exerciseSummary && (() => {
+						// The last set that was completed
+						const triggerSetIndex = exerciseSummary.completedSets.length - 1;
+						const summaryLayoutId = `coach-tip-${exerciseSummary.exerciseIndex}-${triggerSetIndex}`;
+
 						// Build coach tip from exercise summary
 						const buildCoachTip = (): CoachTip => {
 							const temporalRule = exerciseSummary.ruleProgress?.rules.find(r => r.progress);
@@ -765,18 +810,39 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 							};
 						};
 
+						const coachTipData = buildCoachTip();
+						const hasAdjustment = exerciseSummary.adjustment || exerciseSummary.streakBroken?.wasBroken;
+
 						return (
 							<ActionFooter
 								layout="single"
 								primaryAction={{
 									label: exerciseSummary.streakBroken?.wasBroken ? 'keep going!' : 'Continue',
 									onClick: () => {
+										// Show rule badge on set card if there was an adjustment
+										if (hasAdjustment) {
+											const isNegative = exerciseSummary.adjustment?.change.startsWith('-') ?? false;
+											setRuleBadge({
+												exerciseIndex: exerciseSummary.exerciseIndex,
+												setIndex: triggerSetIndex,
+												change: exerciseSummary.streakBroken?.wasBroken
+													? 'streak broken'
+													: exerciseSummary.adjustment?.change ?? '',
+												isNegative,
+												isStreakBroken: exerciseSummary.streakBroken?.wasBroken ?? false,
+												layoutId: summaryLayoutId,
+											});
+
+											// Clear badge after animation settles
+											setTimeout(() => setRuleBadge(null), 2000);
+										}
 										dispatch({ type: 'next_exercise' });
 										setExerciseSummary(null);
 									},
 									variant: 'success',
 								}}
-								coachTip={buildCoachTip()}
+								coachTip={coachTipData}
+								coachTipLayoutId={hasAdjustment ? summaryLayoutId : undefined}
 							/>
 						);
 					})()}

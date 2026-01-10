@@ -6,8 +6,8 @@
  * Uses SetCard components for each set, maintaining the card-based look.
  */
 
-import React from 'react';
 import { SetCard } from './SetCard';
+import type { RuleBadgeProps } from './RuleBadge';
 
 export interface ExerciseSetData {
 	/** Weight in kg (0 = bodyweight) */
@@ -27,6 +27,9 @@ export interface ExerciseSetData {
 
 	/** Click handler for this set */
 	onClick?: () => void;
+
+	/** Rule badge to show on this set (indicates a rule was triggered) */
+	ruleBadge?: Omit<RuleBadgeProps, 'layoutId'> & { layoutId?: string };
 }
 
 export interface ExerciseGroupProps {
@@ -79,6 +82,7 @@ export function ExerciseGroup({ exerciseName, sets, onInfoClick, width = 280, va
 						variant={set.variant}
 						result={set.result}
 						onClick={set.onClick}
+						ruleBadge={set.ruleBadge}
 					/>
 				))}
 			</div>

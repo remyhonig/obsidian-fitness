@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { LayoutGroup } from 'framer-motion';
 import { App as ObsidianApp, Notice } from 'obsidian';
 import { compileProgramFromString, dumpFullStateAsJSON } from 'fitness-dsl';
 import type { SetResult } from 'fitness-dsl';
@@ -243,17 +244,19 @@ export function App({ app, plugin }: AppProps) {
 		<AppProvider app={app}>
 			<PluginProvider plugin={plugin}>
 				<DomainProvider adapter={adapter}>
-					<div className="fit-app">
-						<div className="fit-main-content">
-							{renderScreen()}
+					<LayoutGroup>
+						<div className="fit-app">
+							<div className="fit-main-content">
+								{renderScreen()}
+							</div>
+							{showBottomNav && (
+								<BottomNavWithProgress
+									activeTab={getActiveTab()}
+									onTabChange={navigateToTab}
+								/>
+							)}
 						</div>
-						{showBottomNav && (
-							<BottomNavWithProgress
-								activeTab={getActiveTab()}
-								onTabChange={navigateToTab}
-							/>
-						)}
-					</div>
+					</LayoutGroup>
 				</DomainProvider>
 			</PluginProvider>
 		</AppProvider>

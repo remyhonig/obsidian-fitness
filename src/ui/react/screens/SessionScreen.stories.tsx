@@ -446,3 +446,157 @@ export const PostSetWeightConfirm: Story = {
 		initialPendingSet: { reps: 9, rpe: 8, weight: 80 },
 	},
 };
+
+// Story to test coach tip animation with rule progress
+export const CoachTipWithRuleProgress: Story = {
+	args: {
+		onNavigate: action('navigate'),
+		sessionState: {
+			isActive: true,
+			id: 'test-session',
+			workout: 'Upper Body',
+			programId: null,
+			date: new Date().toISOString().split('T')[0],
+			currentExerciseIndex: 0,
+			currentSetIndex: 3,
+			exercises: [
+				{
+					exercise: 'Bench Press',
+					targetSets: 3,
+					targetRepsMin: 8,
+					targetRepsMax: 10,
+					targetWeight: 80,
+					targetRPE: 8,
+					restSeconds: 180,
+					sets: [
+						{ exercise: 'Bench Press', setNumber: 1, reps: 10, weight: 80, rpe: 6, timestamp: new Date().toISOString() },
+						{ exercise: 'Bench Press', setNumber: 2, reps: 10, weight: 80, rpe: 6, timestamp: new Date().toISOString() },
+						{ exercise: 'Bench Press', setNumber: 3, reps: 10, weight: 80, rpe: 6, timestamp: new Date().toISOString() },
+					],
+					media: [],
+					note: 'Keep shoulders retracted',
+				},
+				{
+					exercise: 'Barbell Row',
+					targetSets: 3,
+					targetRepsMin: 8,
+					targetRepsMax: 10,
+					targetWeight: 70,
+					targetRPE: 8,
+					restSeconds: 180,
+					sets: [],
+					media: [],
+					note: null,
+				},
+			],
+			startTime: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+			endTime: null,
+			status: 'active',
+			extraRestTime: 0,
+			restStartTime: null,
+		},
+		initialExerciseSummary: {
+			exerciseName: 'Bench Press',
+			exerciseIndex: 0,
+			completedSets: [
+				{ reps: 10, weight: 80, rpe: 6 },
+				{ reps: 10, weight: 80, rpe: 6 },
+				{ reps: 10, weight: 80, rpe: 6 },
+			],
+			nextTarget: { sets: 3, reps: '8-10', weight: '82.5kg', rpe: 8 },
+			adjustment: {
+				change: '+2.5kg',
+				reason: 'all sets hit max reps with low RPE',
+				timing: 'next_session',
+			},
+			ruleProgress: {
+				rules: [
+					{
+						ruleDescription: 'increase weight by 2.5kg',
+						timing: 'next_session',
+						currentlyMet: true,
+						progress: { current: 2, required: 2, unit: 'sessions' as const },
+					},
+				],
+			},
+			streakBroken: null,
+		},
+	},
+};
+
+// Story to test streak broken animation
+export const CoachTipStreakBroken: Story = {
+	args: {
+		onNavigate: action('navigate'),
+		sessionState: {
+			isActive: true,
+			id: 'test-session',
+			workout: 'Upper Body',
+			programId: null,
+			date: new Date().toISOString().split('T')[0],
+			currentExerciseIndex: 0,
+			currentSetIndex: 3,
+			exercises: [
+				{
+					exercise: 'Bench Press',
+					targetSets: 3,
+					targetRepsMin: 8,
+					targetRepsMax: 10,
+					targetWeight: 85,
+					targetRPE: 8,
+					restSeconds: 180,
+					sets: [
+						{ exercise: 'Bench Press', setNumber: 1, reps: 6, weight: 85, rpe: 10, timestamp: new Date().toISOString() },
+						{ exercise: 'Bench Press', setNumber: 2, reps: 5, weight: 85, rpe: 10, timestamp: new Date().toISOString() },
+						{ exercise: 'Bench Press', setNumber: 3, reps: 4, weight: 85, rpe: 10, timestamp: new Date().toISOString() },
+					],
+					media: [],
+					note: null,
+				},
+				{
+					exercise: 'Barbell Row',
+					targetSets: 3,
+					targetRepsMin: 8,
+					targetRepsMax: 10,
+					targetWeight: 70,
+					targetRPE: 8,
+					restSeconds: 180,
+					sets: [],
+					media: [],
+					note: null,
+				},
+			],
+			startTime: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+			endTime: null,
+			status: 'active',
+			extraRestTime: 0,
+			restStartTime: null,
+		},
+		initialExerciseSummary: {
+			exerciseName: 'Bench Press',
+			exerciseIndex: 0,
+			completedSets: [
+				{ reps: 6, weight: 85, rpe: 10 },
+				{ reps: 5, weight: 85, rpe: 10 },
+				{ reps: 4, weight: 85, rpe: 10 },
+			],
+			nextTarget: { sets: 3, reps: '8-10', weight: '80kg', rpe: 8 },
+			adjustment: null,
+			ruleProgress: {
+				rules: [
+					{
+						ruleDescription: 'increase weight by 2.5kg',
+						timing: 'next_session',
+						currentlyMet: false,
+						progress: { current: 0, required: 2, unit: 'sessions' as const },
+					},
+				],
+			},
+			streakBroken: {
+				wasBroken: true,
+				previousStreak: 3,
+				ruleDescription: 'increase weight by 2.5kg',
+			},
+		},
+	},
+};
