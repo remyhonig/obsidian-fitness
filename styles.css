@@ -5711,6 +5711,30 @@
 	letter-spacing: 0.2px;
 }
 
+/* Progress ring around workout icon */
+.fit-bottom-nav-item.has-progress .fit-bottom-nav-icon {
+	position: relative;
+	width: 30px;
+	height: 30px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.fit-nav-progress-ring {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.fit-bottom-nav-item.has-progress .fit-bottom-nav-icon > svg:not(.fit-nav-progress-ring) {
+	width: 18px;
+	height: 18px;
+	/* Reset any absolute positioning - use flexbox centering from parent */
+	position: relative;
+}
+
 /* Main content wrapper for bottom nav layout */
 .fit-main-content {
 	flex: 1;

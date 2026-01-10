@@ -8,13 +8,13 @@
  * - Screen rendering
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { App as ObsidianApp, Notice } from 'obsidian';
 import { compileProgramFromString, dumpFullStateAsJSON } from 'fitness-dsl';
 import type { SetResult } from 'fitness-dsl';
 import type MainPlugin from '../../main';
 import { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
-import { AppProvider, PluginProvider, DomainProvider } from './contexts';
+import { AppProvider, PluginProvider, DomainProvider, useDomain } from './contexts';
 import { HomeScreen } from './screens/HomeScreen';
 import { SessionScreen } from './screens/SessionScreen';
 import { WorkoutPickerScreen } from './screens/WorkoutPickerScreen';
@@ -24,6 +24,36 @@ import { MoreScreen } from './screens/MoreScreen';
 import { WorkoutDetailScreen } from './screens/WorkoutDetailScreen';
 import { ProgramSetupScreen } from './screens/ProgramSetupScreen';
 import { BottomNav, type DefaultTabType } from './components/BottomNav';
+
+/** BottomNav wrapper that uses context for reactive progress updates */
+function BottomNavWithProgress({
+	activeTab,
+	onTabChange
+}: {
+	activeTab: DefaultTabType;
+	onTabChange: (tab: DefaultTabType) => void;
+}) {
+	const { session } = useDomain();
+
+	// Calculate workout progress from session state (reactive)
+	const workoutProgress = (() => {
+		if (!session.isActive) return null;
+
+		const completedSets = session.exercises.reduce((sum, e) => sum + e.sets.length, 0);
+		const totalSets = session.exercises.reduce((sum, e) => sum + e.targetSets, 0);
+
+		if (totalSets === 0) return 0;
+		return completedSets / totalSets;
+	})();
+
+	return (
+		<BottomNav
+			activeTab={activeTab}
+			onTabChange={onTabChange}
+			workoutProgress={workoutProgress}
+		/>
+	);
+}
 
 // Tab types for bottom navigation
 type TabType = DefaultTabType;
@@ -138,6 +168,17 @@ export function App({ app, plugin }: AppProps) {
 	const navigateToTab = (tab: TabType) => {
 		// Clear navigation stack when switching tabs
 		setNavigationStack([]);
+
+		// If navigating to workout tab and there's an active session, go to session screen
+		if (tab === 'workout') {
+			const session = adapter.getSessionState();
+			if (session.isActive) {
+				setCurrentScreen('session');
+				setScreenParams({});
+				return;
+			}
+		}
+
 		setCurrentScreen(tab);
 		setScreenParams({});
 	};
@@ -207,7 +248,7 @@ export function App({ app, plugin }: AppProps) {
 							{renderScreen()}
 						</div>
 						{showBottomNav && (
-							<BottomNav
+							<BottomNavWithProgress
 								activeTab={getActiveTab()}
 								onTabChange={navigateToTab}
 							/>

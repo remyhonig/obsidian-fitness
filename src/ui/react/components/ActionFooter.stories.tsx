@@ -138,7 +138,7 @@ export const SingleDisabled: Story = {
 	},
 };
 
-// With coach tip - weight increase
+// With coach tip - weight increase (next session)
 export const WithCoachTipUp: Story = {
 	args: {
 		layout: 'single',
@@ -148,13 +148,13 @@ export const WithCoachTipUp: Story = {
 			variant: 'success',
 		},
 		coachTip: {
-			change: '+2.5kg',
+			change: '+2.5kg next session',
 			reason: 'Great work! All reps hit with good form.',
 		},
 	},
 };
 
-// With coach tip - weight decrease
+// With coach tip - weight decrease (next session)
 export const WithCoachTipDown: Story = {
 	args: {
 		layout: 'single',
@@ -164,7 +164,7 @@ export const WithCoachTipDown: Story = {
 			variant: 'success',
 		},
 		coachTip: {
-			change: '-5kg',
+			change: '-5kg next session',
 			reason: 'Missed reps. Lower weight to build back up.',
 		},
 	},
@@ -180,8 +180,24 @@ export const WithCoachTipMaintain: Story = {
 			variant: 'success',
 		},
 		coachTip: {
-			change: 'Same weight',
+			change: 'same weight next session',
 			reason: 'Keep working at this weight until all reps are solid.',
+		},
+	},
+};
+
+// With coach tip - next set adjustment
+export const WithCoachTipNextSet: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'continue',
+			onClick: action('continue'),
+			variant: 'success',
+		},
+		coachTip: {
+			change: '+5kg next set',
+			reason: 'RPE was low, you can handle more!',
 		},
 	},
 };
@@ -196,7 +212,7 @@ export const WithRuleProgress: Story = {
 			variant: 'success',
 		},
 		coachTip: {
-			change: '+2.5kg',
+			change: '+2.5kg next session',
 			reason: 'Hit all reps with good form.',
 			ruleProgress: {
 				current: 2,

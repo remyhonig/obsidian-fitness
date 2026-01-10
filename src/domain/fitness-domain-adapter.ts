@@ -211,6 +211,7 @@ export interface ExerciseCompletionResult {
 	adjustment: {
 		change: string;   // e.g., "-5kg"
 		reason: string;   // e.g., "Too heavy man!"
+		timing: 'next_set' | 'next_session';  // When the change applies
 	} | null;
 	/** Progress towards triggering progression rules */
 	ruleProgress: ExerciseRuleProgress | null;
@@ -1229,6 +1230,7 @@ export class FitnessDomainAdapter {
 			adjustment: {
 				change: changeReport.change,
 				reason: changeReport.reason,
+				timing: changeReport.timing ?? 'next_session',
 			},
 			ruleProgress,
 			streakBroken,

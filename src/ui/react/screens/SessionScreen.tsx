@@ -81,7 +81,7 @@ export interface ExerciseSummaryState {
 	exerciseIndex: number;
 	completedSets: Array<{ reps: number; weight: number; rpe: number }>;
 	nextTarget: { sets: number; reps: string; weight: string; rpe: number | null };
-	adjustment: { change: string; reason: string } | null;
+	adjustment: { change: string; reason: string; timing: 'next_set' | 'next_session' } | null;
 	/** Progress towards triggering progression rules */
 	ruleProgress: ExerciseRuleProgress | null;
 	/** Information about a broken streak, if any */
@@ -494,8 +494,8 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 							);
 
 							setPostSetFeedback({
-								change: changeStr,
-								reason: firedRule?.ruleDescription || 'weight adjusted for next set',
+								change: `${changeStr} next set`,
+								reason: firedRule?.ruleDescription || 'weight adjusted',
 							});
 
 							// Auto-dismiss after 3 seconds
@@ -741,8 +741,13 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 							}
 
 							if (exerciseSummary.adjustment) {
+								// Format timing for display
+								const timingLabel = exerciseSummary.adjustment.timing === 'next_set'
+									? 'next set'
+									: 'next session';
+
 								return {
-									change: exerciseSummary.adjustment.change,
+									change: `${exerciseSummary.adjustment.change} ${timingLabel}`,
 									reason: exerciseSummary.adjustment.reason,
 									ruleProgress: temporalRule?.progress ? {
 										current: temporalRule.progress.current,

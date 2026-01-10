@@ -116,3 +116,44 @@ function CustomTabsBottomNav() {
 export const CustomTabs: Story = {
 	render: () => <CustomTabsBottomNav />
 };
+
+// Progress ring stories
+export const WorkoutProgressEmpty: Story = {
+	args: {
+		activeTab: 'home',
+		onTabChange: () => {},
+		workoutProgress: 0
+	}
+};
+
+export const WorkoutProgressQuarter: Story = {
+	args: {
+		activeTab: 'home',
+		onTabChange: () => {},
+		workoutProgress: 0.25
+	}
+};
+
+export const WorkoutProgressHalf: Story = {
+	args: {
+		activeTab: 'workout',
+		onTabChange: () => {},
+		workoutProgress: 0.5
+	}
+};
+
+export const WorkoutProgressAlmostDone: Story = {
+	args: {
+		activeTab: 'workout',
+		onTabChange: () => {},
+		workoutProgress: 0.9
+	}
+};
+
+export const WorkoutProgressComplete: Story = {
+	args: {
+		activeTab: 'workout',
+		onTabChange: () => {},
+		workoutProgress: 1
+	}
+};

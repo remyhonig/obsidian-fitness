@@ -3,9 +3,8 @@
  *
  * Bottom tab bar navigation with icons and labels.
  * Supports custom tabs with SVG icons.
+ * Workout tab shows a progress ring when a session is active.
  */
-
-import React from 'react';
 
 // Default tab types
 export type DefaultTabType = 'home' | 'workout' | 'history' | 'more';
@@ -28,9 +27,10 @@ const NavIcons: Record<DefaultTabType, React.ReactNode> = {
 	),
 	history: (
 		<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-			<path d="M3 3v5h5" />
-			<path d="M3.05 13A9 9 0 106 5.3L3 8" />
-			<path d="M12 7v5l4 2" />
+			<rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+			<line x1="16" y1="2" x2="16" y2="6" />
+			<line x1="8" y1="2" x2="8" y2="6" />
+			<line x1="3" y1="10" x2="21" y2="10" />
 		</svg>
 	),
 	more: (
@@ -58,6 +58,8 @@ export interface BottomNavProps<T extends string = DefaultTabType> {
 	activeTab: T;
 	/** Tab selection handler */
 	onTabChange: (tab: T) => void;
+	/** Workout progress (0-1), shows progress ring on workout tab when set */
+	workoutProgress?: number | null;
 	/** Additional CSS class */
 	className?: string;
 }
@@ -75,15 +77,63 @@ interface BottomNavItemProps {
 	label: string;
 	isActive: boolean;
 	onClick: () => void;
+	/** Progress value 0-1 for showing a progress ring around the icon */
+	progress?: number | null;
 }
 
-function BottomNavItem({ icon, label, isActive, onClick }: BottomNavItemProps) {
+/** Progress ring SVG component */
+function ProgressRing({ progress }: { progress: number }) {
+	const size = 30;
+	const strokeWidth = 2.5;
+	const radius = (size - strokeWidth) / 2;
+	const circumference = 2 * Math.PI * radius;
+	const offset = circumference * (1 - progress);
+
+	return (
+		<svg
+			className="fit-nav-progress-ring"
+			width={size}
+			height={size}
+			viewBox={`0 0 ${size} ${size}`}
+		>
+			{/* Background circle - light gray track */}
+			<circle
+				cx={size / 2}
+				cy={size / 2}
+				r={radius}
+				fill="none"
+				stroke="#E5E5E5"
+				strokeWidth={strokeWidth}
+			/>
+			{/* Progress arc */}
+			<circle
+				cx={size / 2}
+				cy={size / 2}
+				r={radius}
+				fill="none"
+				stroke="var(--fit-primary)"
+				strokeWidth={strokeWidth}
+				strokeLinecap="round"
+				strokeDasharray={circumference}
+				strokeDashoffset={offset}
+				transform={`rotate(-90 ${size / 2} ${size / 2})`}
+			/>
+		</svg>
+	);
+}
+
+function BottomNavItem({ icon, label, isActive, onClick, progress }: BottomNavItemProps) {
+	const hasProgress = progress !== null && progress !== undefined;
+
 	return (
 		<button
-			className={`fit-bottom-nav-item ${isActive ? 'active' : ''}`}
+			className={`fit-bottom-nav-item ${isActive ? 'active' : ''} ${hasProgress ? 'has-progress' : ''}`}
 			onClick={onClick}
 		>
-			<span className="fit-bottom-nav-icon">{icon}</span>
+			<span className="fit-bottom-nav-icon">
+				{hasProgress && <ProgressRing progress={progress} />}
+				{icon}
+			</span>
 			<span className="fit-bottom-nav-label">{label}</span>
 		</button>
 	);
@@ -93,6 +143,7 @@ export function BottomNav<T extends string = DefaultTabType>({
 	tabs,
 	activeTab,
 	onTabChange,
+	workoutProgress,
 	className = ''
 }: BottomNavProps<T>) {
 	// Use default tabs if none provided (only works for DefaultTabType)
@@ -117,6 +168,7 @@ export function BottomNav<T extends string = DefaultTabType>({
 					label={tab.label}
 					isActive={activeTab === tab.id}
 					onClick={() => onTabChange(tab.id)}
+					progress={tab.id === 'workout' ? workoutProgress : undefined}
 				/>
 			))}
 		</nav>
