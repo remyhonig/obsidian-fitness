@@ -128,6 +128,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 							const isSuggested = suggestedWorkout && entry.workouts.includes(suggestedWorkout.name);
 							const isInProgress = session.isActive && entry.workouts.includes(session.workout ?? '');
 							const variant = isInProgress ? 'next' as const : isSuggested ? 'suggested' as const : 'pending' as const;
+							const workoutName = entry.workouts[0];
+							const layoutId = workoutName ? `workout-card-${workoutName}` : undefined;
 							return {
 								weight: 0,
 								reps: entry.workouts.join(', '),
@@ -135,7 +137,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 								variant,
 								headerText: entry.day,
 								detailText: 'not done yet',
-								onClick: () => entry.workouts[0] && onNavigate('workout-detail', { workoutName: entry.workouts[0] }),
+								layoutId,
+								onClick: () => workoutName && onNavigate('workout-detail', { workoutName, layoutId, cardVariant: variant }),
 							};
 						})}
 					/>
@@ -148,6 +151,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 							const isSuggested = suggestedWorkout && entry.workout === suggestedWorkout.name;
 							const isInProgress = session.isActive && session.workout === entry.workout;
 							const variant = isInProgress ? 'next' as const : isSuggested ? 'suggested' as const : 'pending' as const;
+							const layoutId = `workout-card-${entry.workout}`;
 							return {
 								weight: 0,
 								reps: entry.workout,
@@ -155,7 +159,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 								variant,
 								headerText: `Day ${index + 1}`,
 								detailText: 'not done yet',
-								onClick: () => onNavigate('workout-detail', { workoutName: entry.workout }),
+								layoutId,
+								onClick: () => onNavigate('workout-detail', { workoutName: entry.workout, layoutId, cardVariant: variant }),
 							};
 						})}
 					/>

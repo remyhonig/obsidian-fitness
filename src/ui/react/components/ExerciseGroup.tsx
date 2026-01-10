@@ -36,6 +36,9 @@ export interface ExerciseSetData {
 
 	/** Override details text (bypasses RPE formatting) */
 	detailText?: string;
+
+	/** Layout ID for shared element transitions */
+	layoutId?: string;
 }
 
 export interface ExerciseGroupProps {
@@ -93,6 +96,7 @@ export function ExerciseGroup({ exerciseName, sets, onInfoClick, width = 280, va
 						ruleBadge={set.ruleBadge}
 						headerText={set.headerText}
 						detailText={set.detailText}
+						layoutId={set.layoutId}
 					/>
 				))}
 			</div>

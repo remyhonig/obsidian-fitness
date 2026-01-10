@@ -9390,3 +9390,66 @@ p.fit-program-list-item-description {
 	font-size: 12px;
 	font-family: var(--font-monospace);
 }
+
+/* ============================================
+   Workout Hero Header (shared element target)
+   ============================================ */
+
+.fit-workout-hero {
+	background: #4b4b4b;
+	color: white;
+	padding: 16px 20px;
+	border-radius: 16px;
+	margin-bottom: 16px;
+	box-shadow: 0 4px 0 #1a1a1a;
+}
+
+.fit-workout-hero h1 {
+	font-size: 18px;
+	font-weight: 700;
+	text-transform: lowercase;
+	margin: 0;
+}
+
+.fit-workout-hero p {
+	font-size: 13px;
+	opacity: 0.8;
+	margin: 4px 0 0;
+}
+
+/* ============================================
+   Screen Transition Container
+   ============================================ */
+
+.fit-main-content {
+	position: relative;
+	overflow: hidden;
+}
+
+.fit-screen-container {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	overflow-y: auto;
+}
+
+/* Hero card high z-index during animation */
+.fit-workout-hero {
+	z-index: 100;
+}
+
+/* Hero card container - centers the SetCard and maintains full width */
+.fit-workout-hero-card {
+	display: flex;
+	justify-content: center;
+	margin-bottom: 16px;
+}
+
+/* Hero card should be full width like in ExerciseGroup */
+.fit-workout-hero-card .fit-set-card {
+	width: 100%;
+	max-width: none;
+	min-width: auto;
+}

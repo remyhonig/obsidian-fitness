@@ -256,6 +256,8 @@ export function App({ app, plugin }: AppProps) {
 					<WorkoutDetailScreen
 						onNavigate={navigateTo}
 						workoutName={screenParams.workoutName as string}
+						layoutId={screenParams.layoutId as string | undefined}
+						cardVariant={screenParams.cardVariant as 'done' | 'next' | 'pending' | 'suggested' | undefined}
 						onBack={goBack}
 					/>
 				);

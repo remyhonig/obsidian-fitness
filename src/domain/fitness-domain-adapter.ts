@@ -186,11 +186,12 @@ export interface SessionState {
 }
 
 export type UIEvent =
-	| { type: 'start_workout'; workoutName: string; programId?: string }
+	| { type: 'start_workout'; workoutName: string; programId?: string; startExerciseIndex?: number }
 	| { type: 'complete_set'; exercise: string; reps: number; weight: number; rpe: number; restSeconds?: number }
 	| { type: 'update_set'; exerciseIndex: number; setIndex: number; reps: number; weight: number; rpe: number }
 	| { type: 'skip_exercise'; exercise: string }
 	| { type: 'next_exercise' }
+	| { type: 'set_current_exercise'; exerciseIndex: number }
 	| { type: 'finish_session' }
 	| { type: 'cancel_session' }
 	| { type: 'navigate'; screen: string }
@@ -455,6 +456,13 @@ export class FitnessDomainAdapter {
 				} else if (isStartWorkoutResult(result)) {
 					this.syncSessionStateFromEngine(result, event.workoutName, event.programId);
 				}
+				// If a specific exercise index was requested, skip to it
+				if (event.startExerciseIndex !== undefined && event.startExerciseIndex > 0) {
+					this.sessionState.currentExerciseIndex = Math.min(
+						event.startExerciseIndex,
+						this.sessionState.exercises.length - 1
+					);
+				}
 				break;
 			}
 
@@ -547,6 +555,28 @@ export class FitnessDomainAdapter {
 				this.sessionState.currentSetIndex = 0;
 				this.sessionState.extraRestTime = 0;
 				this.sessionState.restStartTime = Date.now();
+				break;
+			}
+
+			case 'set_current_exercise': {
+				const targetIdx = event.exerciseIndex;
+				const targetExercise = this.sessionState.exercises[targetIdx];
+
+				if (targetExercise && targetIdx >= 0 && targetIdx < this.sessionState.exercises.length) {
+					// Start exercise in engine with correct index
+					const result = this.engine.dispatch({
+						type: 'startExercise',
+						exerciseName: targetExercise.exercise,
+						exerciseIndex: targetIdx
+					});
+					if (isErrorResult(result)) {
+						console.error('[FitnessDomainAdapter] Engine startExercise failed:', result.error);
+					}
+
+					this.sessionState.currentExerciseIndex = targetIdx;
+					this.sessionState.currentSetIndex = targetExercise.sets.length; // First incomplete set
+					this.sessionState.extraRestTime = 0;
+				}
 				break;
 			}
 

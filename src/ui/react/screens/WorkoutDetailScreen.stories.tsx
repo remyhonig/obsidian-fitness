@@ -200,3 +200,15 @@ export const NoBackHandler: Story = {
 	},
 	decorators: [withLoadedProgram(SAMPLE_PROGRAM)],
 };
+
+/** Story with expanding backdrop (simulates navigation from HomeScreen with layoutId) */
+export const WithExpandingBackdrop: Story = {
+	args: {
+		workoutName: 'Upper Body',
+		layoutId: 'workout-card-Upper Body',
+		cardVariant: 'suggested',
+		onNavigate: action('navigate'),
+		onBack: action('back'),
+	},
+	decorators: [withLoadedProgram(SAMPLE_PROGRAM)],
+};

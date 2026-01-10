@@ -394,12 +394,22 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	const isSelectedSetNext = effectiveSelectedIndex === completedSets;
 	const selectedSet = currentExercise?.sets[effectiveSelectedIndex];
 
-	// Handle set card tap
-	const handleSetCardTap = (index: number) => {
-		setSelectedSetIndex(index);
+	// Handle set card tap - works for any exercise
+	const handleSetCardTap = (exerciseIndex: number, setIndex: number) => {
+		// If clicking on a different exercise, switch to it
+		if (exerciseIndex !== session.currentExerciseIndex) {
+			dispatch({ type: 'set_current_exercise', exerciseIndex });
+			setSelectedSetIndex(null); // Reset selection, will default to first incomplete set
+			setDetailInputMode('none');
+			setViewedExerciseIndex(exerciseIndex);
+			return;
+		}
+
+		// Same exercise - select the set
+		setSelectedSetIndex(setIndex);
 		setDetailInputMode('none');
 		// Reset pending set when selecting a new card
-		if (index === completedSets) {
+		if (setIndex === completedSets) {
 			setPendingSet({
 				reps: null,
 				rpe: null,
@@ -657,7 +667,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 											rpe: isDone && set ? set.rpe : exercise.targetRPE ?? 7,
 											variant: isDone ? 'done' : isNext ? 'next' : 'pending',
 											result: isDone ? 'good' : undefined, // TODO: Calculate actual result based on performance
-											onClick: isActive && isViewingActiveExercise ? () => handleSetCardTap(i) : undefined,
+											onClick: () => handleSetCardTap(exerciseIndex, i),
 											ruleBadge: shouldShowBadge ? {
 												change: ruleBadge.change,
 												isNegative: ruleBadge.isNegative,

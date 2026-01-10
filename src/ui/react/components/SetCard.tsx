@@ -5,6 +5,7 @@
  * Used in session views to display both completed and pending sets.
  */
 
+import { motion } from 'framer-motion';
 import { RuleBadge, type RuleBadgeProps } from './RuleBadge';
 
 export interface SetCardProps {
@@ -43,6 +44,9 @@ export interface SetCardProps {
 
 	/** Override details text (bypasses RPE formatting) */
 	detailText?: string;
+
+	/** Layout ID for shared element transitions (Framer Motion) */
+	layoutId?: string;
 }
 
 /**
@@ -86,6 +90,7 @@ export function SetCard({
 	ruleBadge,
 	headerText,
 	detailText,
+	layoutId,
 }: SetCardProps) {
 	const classNames = [
 		'fit-set-card',
@@ -136,7 +141,7 @@ export function SetCard({
 	}
 
 	// Regular card without exercise name
-	return (
+	const cardContent = (
 		<div className={classNames} onClick={onClick}>
 			{isAnimating && <StarBurst />}
 			{isDone && <span className="fit-set-card-checkmark">✓</span>}
@@ -161,4 +166,24 @@ export function SetCard({
 			)}
 		</div>
 	);
+
+	// Wrap in motion.div for shared element transitions
+	if (layoutId) {
+		return (
+			<motion.div
+				layoutId={layoutId}
+				layout="position"
+				style={{ zIndex: 100, position: 'relative' }}
+				transition={{
+					type: 'spring' as const,
+					stiffness: 300,
+					damping: 30,
+				}}
+			>
+				{cardContent}
+			</motion.div>
+		);
+	}
+
+	return cardContent;
 }
