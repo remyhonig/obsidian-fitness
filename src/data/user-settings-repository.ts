@@ -19,11 +19,23 @@ export interface ProgramTrainingMaxes {
 }
 
 /**
+ * A category of programs organized by fitness goal
+ */
+export interface ProgramCategory {
+	/** The goal name (e.g., "Get big", "Get lean") */
+	goal: string;
+	/** Paths to program files in this category */
+	programPaths: string[];
+}
+
+/**
  * User settings stored in markdown file
  */
 export interface UserSettings {
 	/** Path to the active program file (e.g., "Fitness/Programs/531.md") */
 	activeProgram: string | null;
+	/** Available programs organized by fitness goal */
+	availablePrograms: ProgramCategory[];
 	/** Training maxes for each program */
 	programTrainingMaxes: ProgramTrainingMaxes[];
 }
@@ -137,19 +149,36 @@ export class UserSettingsRepository {
 	}
 
 	/**
+	 * Gets available programs organized by goal category
+	 */
+	async getAvailablePrograms(): Promise<ProgramCategory[]> {
+		const settings = await this.getSettings();
+		return settings.availablePrograms;
+	}
+
+	/**
+	 * Sets available programs organized by goal category
+	 */
+	async setAvailablePrograms(programs: ProgramCategory[]): Promise<void> {
+		const settings = await this.getSettings();
+		settings.availablePrograms = programs;
+		await this.save(settings);
+	}
+
+	/**
 	 * Loads settings from the file
 	 */
 	private async load(): Promise<UserSettings> {
 		const file = this.app.vault.getAbstractFileByPath(this.filePath);
 		if (!file || !(file instanceof TFile)) {
-			return { activeProgram: null, programTrainingMaxes: [] };
+			return { activeProgram: null, availablePrograms: [], programTrainingMaxes: [] };
 		}
 
 		try {
 			const content = await this.app.vault.read(file);
 			return this.parseContent(content);
 		} catch {
-			return { activeProgram: null, programTrainingMaxes: [] };
+			return { activeProgram: null, availablePrograms: [], programTrainingMaxes: [] };
 		}
 	}
 
@@ -178,6 +207,15 @@ export class UserSettingsRepository {
 	 * # active program
 	 * Fitness/Programs/531.md
 	 *
+	 * # available programs
+	 *
+	 * ## Get big
+	 * - [[Fitness/Programs/531-BBB.md]]
+	 * - [[Fitness/Programs/PPL.md]]
+	 *
+	 * ## Get lean
+	 * - [[Fitness/Programs/HIIT.md]]
+	 *
 	 * # training maxes
 	 *
 	 * ## Program Name
@@ -187,6 +225,7 @@ export class UserSettingsRepository {
 	private parseContent(content: string): UserSettings {
 		const settings: UserSettings = {
 			activeProgram: null,
+			availablePrograms: [],
 			programTrainingMaxes: []
 		};
 
@@ -194,6 +233,7 @@ export class UserSettingsRepository {
 		const lines = content.split('\n');
 		let currentSection = '';
 		let currentProgram: ProgramTrainingMaxes | null = null;
+		let currentCategory: ProgramCategory | null = null;
 
 		for (const line of lines) {
 			const trimmed = line.trim();
@@ -202,15 +242,21 @@ export class UserSettingsRepository {
 			if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
 				currentSection = trimmed.substring(2).toLowerCase().trim();
 				currentProgram = null;
+				currentCategory = null;
 				continue;
 			}
 
-			// Check for H2 header (program name for training maxes)
+			// Check for H2 header (goal category for available programs, or program name for training maxes)
 			if (trimmed.startsWith('## ')) {
-				if (currentSection === 'training maxes') {
-					const programName = trimmed.substring(3).trim();
-					if (programName) {
-						currentProgram = { programName, trainingMaxes: [] };
+				const headerName = trimmed.substring(3).trim();
+				if (currentSection === 'available programs') {
+					if (headerName) {
+						currentCategory = { goal: headerName, programPaths: [] };
+						settings.availablePrograms.push(currentCategory);
+					}
+				} else if (currentSection === 'training maxes') {
+					if (headerName) {
+						currentProgram = { programName: headerName, trainingMaxes: [] };
 						settings.programTrainingMaxes.push(currentProgram);
 					}
 				}
@@ -222,6 +268,17 @@ export class UserSettingsRepository {
 				// Non-empty, non-comment line is the program path
 				if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('-')) {
 					settings.activeProgram = trimmed;
+				}
+			} else if (currentSection === 'available programs' && currentCategory) {
+				// Parse wikilink: - [[Fitness/Programs/531.md]]
+				if (trimmed.startsWith('- ')) {
+					const wikilinkMatch = trimmed.match(/^- \[\[(.+?)\]\]$/);
+					if (wikilinkMatch) {
+						const path = wikilinkMatch[1]?.trim();
+						if (path) {
+							currentCategory.programPaths.push(path);
+						}
+					}
 				}
 			} else if (currentSection === 'training maxes' && currentProgram) {
 				// Parse exercise line: - Exercise Name: 100kg
@@ -254,6 +311,18 @@ export class UserSettingsRepository {
 		lines.push('# active program');
 		lines.push(settings.activeProgram ?? '');
 		lines.push('');
+
+		// Available programs section
+		lines.push('# available programs');
+		lines.push('');
+
+		for (const category of settings.availablePrograms) {
+			lines.push(`## ${category.goal}`);
+			for (const path of category.programPaths) {
+				lines.push(`- [[${path}]]`);
+			}
+			lines.push('');
+		}
 
 		// Training maxes section
 		lines.push('# training maxes');

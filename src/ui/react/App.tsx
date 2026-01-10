@@ -241,6 +241,7 @@ export function App({ app, plugin }: AppProps) {
 					<ProgramPickerScreen
 						onNavigate={navigateTo}
 						onBack={goBack}
+						isChangingProgram={screenParams.isChangingProgram as boolean}
 					/>
 				);
 			case 'finish':

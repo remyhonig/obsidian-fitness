@@ -8,7 +8,6 @@
  * - About (future)
  */
 
-import React from 'react';
 import { TopNav } from '../components/TopNav';
 
 interface MoreScreenProps {
@@ -16,12 +15,24 @@ interface MoreScreenProps {
 }
 
 export function MoreScreen({ onNavigate }: MoreScreenProps) {
+	const handleChangeProgram = () => {
+		onNavigate('program-picker', { isChangingProgram: true });
+	};
+
 	return (
 		<div className="fit-more-screen">
-			<TopNav title="More" />
+			<TopNav title="more" />
 
 			<div className="fit-content">
 				<div className="fit-menu-list">
+					<button
+						className="fit-menu-item"
+						onClick={handleChangeProgram}
+					>
+						<span className="fit-menu-icon">🔄</span>
+						<span>Change Program</span>
+						<span className="fit-menu-chevron">›</span>
+					</button>
 					<button
 						className="fit-menu-item"
 						onClick={() => onNavigate('exercise-library')}

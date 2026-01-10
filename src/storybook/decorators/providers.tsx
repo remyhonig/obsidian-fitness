@@ -11,14 +11,24 @@ import type { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
 import type { UserSettingsRepository } from '../../data/user-settings-repository';
 
 /**
+ * Available programs organized by goal category
+ */
+interface MockProgramCategory {
+	goal: string;
+	programPaths: string[];
+}
+
+/**
  * Mock UserSettingsRepository for Storybook
  */
-function createMockUserSettings(): UserSettingsRepository {
+function createMockUserSettings(availablePrograms: MockProgramCategory[] = []): UserSettingsRepository {
 	return {
 		setBasePath: () => {},
-		getSettings: async () => ({ activeProgram: null, programTrainingMaxes: [] }),
+		getSettings: async () => ({ activeProgram: null, availablePrograms, programTrainingMaxes: [] }),
 		getActiveProgram: async () => null,
 		setActiveProgram: async () => {},
+		getAvailablePrograms: async () => availablePrograms,
+		setAvailablePrograms: async () => {},
 		getTrainingMaxes: async () => null,
 		hasTrainingMaxes: async () => false,
 		saveTrainingMaxes: async () => {},
@@ -82,6 +92,8 @@ interface StoryArgs {
 	exerciseAdjustment?: { change: string; reason: string } | null;
 	/** Set to true to show state with no program loaded */
 	noProgram?: boolean;
+	/** Available programs organized by goal category */
+	availablePrograms?: MockProgramCategory[];
 }
 
 /**
@@ -94,6 +106,7 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 	const sessionState = args.sessionState;
 	const files = args.files;
 	const exerciseAdjustment = args.exerciseAdjustment;
+	const availablePrograms = args.availablePrograms ?? [];
 
 	// Set up mock files if provided
 	if (files) {
@@ -119,7 +132,7 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 	return (
 		<AppProvider app={app as unknown as import('obsidian').App}>
 			<PluginProvider plugin={plugin as unknown as import('../../main').default}>
-				<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
+				<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings(availablePrograms)}>
 					<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
 						<Story />
 					</div>

@@ -5,13 +5,14 @@
  * Displays program introduction and collects training max values if needed.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { TFile } from 'obsidian';
 import { compileProgramFromString } from 'fitness-dsl';
 import { useApp, useDomain } from '../contexts';
 import { TrainingMaxForm, TrainingMaxValue } from '../components/TrainingMaxForm';
 import { UserTrainingMaxRepository, UserTrainingMax } from '../../../data/user-training-max-repository';
 import { TopNav } from '../components/TopNav';
+import { MarkdownContent } from '../components/MarkdownContent';
 
 interface ProgramSetupScreenProps {
 	programPath: string;
@@ -136,7 +137,7 @@ export function ProgramSetupScreen({
 	};
 
 	const handleBack = () => {
-		onNavigate('home');
+		onNavigate('program-picker');
 	};
 
 	// Check if all required TMs have values
@@ -148,13 +149,9 @@ export function ProgramSetupScreen({
 	return (
 		<div className="fit-program-setup-screen">
 			<TopNav
-				title={programInfo?.name ?? 'Loading...'}
-				variant="actions"
-				leftAction={
-					<button className="fit-button-text" onClick={handleBack}>
-						Cancel
-					</button>
-				}
+				title="program"
+				variant="back"
+				onBack={handleBack}
 			/>
 
 			<div className="fit-content">
@@ -169,12 +166,13 @@ export function ProgramSetupScreen({
 					</div>
 				) : programInfo ? (
 					<>
-						{/* Program Introduction */}
-						{programInfo.description && (
-							<div className="fit-program-intro">
-								<p>{programInfo.description}</p>
-							</div>
-						)}
+						{/* Program Title and Introduction */}
+						<div className="fit-program-intro">
+							<h1 className="fit-program-title">{programInfo.name}</h1>
+							{programInfo.description && (
+								<MarkdownContent content={programInfo.description} />
+							)}
+						</div>
 
 						{/* Training Maxes Section */}
 						{programInfo.trainingMaxes.length > 0 && (

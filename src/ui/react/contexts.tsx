@@ -48,6 +48,20 @@ export function usePlugin(): MainPlugin {
 }
 
 // ============================================================================
+// User Settings Context
+// ============================================================================
+
+const UserSettingsContext = createContext<UserSettingsRepository | null>(null);
+
+export function useUserSettings(): UserSettingsRepository {
+	const userSettings = useContext(UserSettingsContext);
+	if (!userSettings) {
+		throw new Error('useUserSettings must be used within DomainProvider');
+	}
+	return userSettings;
+}
+
+// ============================================================================
 // Domain Context
 // ============================================================================
 
@@ -165,7 +179,11 @@ export function DomainProvider({
 		isSessionComplete
 	};
 
-	return <DomainContext.Provider value={value}>{children}</DomainContext.Provider>;
+	return (
+		<UserSettingsContext.Provider value={userSettings}>
+			<DomainContext.Provider value={value}>{children}</DomainContext.Provider>
+		</UserSettingsContext.Provider>
+	);
 }
 
 export function useDomain(): DomainContextValue {

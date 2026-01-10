@@ -18,7 +18,7 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
-	const { program, session, dispatch, clearProgram } = useDomain();
+	const { program, session, dispatch } = useDomain();
 	const [restElapsed, setRestElapsed] = useState(0);
 
 	// Get current exercise for rest target calculation
@@ -101,25 +101,17 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 			/>
 
 			<div className="fit-content">
-				{/* Program Info Card */}
-				<section className="fit-card fit-program-card">
-					<div className="fit-program-header">
-						<h2>{program.program.name}</h2>
-						<button
-							className="fit-button-ghost fit-change-program"
-							onClick={clearProgram}
-						>
-							Change
-						</button>
-					</div>
-					{program.program.description && (
-						<p className="fit-program-description">{program.program.description}</p>
-					)}
-				</section>
+				{/* Mascot Greeting */}
+				<Mascot
+					mood="neutral"
+					message="Ready to get stronger? Let's do this!"
+					bubblePosition="left"
+					className="fit-home-mascot"
+				/>
 
-				{/* Next Workout Card */}
+				{/* Next Workout Card - with program name as title */}
 				<section className="fit-card">
-					<h2>Next Workout</h2>
+					<h2>{program.program.name}</h2>
 					{(() => {
 						// Use nextSession if available
 						if (program.nextSession) {
@@ -135,7 +127,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 										className="fit-button-primary"
 										onClick={() => handleStartWorkout(program.nextSession!.workout)}
 									>
-										Start Workout
+										start workout
 									</button>
 								</div>
 							);
@@ -156,72 +148,70 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 							return (
 								<div className="fit-next-workout">
 									<h3>{suggestedWorkout.name}</h3>
-									<p className="fit-scheduled-time">Start your training cycle</p>
+									<p className="fit-scheduled-time">start your training cycle</p>
 									<button
 										className="fit-button-primary"
 										onClick={() => handleStartWorkout(suggestedWorkout.name)}
 									>
-										Start Workout
+										start workout
 									</button>
 								</div>
 							);
 						}
 
-						return <p>No workouts available</p>;
+						return <p>no workouts available</p>;
 					})()}
 				</section>
 
 				{/* Schedule Overview */}
-				<section className="fit-card">
+				<section className="fit-card fit-schedule-card">
 					{program.schedule.weeklyPattern.length > 0 ? (
 						<>
-							<h2>This Week</h2>
-							<div className="fit-schedule">
+							<h2>this week</h2>
+							<div className="fit-schedule-list">
 								{program.schedule.weeklyPattern.map((entry, index) => (
-									<div key={index} className="fit-schedule-entry">
-										<div className="fit-day">{entry.day}</div>
-										<div className="fit-time">{entry.time || '-'}</div>
-										<div className="fit-workouts">
-											{entry.workouts.map((workout, i) => (
-												<span key={i}>
-													{i > 0 && ', '}
-													<span
-														className="fit-workout-link"
-														onClick={() => onNavigate('workout-detail', { workoutName: workout })}
-													>
-														{workout}
-													</span>
-												</span>
-											))}
+									<button
+										key={index}
+										className="fit-schedule-item"
+										onClick={() => entry.workouts[0] && onNavigate('workout-detail', { workoutName: entry.workouts[0] })}
+									>
+										<div className="fit-schedule-item-day">{entry.day.toLowerCase()}</div>
+										<div className="fit-schedule-item-workout">
+											{entry.workouts.join(', ')}
 										</div>
-									</div>
+										<span className="fit-schedule-item-arrow">›</span>
+									</button>
 								))}
 							</div>
 						</>
 					) : program.schedule.cyclePattern.length > 0 ? (
 						<>
-							<h2>Training Cycle</h2>
-							<div className="fit-schedule">
+							<h2>training cycle</h2>
+							<div className="fit-schedule-list">
 								{program.schedule.cyclePattern.map((entry, index) => (
-									<div key={index} className="fit-schedule-entry">
-										<div className="fit-day">Day {index + 1}</div>
-										<div className="fit-time">{entry.recovery ? `${entry.recovery} recovery` : '-'}</div>
-										<div className="fit-workouts">
-											<span
-												className="fit-workout-link"
-												onClick={() => onNavigate('workout-detail', { workoutName: entry.workout })}
-											>
-												{entry.workout}
-											</span>
+									<button
+										key={index}
+										className="fit-schedule-item"
+										onClick={() => onNavigate('workout-detail', { workoutName: entry.workout })}
+									>
+										<div className="fit-schedule-item-day">day {index + 1}</div>
+										<div className="fit-schedule-item-workout">
+											{entry.workout}
+											{entry.recovery && (
+												<span className="fit-schedule-item-recovery">
+													{entry.recovery} rest
+												</span>
+											)}
 										</div>
-									</div>
+										<span className="fit-schedule-item-arrow">›</span>
+									</button>
 								))}
 							</div>
 						</>
 					) : (
 						<>
-							<h2>Schedule</h2>
-							<p>No schedule defined</p>
+							<h2>schedule</h2>
+							<p>no schedule defined</p>
 						</>
 					)}
 				</section>

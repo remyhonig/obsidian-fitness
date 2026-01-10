@@ -1,11 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { HomeScreen } from './HomeScreen';
-import { withBottomNav } from './storyDecorators';
+import { withProviders } from '../../../storybook/decorators/providers';
 
 const SAMPLE_PROGRAM = `# Jim Wendler's 5/3/1
 
-The classic strength program focusing on the big 4 lifts.
+The classic strength program focusing on the big 4 lifts with progressive overload.
+
+---
+
+# Progression
 
 ## Training Maxes
 
@@ -14,39 +18,94 @@ The classic strength program focusing on the big 4 lifts.
 - Deadlift TM: 150kg
 - Overhead Press TM: 55kg
 
-## Schedule
+---
 
-### Cycle Pattern
-1. Squat Day -> 48h recovery
-2. Bench Day -> 48h recovery
-3. Deadlift Day -> 48h recovery
-4. OHP Day -> 72h recovery
+# Schedule
 
-## Workouts
+## Weekly Pattern
 
-### Squat Day
+- Monday: Squat Day
+- Tuesday: Bench Day
+- Thursday: Deadlift Day
+- Friday: OHP Day
+
+---
+
+# Workouts
+
+## Squat Day
+
 Main squat work.
 
-**Exercises**
-1. Squat - 3x5 @ 85% TM, RPE 8, rest 180s
+- Squat: 3x5 @ 85% TM RPE 8, rest 180s
 
-### Bench Day
+---
+
+## Bench Day
+
 Bench press focus.
 
-**Exercises**
-1. Bench Press - 3x5 @ 85% TM, RPE 8, rest 180s
+- Bench Press: 3x5 @ 85% TM RPE 8, rest 180s
 
-### Deadlift Day
+---
+
+## Deadlift Day
+
 Deadlift work.
 
-**Exercises**
-1. Deadlift - 3x5 @ 85% TM, RPE 8, rest 180s
+- Deadlift: 3x5 @ 85% TM RPE 8, rest 180s
 
-### OHP Day
+---
+
+## OHP Day
+
 Overhead press work.
 
-**Exercises**
-1. Overhead Press - 3x5 @ 85% TM, RPE 8, rest 180s
+- Overhead Press: 3x5 @ 85% TM RPE 8, rest 180s
+`;
+
+const CYCLE_PROGRAM = `# Push Pull Legs
+
+A classic 6-day split for building muscle with optimal recovery between sessions.
+
+---
+
+# Schedule
+
+## Cycle Pattern
+
+- Push, recovery 24h
+- Pull, recovery 24h
+- Legs, recovery 48h
+
+---
+
+# Workouts
+
+## Push
+
+Chest, shoulders, and triceps.
+
+- Bench Press: 4x8-10 @ 80kg RPE 8, rest 120s
+- Overhead Press: 3x8-10 @ 50kg RPE 8, rest 90s
+
+---
+
+## Pull
+
+Back and biceps.
+
+- Barbell Row: 4x8-10 @ 70kg RPE 8, rest 120s
+- Pull Ups: 3x8-10 @ bodyweight RPE 8, rest 90s
+
+---
+
+## Legs
+
+Quads, hamstrings, and glutes.
+
+- Squat: 4x6-8 @ 100kg RPE 8, rest 180s
+- Romanian Deadlift: 3x8-10 @ 80kg RPE 7, rest 120s
 `;
 
 const meta: Meta<typeof HomeScreen> = {
@@ -55,7 +114,7 @@ const meta: Meta<typeof HomeScreen> = {
 	parameters: {
 		layout: 'fullscreen',
 	},
-	decorators: [withBottomNav('home')],
+	decorators: [withProviders],
 };
 
 export default meta;
@@ -76,7 +135,7 @@ export const Welcome: Story = {
 /**
  * Program Selected - the main home screen shown when user
  * has already chosen and loaded a program. Shows program info,
- * next workout, and schedule.
+ * next workout, and weekly schedule.
  */
 export const ProgramSelected: Story = {
 	args: {
@@ -84,6 +143,20 @@ export const ProgramSelected: Story = {
 		programMarkdown: SAMPLE_PROGRAM,
 		files: {
 			'Fitness/Programs/531.md': SAMPLE_PROGRAM,
+		},
+	},
+};
+
+/**
+ * With Cycle Schedule - shows a program using cycle pattern
+ * instead of weekly pattern (e.g., Push/Pull/Legs rotation).
+ */
+export const WithCycleSchedule: Story = {
+	args: {
+		onNavigate: action('navigate'),
+		programMarkdown: CYCLE_PROGRAM,
+		files: {
+			'Fitness/Programs/PPL.md': CYCLE_PROGRAM,
 		},
 	},
 };

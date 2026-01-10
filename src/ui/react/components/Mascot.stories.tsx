@@ -13,7 +13,7 @@ const meta: Meta<typeof Mascot> = {
 	argTypes: {
 		mood: {
 			control: 'select',
-			options: ['neutral', 'celebrating', 'thinking'],
+			options: ['neutral', 'celebrating', 'thinking', 'taking_notes', 'posing'],
 		},
 		size: {
 			control: 'select',
@@ -21,6 +21,10 @@ const meta: Meta<typeof Mascot> = {
 		},
 		headOnly: {
 			control: 'boolean',
+		},
+		bubblePosition: {
+			control: 'select',
+			options: ['top', 'left', 'right'],
 		},
 	},
 	decorators: [
@@ -54,6 +58,65 @@ export const Thinking: Story = {
 	args: {
 		mood: 'thinking',
 		size: 'large',
+	},
+};
+
+export const TakingNotes: Story = {
+	args: {
+		mood: 'taking_notes',
+		size: 'large',
+	},
+};
+
+export const TakingNotesWithMessage: Story = {
+	args: {
+		mood: 'taking_notes',
+		size: 'large',
+		message: "pick a program to get started!",
+	},
+};
+
+export const Posing: Story = {
+	args: {
+		mood: 'posing',
+		size: 'large',
+	},
+};
+
+export const PosingWithMessage: Story = {
+	args: {
+		mood: 'posing',
+		size: 'large',
+		message: "great workout! let's take a picture!",
+		bubblePosition: 'right',
+	},
+};
+
+// Bubble position variations
+export const BubbleOnTop: Story = {
+	args: {
+		mood: 'neutral',
+		size: 'large',
+		message: "bubble on top!",
+		bubblePosition: 'top',
+	},
+};
+
+export const BubbleOnLeft: Story = {
+	args: {
+		mood: 'neutral',
+		size: 'large',
+		message: "bubble on left!",
+		bubblePosition: 'left',
+	},
+};
+
+export const BubbleOnRight: Story = {
+	args: {
+		mood: 'neutral',
+		size: 'large',
+		message: "bubble on right!",
+		bubblePosition: 'right',
 	},
 };
 

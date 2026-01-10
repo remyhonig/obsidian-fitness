@@ -4399,7 +4399,9 @@
 .fit-button-primary:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
-	box-shadow: none !important;
+	box-shadow: 0 4px 0 #C4C4C4 !important;
+	background: #E5E5E5 !important;
+	color: #777777 !important;
 }
 
 /* Yellow/Gold variant for primary CTA (Start Workout, etc.) */
@@ -5586,24 +5588,30 @@
 	background: none !important;
 }
 
-/* Text button for actions variant */
+/* Text button for actions variant - styled same as back button */
 .fit-top-nav .fit-button-text {
 	background: none !important;
-	border: none !important;
+	border: 2px solid var(--fit-primary, #58CC02) !important;
 	box-shadow: none !important;
+	border-radius: 12px;
 	color: var(--fit-primary, #58CC02);
 	cursor: pointer;
-	padding: 8px 12px;
+	padding: 8px 16px;
 	font-size: 14px;
 	font-weight: 600;
 	min-height: 40px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	transition: background 0.15s, transform 0.1s;
+}
+
+.fit-top-nav .fit-button-text:hover {
+	background: rgba(88, 204, 2, 0.1) !important;
 }
 
 .fit-top-nav .fit-button-text:active {
-	opacity: 0.7;
+	transform: scale(0.95);
 }
 
 /* TopNav Timer */
@@ -7867,6 +7875,71 @@
 	opacity: 0.7;
 }
 
+/* ========== Schedule List (Improved UI) ========== */
+.fit-schedule-card h2 {
+	margin-bottom: 12px;
+}
+
+.fit-schedule-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.fit-schedule-card .fit-schedule-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	padding: 14px 16px;
+	background: #FFFFFF;
+	border: 2px solid #E5E5E5;
+	border-bottom-width: 4px;
+	border-radius: 12px;
+	box-shadow: none;
+	cursor: pointer;
+	text-align: left;
+	font-family: inherit;
+	font-size: inherit;
+	transition: transform 0.1s, border-bottom-width 0.1s;
+}
+
+.fit-schedule-card .fit-schedule-item:hover {
+	background: #FAFAFA;
+}
+
+.fit-schedule-card .fit-schedule-item:active {
+	transform: translateY(2px);
+	border-bottom-width: 2px;
+}
+
+.fit-schedule-item-day {
+	font-weight: 700;
+	font-size: 14px;
+	color: #4B4B4B;
+	min-width: 60px;
+}
+
+.fit-schedule-item-workout {
+	flex: 1;
+	font-size: 14px;
+	color: #777777;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.fit-schedule-item-recovery {
+	font-size: 12px;
+	color: #AFAFAF;
+}
+
+.fit-schedule-item-arrow {
+	font-size: 18px;
+	color: #AFAFAF;
+	font-weight: 600;
+}
+
 /* ========== Workout Detail Screen ========== */
 .fit-workout-detail-screen {
 	display: flex;
@@ -7940,8 +8013,8 @@
 	padding: 16px;
 	position: sticky;
 	bottom: 0;
-	background: var(--background-primary);
-	border-top: 1px solid var(--background-modifier-border);
+	background: #FFFFFF;
+	border-top: 1px solid #E5E5E5;
 	z-index: 100;
 }
 
@@ -8247,6 +8320,10 @@
 	font-size: 18px;
 	font-weight: 700;
 	text-transform: lowercase;
+	border-radius: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 /* ========== Program Setup Screen ========== */
@@ -8263,18 +8340,52 @@
 
 /* Program Introduction */
 .fit-program-intro {
-	background: white;
-	border-radius: var(--fit-border-radius);
+	background: #FFFFFF;
+	border-radius: 14px;
 	padding: 20px;
 	margin-bottom: 20px;
-	box-shadow: var(--fit-shadow);
+	box-shadow: 0 4px 0 #C4C4C4;
 }
 
-.fit-program-intro p {
-	margin: 0;
+.fit-program-intro .fit-markdown-content {
 	font-size: 15px;
 	line-height: 1.6;
-	color: var(--fit-text-secondary);
+	color: #777777;
+}
+
+.fit-program-intro .fit-markdown-content p {
+	margin: 0 0 12px 0;
+}
+
+.fit-program-intro .fit-markdown-content p:last-child {
+	margin-bottom: 0;
+}
+
+.fit-program-intro .fit-markdown-content ul,
+.fit-program-intro .fit-markdown-content ol {
+	margin: 8px 0;
+	padding-left: 20px;
+}
+
+.fit-program-intro .fit-markdown-content li {
+	margin: 4px 0;
+}
+
+.fit-program-intro .fit-markdown-content strong {
+	color: #4B4B4B;
+	font-weight: 700;
+}
+
+.fit-program-intro .fit-markdown-content a {
+	color: #58CC02;
+}
+
+/* Program Title */
+.fit-program-title {
+	font-size: 22px;
+	font-weight: 700;
+	color: #4B4B4B;
+	margin: 0 0 12px 0;
 }
 
 /* Training Max Section */
@@ -8356,34 +8467,42 @@
 
 .fit-tm-unit-toggle {
 	display: flex;
-	border: 1px solid #E5E7EB;
-	border-radius: var(--fit-border-radius-sm);
-	overflow: hidden;
-	background: #F3F4F6;
+	gap: 8px;
 }
 
 .fit-tm-unit-btn {
 	padding: 12px 16px;
-	border: none;
-	background: transparent;
-	color: #6B7280;
+	border-radius: 12px;
 	font-size: 14px;
-	font-weight: 600;
+	font-weight: 700;
 	cursor: pointer;
-	transition: all 0.15s ease;
+	border: none;
+	transition: transform 0.1s, box-shadow 0.1s;
+	/* Inactive state - neutral gray 3D button */
+	background: #E5E5E5;
+	color: #777777;
+	box-shadow: 0 4px 0 #C4C4C4;
 }
 
-.fit-tm-unit-btn:first-child {
-	border-right: 1px solid #E5E7EB;
+.fit-tm-unit-btn:active {
+	transform: translateY(4px);
+	box-shadow: none;
 }
 
 .fit-tm-unit-btn.active {
-	background: var(--fit-primary);
+	/* Active state - blue 3D button (Macaw) */
+	background: #1CB0F6;
 	color: white;
+	box-shadow: 0 4px 0 #1899D6;
+}
+
+.fit-tm-unit-btn.active:active {
+	transform: translateY(4px);
+	box-shadow: none;
 }
 
 .fit-tm-unit-btn:not(.active):hover {
-	background: #E5E7EB;
+	background: #D4D4D4;
 }
 
 /* ========== Exercise Group ========== */
@@ -8845,6 +8964,19 @@
 	gap: 16px;
 }
 
+/* Bubble position layouts */
+.fit-mascot-bubble-top {
+	flex-direction: column;
+}
+
+.fit-mascot-bubble-left {
+	flex-direction: row-reverse;
+}
+
+.fit-mascot-bubble-right {
+	flex-direction: row;
+}
+
 .fit-mascot-image {
 	max-width: 100%;
 	height: auto;
@@ -8873,10 +9005,10 @@
 	position: relative;
 	max-width: 300px;
 	padding: 16px 20px;
-	background: var(--background-primary);
-	border: 3px solid var(--background-modifier-border);
+	background: #FFFFFF;
+	border: 3px solid #E5E5E5;
 	border-radius: 20px;
-	box-shadow: 0 4px 0 var(--background-modifier-border);
+	box-shadow: 0 4px 0 #C4C4C4;
 	animation: fit-bubble-pop 0.3s ease-out;
 }
 
@@ -8885,7 +9017,7 @@
 	font-size: 16px;
 	font-weight: 600;
 	line-height: 1.4;
-	color: var(--text-normal);
+	color: #4B4B4B;
 }
 
 /* Speech Bubble Tail - points down to mascot */
@@ -8898,7 +9030,7 @@
 	height: 0;
 	border-left: 14px solid transparent;
 	border-right: 14px solid transparent;
-	border-top: 14px solid var(--background-modifier-border);
+	border-top: 14px solid #E5E5E5;
 }
 
 .fit-speech-bubble-tail::before {
@@ -8910,32 +9042,81 @@
 	height: 0;
 	border-left: 11px solid transparent;
 	border-right: 11px solid transparent;
-	border-top: 11px solid var(--background-primary);
+	border-top: 11px solid #FFFFFF;
 }
 
 /* Speech Bubble Position Variants */
-.fit-speech-bubble-left {
-	/* Tail on the right side */
-}
 
-.fit-speech-bubble-left .fit-speech-bubble-tail {
-	bottom: auto;
-	top: 50%;
-	left: auto;
-	right: -14px;
-	transform: translateY(-50%) rotate(-90deg);
-}
-
-.fit-speech-bubble-right {
-	/* Tail on the left side */
-}
-
-.fit-speech-bubble-right .fit-speech-bubble-tail {
-	bottom: auto;
-	top: 50%;
-	left: -14px;
+/* Top position - tail points down (default) */
+.fit-speech-bubble-top .fit-speech-bubble-tail {
+	bottom: -14px;
+	left: 50%;
+	top: auto;
 	right: auto;
-	transform: translateY(-50%) rotate(90deg);
+	transform: translateX(-50%);
+	border-left: 14px solid transparent;
+	border-right: 14px solid transparent;
+	border-top: 14px solid #E5E5E5;
+	border-bottom: none;
+}
+
+.fit-speech-bubble-top .fit-speech-bubble-tail::before {
+	bottom: 3px;
+	left: -11px;
+	top: auto;
+	right: auto;
+	border-left: 11px solid transparent;
+	border-right: 11px solid transparent;
+	border-top: 11px solid #FFFFFF;
+	border-bottom: none;
+}
+
+/* Left position - tail points right (bubble is on right of mascot) */
+.fit-speech-bubble-left .fit-speech-bubble-tail {
+	left: -14px;
+	top: 50%;
+	bottom: auto;
+	right: auto;
+	transform: translateY(-50%);
+	border-top: 14px solid transparent;
+	border-bottom: 14px solid transparent;
+	border-right: 14px solid #E5E5E5;
+	border-left: none;
+}
+
+.fit-speech-bubble-left .fit-speech-bubble-tail::before {
+	left: 3px;
+	top: -11px;
+	bottom: auto;
+	right: auto;
+	border-top: 11px solid transparent;
+	border-bottom: 11px solid transparent;
+	border-right: 11px solid #FFFFFF;
+	border-left: none;
+}
+
+/* Right position - tail points left (bubble is on left of mascot) */
+.fit-speech-bubble-right .fit-speech-bubble-tail {
+	right: -14px;
+	top: 50%;
+	bottom: auto;
+	left: auto;
+	transform: translateY(-50%);
+	border-top: 14px solid transparent;
+	border-bottom: 14px solid transparent;
+	border-left: 14px solid #E5E5E5;
+	border-right: none;
+}
+
+.fit-speech-bubble-right .fit-speech-bubble-tail::before {
+	right: 3px;
+	top: -11px;
+	bottom: auto;
+	left: auto;
+	border-top: 11px solid transparent;
+	border-bottom: 11px solid transparent;
+	border-left: 11px solid #FFFFFF;
+	border-right: none;
 }
 
 /* Pop animation for speech bubble */
@@ -8977,36 +9158,88 @@
 	height: 100%;
 }
 
-.fit-program-list {
+.fit-program-picker-header {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-shrink: 0;
+	padding: 16px 0;
+}
+
+.fit-program-picker-mascot .fit-mascot-image {
+	height: 14vh;
+	width: auto;
+	object-fit: contain;
+}
+
+.fit-program-categories {
+	display: flex;
+	flex-direction: column;
+	gap: 32px;
+}
+
+.fit-program-category {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 }
 
-.fit-program-list-item {
+.fit-program-category-header {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 16px;
-	background: var(--background-primary);
-	border: 2px solid var(--background-modifier-border);
-	border-radius: 16px;
+	gap: 6px;
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--text-muted);
+	margin: 0;
+	padding-left: 4px;
 	cursor: pointer;
-	transition: all 0.15s ease;
+}
+
+.fit-program-category-chevron {
+	font-size: 16px;
+	color: var(--text-faint);
+	transition: transform 0.2s ease;
+	transform: rotate(90deg);
+}
+
+.fit-program-category-chevron.collapsed {
+	transform: rotate(0deg);
+}
+
+.fit-program-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.fit-program-list-item {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	padding: 16px 20px;
+	background: #FFFFFF;
+	border: none;
+	border-radius: 14px;
+	cursor: pointer;
+	transition: transform 0.1s ease, box-shadow 0.1s ease;
 	text-align: left;
 	width: 100%;
-	box-shadow: 0 4px 0 var(--background-modifier-border);
+	box-shadow: 0 4px 0 #C4C4C4;
+	/* Ensure card grows to fit content */
+	height: auto;
+	min-height: auto;
+	overflow: visible;
 }
 
 .fit-program-list-item:hover {
-	border-color: var(--fit-primary);
 	transform: translateY(-2px);
-	box-shadow: 0 6px 0 var(--background-modifier-border);
+	box-shadow: 0 6px 0 #C4C4C4;
 }
 
 .fit-program-list-item:active {
-	transform: translateY(2px);
-	box-shadow: 0 2px 0 var(--background-modifier-border);
+	transform: translateY(4px);
+	box-shadow: 0 0 0 #C4C4C4;
 }
 
 .fit-program-list-item-content {
@@ -9017,23 +9250,35 @@
 .fit-program-list-item-name {
 	font-size: 18px;
 	font-weight: 700;
-	color: var(--text-normal);
+	color: #4B4B4B;
 	margin: 0 0 4px 0;
-}
-
-.fit-program-list-item-description {
-	font-size: 14px;
-	color: var(--text-muted);
-	margin: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
+p.fit-program-list-item-description {
+	font-size: 14px;
+	color: #777777;
+	margin: 0;
+	overflow: hidden;
+	line-height: 1.4;
+	/* Allow text to wrap to multiple lines */
+	white-space: normal;
+	/* 2 lines: 14px * 1.4 * 2 = ~40px */
+	max-height: 40px;
+	/* Multi-line truncation with ellipsis */
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
 .fit-program-list-item-arrow {
-	font-size: 24px;
-	color: var(--text-muted);
-	margin-left: 12px;
+	font-size: 22px;
+	color: #AFAFAF;
+	margin-left: 16px;
+	align-self: center;
+	flex-shrink: 0;
 }
 
 .fit-loading {

@@ -8,7 +8,9 @@
 import React from 'react';
 import { usePlugin } from '../contexts';
 
-export type MascotMood = 'neutral' | 'celebrating' | 'thinking';
+export type MascotMood = 'neutral' | 'celebrating' | 'thinking' | 'taking_notes' | 'posing';
+
+export type BubblePosition = 'top' | 'left' | 'right';
 
 interface MascotProps {
 	/** Mood affects which illustration is shown */
@@ -17,6 +19,8 @@ interface MascotProps {
 	headOnly?: boolean;
 	/** Optional message to display in speech bubble */
 	message?: string;
+	/** Position of the speech bubble */
+	bubblePosition?: BubblePosition;
 	/** Size of the mascot */
 	size?: 'small' | 'medium' | 'large';
 	/** Additional CSS class */
@@ -24,9 +28,17 @@ interface MascotProps {
 }
 
 /**
- * Maps mood and headOnly to the correct SVG filename
+ * Maps mood and headOnly to the correct image filename
  */
 function getMascotFilename(mood: MascotMood, headOnly: boolean): string {
+	// PNG variants (only full body available)
+	if (mood === 'taking_notes') {
+		return 'gorilla_coach_taking_notes.png';
+	}
+	if (mood === 'posing') {
+		return 'gorillal_coach_posing_with_me.png';
+	}
+
 	if (headOnly) {
 		switch (mood) {
 			case 'celebrating':
@@ -54,6 +66,7 @@ export function Mascot({
 	mood = 'neutral',
 	headOnly = false,
 	message,
+	bubblePosition = 'top',
 	size = 'medium',
 	className = ''
 }: MascotProps) {
@@ -67,10 +80,12 @@ export function Mascot({
 	// @ts-ignore - getResourcePath exists on FileSystemAdapter
 	const imageUrl = plugin.app.vault.adapter.getResourcePath(assetPath);
 
+	const containerClass = `fit-mascot-container fit-mascot-${size} fit-mascot-bubble-${bubblePosition} ${className}`;
+
 	return (
-		<div className={`fit-mascot-container fit-mascot-${size} ${className}`}>
+		<div className={containerClass}>
 			{message && (
-				<div className="fit-speech-bubble">
+				<div className={`fit-speech-bubble fit-speech-bubble-${bubblePosition}`}>
 					<p>{message}</p>
 					<div className="fit-speech-bubble-tail" />
 				</div>
