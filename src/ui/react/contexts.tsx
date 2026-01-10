@@ -5,10 +5,11 @@
  * to all React components throughout the app.
  */
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { App } from 'obsidian';
 import type MainPlugin from '../../main';
 import { FitnessDomainAdapter, ProgramData, SessionState } from '../../domain/fitness-domain-adapter';
+import { UserSettingsRepository } from '../../data/user-settings-repository';
 
 // ============================================================================
 // App Context
@@ -53,7 +54,9 @@ export function usePlugin(): MainPlugin {
 interface DomainContextValue {
 	adapter: FitnessDomainAdapter;
 	program: ProgramData | null;
+	programPath: string | null;
 	session: SessionState;
+	isLoading: boolean;
 	loadProgram: (path: string) => Promise<void>;
 	loadProgramWithTMs: (path: string, trainingMaxes?: Array<{ exercise: string; value: number; unit: 'kg' | 'lbs' }>) => Promise<void>;
 	clearProgram: () => void;
@@ -67,17 +70,48 @@ const DomainContext = createContext<DomainContextValue | null>(null);
 
 export function DomainProvider({
 	adapter,
+	userSettings,
 	children
 }: {
 	adapter: FitnessDomainAdapter;
+	userSettings: UserSettingsRepository;
 	children: ReactNode;
 }) {
-	const [program, setProgram] = React.useState<ProgramData | null>(adapter.getProgram());
-	const [session, setSession] = React.useState<SessionState>(adapter.getSessionState());
+	const [program, setProgram] = useState<ProgramData | null>(adapter.getProgram());
+	const [programPath, setProgramPath] = useState<string | null>(null);
+	const [session, setSession] = useState<SessionState>(adapter.getSessionState());
+	const [isLoading, setIsLoading] = useState(true);
+
+	// Auto-load active program on mount
+	useEffect(() => {
+		const loadActiveProgram = async () => {
+			try {
+				const activePath = await userSettings.getActiveProgram();
+				if (activePath) {
+					// Check if file exists
+					const file = adapter['app'].vault.getAbstractFileByPath(activePath);
+					if (file) {
+						// Load program with saved TMs
+						const programData = await adapter.loadProgram(activePath);
+						setProgram(programData);
+						setProgramPath(activePath);
+					}
+				}
+			} catch (error) {
+				console.error('[DomainProvider] Failed to load active program:', error);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		loadActiveProgram();
+	}, [adapter, userSettings]);
 
 	const loadProgram = async (path: string) => {
 		const programData = await adapter.loadProgram(path);
 		setProgram(programData);
+		setProgramPath(path);
+		await userSettings.setActiveProgram(path);
 	};
 
 	const loadProgramWithTMs = async (
@@ -86,10 +120,19 @@ export function DomainProvider({
 	) => {
 		const programData = await adapter.loadProgramWithTMs(path, trainingMaxes);
 		setProgram(programData);
+		setProgramPath(path);
+		await userSettings.setActiveProgram(path);
+
+		// Save TMs if provided
+		if (trainingMaxes && trainingMaxes.length > 0 && programData) {
+			await userSettings.saveTrainingMaxes(programData.program.name, trainingMaxes);
+		}
 	};
 
 	const clearProgram = () => {
 		setProgram(null);
+		setProgramPath(null);
+		void userSettings.setActiveProgram(null);
 	};
 
 	const dispatch = (event: any) => {
@@ -110,7 +153,9 @@ export function DomainProvider({
 	const value: DomainContextValue = {
 		adapter,
 		program,
+		programPath,
 		session,
+		isLoading,
 		loadProgram,
 		loadProgramWithTMs,
 		clearProgram,

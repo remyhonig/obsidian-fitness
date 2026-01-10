@@ -8,6 +8,24 @@ import { App, Plugin, setStorybookFiles } from '../mocks/obsidian-storybook-mock
 import { createMockDomainAdapter } from '../mocks/domain-mock';
 import { AppProvider, PluginProvider, DomainProvider } from '../../ui/react/contexts';
 import type { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
+import type { UserSettingsRepository } from '../../data/user-settings-repository';
+
+/**
+ * Mock UserSettingsRepository for Storybook
+ */
+function createMockUserSettings(): UserSettingsRepository {
+	return {
+		setBasePath: () => {},
+		getSettings: async () => ({ activeProgram: null, programTrainingMaxes: [] }),
+		getActiveProgram: async () => null,
+		setActiveProgram: async () => {},
+		getTrainingMaxes: async () => null,
+		hasTrainingMaxes: async () => false,
+		saveTrainingMaxes: async () => {},
+		deleteTrainingMaxes: async () => {},
+		clearCache: () => {},
+	} as unknown as UserSettingsRepository;
+}
 
 // Default example program for stories that don't provide their own
 const DEFAULT_PROGRAM = `# Simple Workout Program
@@ -62,6 +80,8 @@ interface StoryArgs {
 	sessionState?: Record<string, unknown>;
 	files?: Record<string, string>;
 	exerciseAdjustment?: { change: string; reason: string } | null;
+	/** Set to true to show state with no program loaded */
+	noProgram?: boolean;
 }
 
 /**
@@ -69,7 +89,8 @@ interface StoryArgs {
  */
 export const withProviders: Decorator = (Story, context: StoryContext) => {
 	const args = context.args as StoryArgs;
-	const programMarkdown = args.programMarkdown ?? DEFAULT_PROGRAM;
+	// Use undefined for noProgram state, otherwise use provided or default
+	const programMarkdown = args.noProgram ? undefined : (args.programMarkdown ?? DEFAULT_PROGRAM);
 	const sessionState = args.sessionState;
 	const files = args.files;
 	const exerciseAdjustment = args.exerciseAdjustment;
@@ -77,10 +98,13 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 	// Set up mock files if provided
 	if (files) {
 		setStorybookFiles(files);
+	} else if (args.noProgram) {
+		// No files for noProgram state
+		setStorybookFiles({});
 	} else {
 		// Set up default files
 		setStorybookFiles({
-			'Fitness/Programs/Simple.md': programMarkdown,
+			'Fitness/Programs/Simple.md': programMarkdown ?? DEFAULT_PROGRAM,
 		});
 	}
 
@@ -95,7 +119,7 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 	return (
 		<AppProvider app={app as unknown as import('obsidian').App}>
 			<PluginProvider plugin={plugin as unknown as import('../../main').default}>
-				<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter}>
+				<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 					<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
 						<Story />
 					</div>
@@ -134,7 +158,7 @@ export function withProgram(programMarkdown: string): Decorator {
 		return (
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
-					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter}>
+					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
 							<Story />
 						</div>
@@ -164,7 +188,7 @@ export function withActiveSession(workoutName: string, programMarkdown: string):
 		return (
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
-					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter}>
+					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
 							<Story />
 						</div>
@@ -197,7 +221,7 @@ export function withLoadedProgram(programMarkdown: string): Decorator {
 		return (
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
-					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter}>
+					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
 							<Story />
 						</div>

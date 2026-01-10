@@ -5223,10 +5223,17 @@
 }
 
 /* Home Screen */
+.fit-home-screen {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
 .fit-home-screen .fit-content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--fit-spacing);
+	flex: 1;
 }
 
 .fit-program-loader {
@@ -8799,4 +8806,253 @@
 /* Ensure SetCard has relative positioning for badge */
 .fit-set-card {
 	position: relative;
+}
+
+/* ========== Mascot & Welcome Screen - Duolingo Style ========== */
+
+/* Welcome Screen Layout */
+.fit-welcome-screen {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 60vh;
+	padding: 24px;
+	text-align: center;
+	gap: 24px;
+}
+
+.fit-welcome-hint {
+	color: var(--text-muted);
+	font-size: 14px;
+}
+
+.fit-welcome-hint code {
+	display: inline-block;
+	margin-top: 8px;
+	padding: 8px 16px;
+	background: var(--background-secondary);
+	border-radius: 8px;
+	font-size: 13px;
+	color: var(--text-normal);
+}
+
+/* Mascot Container */
+.fit-mascot-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+}
+
+.fit-mascot-image {
+	max-width: 100%;
+	height: auto;
+	object-fit: contain;
+	mix-blend-mode: multiply;
+}
+
+/* Mascot Sizes */
+.fit-mascot-small .fit-mascot-image {
+	width: 80px;
+	height: auto;
+}
+
+.fit-mascot-medium .fit-mascot-image {
+	width: 150px;
+	height: auto;
+}
+
+.fit-mascot-large .fit-mascot-image {
+	width: 220px;
+	height: auto;
+}
+
+/* Speech Bubble - Duolingo Style */
+.fit-speech-bubble {
+	position: relative;
+	max-width: 300px;
+	padding: 16px 20px;
+	background: var(--background-primary);
+	border: 3px solid var(--background-modifier-border);
+	border-radius: 20px;
+	box-shadow: 0 4px 0 var(--background-modifier-border);
+	animation: fit-bubble-pop 0.3s ease-out;
+}
+
+.fit-speech-bubble p {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.4;
+	color: var(--text-normal);
+}
+
+/* Speech Bubble Tail - points down to mascot */
+.fit-speech-bubble-tail {
+	position: absolute;
+	bottom: -14px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 0;
+	height: 0;
+	border-left: 14px solid transparent;
+	border-right: 14px solid transparent;
+	border-top: 14px solid var(--background-modifier-border);
+}
+
+.fit-speech-bubble-tail::before {
+	content: '';
+	position: absolute;
+	bottom: 3px;
+	left: -11px;
+	width: 0;
+	height: 0;
+	border-left: 11px solid transparent;
+	border-right: 11px solid transparent;
+	border-top: 11px solid var(--background-primary);
+}
+
+/* Speech Bubble Position Variants */
+.fit-speech-bubble-left {
+	/* Tail on the right side */
+}
+
+.fit-speech-bubble-left .fit-speech-bubble-tail {
+	bottom: auto;
+	top: 50%;
+	left: auto;
+	right: -14px;
+	transform: translateY(-50%) rotate(-90deg);
+}
+
+.fit-speech-bubble-right {
+	/* Tail on the left side */
+}
+
+.fit-speech-bubble-right .fit-speech-bubble-tail {
+	bottom: auto;
+	top: 50%;
+	left: -14px;
+	right: auto;
+	transform: translateY(-50%) rotate(90deg);
+}
+
+/* Pop animation for speech bubble */
+@keyframes fit-bubble-pop {
+	0% {
+		opacity: 0;
+		transform: scale(0.8);
+	}
+	50% {
+		transform: scale(1.05);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* Mascot bounce animation (optional - for celebrations) */
+@keyframes fit-mascot-bounce {
+	0%, 100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-10px);
+	}
+}
+
+.fit-mascot-celebrating .fit-mascot-image {
+	animation: fit-mascot-bounce 0.6s ease-in-out infinite;
+}
+
+/* =============================================================================
+   PROGRAM PICKER SCREEN
+   ============================================================================= */
+
+.fit-program-picker-screen {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.fit-program-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.fit-program-list-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px;
+	background: var(--background-primary);
+	border: 2px solid var(--background-modifier-border);
+	border-radius: 16px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	text-align: left;
+	width: 100%;
+	box-shadow: 0 4px 0 var(--background-modifier-border);
+}
+
+.fit-program-list-item:hover {
+	border-color: var(--fit-primary);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 0 var(--background-modifier-border);
+}
+
+.fit-program-list-item:active {
+	transform: translateY(2px);
+	box-shadow: 0 2px 0 var(--background-modifier-border);
+}
+
+.fit-program-list-item-content {
+	flex: 1;
+	min-width: 0;
+}
+
+.fit-program-list-item-name {
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--text-normal);
+	margin: 0 0 4px 0;
+}
+
+.fit-program-list-item-description {
+	font-size: 14px;
+	color: var(--text-muted);
+	margin: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.fit-program-list-item-arrow {
+	font-size: 24px;
+	color: var(--text-muted);
+	margin-left: 12px;
+}
+
+.fit-loading {
+	text-align: center;
+	padding: 40px;
+	color: var(--text-muted);
+}
+
+.fit-empty-state {
+	text-align: center;
+	padding: 40px;
+}
+
+.fit-empty-state p {
+	color: var(--text-muted);
+	margin: 8px 0;
+}
+
+.fit-empty-state .fit-hint {
+	font-size: 12px;
+	font-family: var(--font-monospace);
 }

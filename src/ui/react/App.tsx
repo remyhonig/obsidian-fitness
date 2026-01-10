@@ -15,6 +15,7 @@ import { compileProgramFromString, dumpFullStateAsJSON } from 'fitness-dsl';
 import type { SetResult } from 'fitness-dsl';
 import type MainPlugin from '../../main';
 import { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
+import { UserSettingsRepository } from '../../data/user-settings-repository';
 import { AppProvider, PluginProvider, DomainProvider, useDomain } from './contexts';
 import { HomeScreen } from './screens/HomeScreen';
 import { SessionScreen } from './screens/SessionScreen';
@@ -24,6 +25,7 @@ import { FinishScreen } from './screens/FinishScreen';
 import { MoreScreen } from './screens/MoreScreen';
 import { WorkoutDetailScreen } from './screens/WorkoutDetailScreen';
 import { ProgramSetupScreen } from './screens/ProgramSetupScreen';
+import { ProgramPickerScreen } from './screens/ProgramPickerScreen';
 import { BottomNav, type DefaultTabType } from './components/BottomNav';
 
 /** BottomNav wrapper that uses context for reactive progress updates */
@@ -60,7 +62,7 @@ function BottomNavWithProgress({
 type TabType = DefaultTabType;
 
 // Screen types (tabs + full-screen modes)
-type ScreenType = TabType | 'session' | 'finish' | 'exercise-library' | 'workout-detail' | 'program-setup';
+type ScreenType = TabType | 'session' | 'finish' | 'exercise-library' | 'workout-detail' | 'program-setup' | 'program-picker';
 
 interface ScreenParams {
 	[key: string]: unknown;
@@ -73,6 +75,7 @@ interface AppProps {
 
 export function App({ app, plugin }: AppProps) {
 	const [adapter] = useState(() => new FitnessDomainAdapter(app));
+	const [userSettings] = useState(() => new UserSettingsRepository(app, plugin.settings.basePath));
 	const [currentScreen, setCurrentScreen] = useState<ScreenType>('home');
 	const [screenParams, setScreenParams] = useState<ScreenParams>({});
 	const [navigationStack, setNavigationStack] = useState<Array<{ screen: ScreenType; params: ScreenParams }>>([]);
@@ -233,6 +236,13 @@ export function App({ app, plugin }: AppProps) {
 						onNavigate={navigateTo}
 					/>
 				);
+			case 'program-picker':
+				return (
+					<ProgramPickerScreen
+						onNavigate={navigateTo}
+						onBack={goBack}
+					/>
+				);
 			case 'finish':
 				return <FinishScreen onNavigate={navigateTo} />;
 			default:
@@ -243,7 +253,7 @@ export function App({ app, plugin }: AppProps) {
 	return (
 		<AppProvider app={app}>
 			<PluginProvider plugin={plugin}>
-				<DomainProvider adapter={adapter}>
+				<DomainProvider adapter={adapter} userSettings={userSettings}>
 					<LayoutGroup>
 						<div className="fit-app">
 							<div className="fit-main-content">

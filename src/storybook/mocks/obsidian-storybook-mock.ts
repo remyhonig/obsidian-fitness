@@ -80,6 +80,23 @@ const eventHandlers = new Map<string, Set<EventHandler>>();
 
 export class App {
 	vault = {
+		adapter: {
+			// Mock getResourcePath - in Storybook, we serve assets from the public folder
+			getResourcePath: (path: string): string => {
+				// Extract just the asset path relative to src/assets/illustrations
+				if (path.includes('illustrations/')) {
+					const filename = path.split('illustrations/').pop();
+					return `/assets/illustrations/${filename}`;
+				}
+				// Fallback for other assets
+				const match = path.match(/src\/assets\/(.+)$/);
+				if (match) {
+					return `/assets/${match[1]}`;
+				}
+				return path;
+			},
+		},
+
 		getMarkdownFiles: (): TFile[] => {
 			return Array.from(fileStorage.keys())
 				.filter(p => p.endsWith('.md'))
@@ -210,7 +227,12 @@ export class FuzzySuggestModal<T> {
 // Mock Plugin class
 export class Plugin {
 	app: App;
-	manifest = { id: 'obsidian-fit', name: 'Fitness', version: '1.0.0' };
+	manifest = {
+		id: 'obsidian-fit',
+		name: 'Fitness',
+		version: '1.0.0',
+		dir: '.obsidian/plugins/obsidian-fit'
+	};
 
 	constructor(app: App) {
 		this.app = app;

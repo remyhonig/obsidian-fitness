@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { HomeScreen } from './HomeScreen';
-import { setStorybookFiles } from '../../../storybook/mocks/obsidian-storybook-mock';
 import { withBottomNav } from './storyDecorators';
 
 const SAMPLE_PROGRAM = `# Jim Wendler's 5/3/1
@@ -62,57 +61,24 @@ const meta: Meta<typeof HomeScreen> = {
 export default meta;
 type Story = StoryObj<typeof HomeScreen>;
 
-export const NoProgramsAvailable: Story = {
+/**
+ * Welcome screen - shown when no program is selected.
+ * Shows the mascot with a welcome message and continue button
+ * that leads to the program picker.
+ */
+export const Welcome: Story = {
 	args: {
 		onNavigate: action('navigate'),
-	},
-	decorators: [
-		(Story) => {
-			setStorybookFiles({});
-			return <Story />;
-		},
-	],
-};
-
-export const WithPrograms: Story = {
-	args: {
-		onNavigate: action('navigate'),
-		files: {
-			'Fitness/Programs/531.md': SAMPLE_PROGRAM,
-			'Fitness/Programs/StrongLifts.md': `# StrongLifts 5x5
-
-Simple and effective beginner program.
-
-## Schedule
-
-### Weekly Schedule
-- **Monday**: Workout A
-- **Wednesday**: Workout B
-- **Friday**: Workout A
-
-## Workouts
-
-### Workout A
-Squat, bench, row.
-
-**Exercises**
-1. Squat - 5x5 @ 100kg, rest 180s
-2. Bench Press - 5x5 @ 80kg, rest 180s
-3. Barbell Row - 5x5 @ 70kg, rest 180s
-
-### Workout B
-Squat, press, deadlift.
-
-**Exercises**
-1. Squat - 5x5 @ 100kg, rest 180s
-2. Overhead Press - 5x5 @ 50kg, rest 180s
-3. Deadlift - 1x5 @ 120kg, rest 180s
-`,
-		},
+		noProgram: true,
 	},
 };
 
-export const SingleProgram: Story = {
+/**
+ * Program Selected - the main home screen shown when user
+ * has already chosen and loaded a program. Shows program info,
+ * next workout, and schedule.
+ */
+export const ProgramSelected: Story = {
 	args: {
 		onNavigate: action('navigate'),
 		programMarkdown: SAMPLE_PROGRAM,
@@ -122,7 +88,11 @@ export const SingleProgram: Story = {
 	},
 };
 
-// Active session with countdown timer (resting)
+/**
+ * Active Session with Rest Countdown - home screen during
+ * an active workout session while resting between sets.
+ * Shows countdown timer in the header.
+ */
 export const WithRestCountdown: Story = {
 	args: {
 		onNavigate: action('navigate'),
@@ -165,7 +135,11 @@ export const WithRestCountdown: Story = {
 	// Uses global withProviders which reads sessionState from args
 };
 
-// Active session with countup timer (rest complete, ready)
+/**
+ * Active Session with Rest Complete - home screen during
+ * an active workout session when rest time has elapsed.
+ * Shows count-up timer indicating user is ready for next set.
+ */
 export const WithRestComplete: Story = {
 	args: {
 		onNavigate: action('navigate'),

@@ -1,7 +1,6 @@
-import { App, PluginSettingTab as ObsidianPluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab as ObsidianPluginSettingTab } from 'obsidian';
 import type MainPlugin from './main';
 import type { WeightUnit } from './types';
-import { ProgramRepository } from './data/program-repository';
 import { bootstrapDataFolder } from './data/bootstrap';
 import {
 	createTextSetting,
@@ -20,6 +19,7 @@ export interface PluginSettings {
 	autoStartRestTimer: boolean;
 	weightIncrementsKg: number[];
 	weightIncrementsLbs: number[];
+	/** @deprecated Use UserSettingsRepository instead. Kept for legacy vanilla JS screens. */
 	activeProgram?: string;
 	programWorkoutIndex: number;
 	topPadding: number;
@@ -84,10 +84,6 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 			key: 'autoStartRestTimer'
 		});
 
-		// Program section - needs dynamic loading, keep inline
-		createSettingHeading(containerEl, 'Training program');
-		this.renderProgramSetting(containerEl);
-
 		createSettingHeading(containerEl, 'Display');
 
 		createNumberSetting(containerEl, this.plugin, {
@@ -126,28 +122,6 @@ export class PluginSettingTab extends ObsidianPluginSettingTab {
 
 		createSettingHeading(containerEl, 'Exercise database');
 		this.renderDatabaseSettings(containerEl);
-	}
-
-	private renderProgramSetting(containerEl: HTMLElement): void {
-		const programSetting = new Setting(containerEl)
-			.setName('Active program')
-			.setDesc('Select a training program to follow. The next workout will be shown on the home screen.');
-
-		const programRepo = new ProgramRepository(this.app, this.plugin.settings.basePath);
-		void programRepo.list().then(programs => {
-			programSetting.addDropdown(dropdown => {
-				dropdown.addOption('', 'None');
-				for (const program of programs) {
-					dropdown.addOption(program.id, program.name);
-				}
-				dropdown.setValue(this.plugin.settings.activeProgram ?? '');
-				dropdown.onChange(async (value) => {
-					this.plugin.settings.activeProgram = value || undefined;
-					this.plugin.settings.programWorkoutIndex = 0;
-					await this.plugin.saveSettings();
-				});
-			});
-		});
 	}
 
 	private renderDatabaseSettings(containerEl: HTMLElement): void {
