@@ -10,7 +10,7 @@
  * Uses consistent layout with standard header and bottom navigation.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useDomain } from '../contexts';
 import { ExerciseGroup, type ExerciseSetData } from '../components/ExerciseGroup';
 import { TopNav, type TimerConfig } from '../components/TopNav';
@@ -163,6 +163,34 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	useEffect(() => {
 		setViewedExerciseIndex(session.currentExerciseIndex);
 	}, [session.currentExerciseIndex]);
+
+	// Ref for the active exercise group element (for scrolling)
+	const activeExerciseRef = useRef<HTMLDivElement>(null);
+
+	// Scroll to active exercise when it changes or when a set is completed
+	const scrollToActiveExercise = useCallback(() => {
+		if (activeExerciseRef.current) {
+			activeExerciseRef.current.scrollIntoView({
+				behavior: 'smooth',
+				block: 'center',
+			});
+		}
+	}, []);
+
+	// Scroll to active exercise when current exercise changes
+	useEffect(() => {
+		// Small delay to let the DOM update
+		const timer = setTimeout(scrollToActiveExercise, 100);
+		return () => clearTimeout(timer);
+	}, [session.currentExerciseIndex, scrollToActiveExercise]);
+
+	// Also scroll when a set is completed (completedSets changes)
+	const completedSetsCount = session.exercises[session.currentExerciseIndex]?.sets.length ?? 0;
+	useEffect(() => {
+		// Scroll after set completion animation finishes
+		const timer = setTimeout(scrollToActiveExercise, 650);
+		return () => clearTimeout(timer);
+	}, [completedSetsCount, scrollToActiveExercise]);
 
 	// Get current exercise from session state
 	const currentExercise = session.exercises[session.currentExerciseIndex];
@@ -639,9 +667,9 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 										};
 									});
 
-									return (
+									// Wrap active exercise in a div with ref for scroll targeting
+									const exerciseElement = (
 										<ExerciseGroup
-											key={exerciseIndex}
 											exerciseName={exercise.exercise}
 											variant={groupVariant}
 											sets={setsData}
@@ -649,6 +677,17 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 											width="100%"
 										/>
 									);
+
+									// Add ref wrapper for active exercise
+									if (isActive) {
+										return (
+											<div key={exerciseIndex} ref={activeExerciseRef}>
+												{exerciseElement}
+											</div>
+										);
+									}
+
+									return <div key={exerciseIndex}>{exerciseElement}</div>;
 								})}
 							</div>
 
