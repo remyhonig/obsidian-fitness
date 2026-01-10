@@ -563,8 +563,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 					<div className="fit-content">
 						{/* All workout exercises with their sets - using ExerciseGroup components */}
-						{detailInputMode === 'none' && (
-							<div className="fit-workout-sets-overview">
+						<div className="fit-workout-sets-overview">
 								{session.exercises.map((exercise, exerciseIndex) => {
 									const isActive = exerciseIndex === session.currentExerciseIndex;
 									const exerciseCompletedSets = exercise.sets.length;
@@ -630,8 +629,6 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 									);
 								})}
 							</div>
-						)}
-
 
 					</div>
 

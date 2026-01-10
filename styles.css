@@ -8086,12 +8086,13 @@
 	margin-top: 8px;
 }
 
-/* ActionFooter question mode */
+/* ActionFooter question mode - inherits sticky positioning from base .fit-action-footer */
 .fit-action-footer-question {
+	display: flex;
 	flex-direction: column;
 	gap: 12px;
-	padding: 16px;
-	padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+	background: var(--background-primary);
+	border-top: 1px solid var(--background-modifier-border);
 }
 
 .fit-footer-question {
@@ -8132,45 +8133,71 @@
 }
 
 /* Weight input in footer */
-.fit-footer-weight {
+/* Weight question - horizontal row layout */
+.fit-footer-weight-row {
 	display: flex;
-	flex-direction: column;
 	align-items: center;
-	gap: 12px;
-}
-
-.fit-footer-weight-display {
-	font-size: 48px;
-	font-weight: 700;
-	color: var(--fit-text-primary);
-	line-height: 1;
-}
-
-.fit-footer-weight-unit {
-	font-size: 24px;
-	font-weight: 500;
-	color: var(--fit-text-muted);
-	margin-left: 4px;
-}
-
-.fit-footer-weight-buttons {
-	display: flex;
+	justify-content: center;
 	gap: 8px;
 }
 
-.fit-footer-weight-buttons .fit-weight-adjust {
-	min-width: 56px;
-	padding: 12px 16px;
+.fit-footer-weight-row .fit-weight-adjust {
+	min-width: 48px;
+	height: 56px;
+	padding: 8px 12px;
+	font-size: 18px;
+	font-weight: 700;
+	background: #f0f0f0 !important;
+	border: none !important;
+	border-bottom: 4px solid #c4c4c4 !important;
+	border-radius: 12px;
+	color: #4b4b4b;
+	cursor: pointer;
+	transition: transform 0.1s, border-bottom-width 0.1s;
+}
+
+.fit-footer-weight-row .fit-weight-adjust:active {
+	transform: translateY(4px);
+	border-bottom-width: 0 !important;
+	background: #e0e0e0 !important;
+}
+
+.fit-footer-weight-row .fit-weight-adjust-small {
+	min-width: 40px;
 	font-size: 16px;
 }
 
-.fit-footer-weight-confirm {
-	width: 100%;
-	padding: 14px 24px;
-	font-size: 15px;
+/* Central weight value button - matches in-range style */
+.fit-footer-weight-row .fit-weight-value {
+	min-width: 100px;
+	height: 56px;
+	padding: 8px 16px;
+	font-size: 24px;
 	font-weight: 700;
-	text-transform: lowercase;
+	background: #e8f4fc !important;
+	border: none !important;
+	border-bottom: 4px solid #1CB0F6 !important;
 	border-radius: 12px;
+	color: #1899d6 !important;
+	cursor: pointer;
+	transition: transform 0.1s, border-bottom-width 0.1s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+}
+
+.fit-footer-weight-row .fit-weight-value:active {
+	transform: translateY(4px);
+	border-bottom-width: 0 !important;
+	background: #1CB0F6 !important;
+	color: white !important;
+}
+
+.fit-footer-weight-row .fit-weight-value-unit {
+	font-size: 14px;
+	font-weight: 500;
+	opacity: 0.9;
 }
 
 /* Secondary action buttons (Cancel, Skip) - Outline style */

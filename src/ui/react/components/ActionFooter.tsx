@@ -190,46 +190,41 @@ export function ActionFooter({
 		</div>
 	);
 
-	// Render weight question with +/- buttons
+	// Render weight question with inline adjustment buttons
 	const renderWeightQuestion = (q: WeightQuestion) => (
 		<div className="fit-footer-question">
 			<h3 className="fit-footer-question-title">weight</h3>
-			<div className="fit-footer-weight">
-				<div className="fit-footer-weight-display">
-					{q.value === 0 ? 'BW' : q.value}
-					{q.value > 0 && <span className="fit-footer-weight-unit">kg</span>}
-				</div>
-				<div className="fit-footer-weight-buttons">
-					<button
-						className="fit-weight-adjust"
-						onClick={() => q.onChange(Math.max(0, q.value - 5))}
-					>
-						-5
-					</button>
-					<button
-						className="fit-weight-adjust"
-						onClick={() => q.onChange(Math.max(0, q.value - 1))}
-					>
-						-1
-					</button>
-					<button
-						className="fit-weight-adjust"
-						onClick={() => q.onChange(q.value + 1)}
-					>
-						+1
-					</button>
-					<button
-						className="fit-weight-adjust"
-						onClick={() => q.onChange(q.value + 5)}
-					>
-						+5
-					</button>
-				</div>
+			<div className="fit-footer-weight-row">
 				<button
-					className="fit-button-success fit-footer-weight-confirm"
+					className="fit-weight-adjust"
+					onClick={() => q.onChange(Math.max(0, q.value - 5))}
+				>
+					-5
+				</button>
+				<button
+					className="fit-weight-adjust fit-weight-adjust-small"
+					onClick={() => q.onChange(Math.max(0, q.value - 0.25))}
+				>
+					-¼
+				</button>
+				<button
+					className="fit-weight-value"
 					onClick={q.onConfirm}
 				>
-					confirm ({q.pendingReps} reps @ {q.value === 0 ? 'BW' : `${q.value}kg`})
+					{q.value === 0 ? 'BW' : q.value}
+					{q.value > 0 && <span className="fit-weight-value-unit">kg</span>}
+				</button>
+				<button
+					className="fit-weight-adjust fit-weight-adjust-small"
+					onClick={() => q.onChange(q.value + 0.25)}
+				>
+					+¼
+				</button>
+				<button
+					className="fit-weight-adjust"
+					onClick={() => q.onChange(q.value + 5)}
+				>
+					+5
 				</button>
 			</div>
 		</div>

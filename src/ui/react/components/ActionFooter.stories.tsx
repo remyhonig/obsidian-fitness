@@ -170,22 +170,6 @@ export const WithCoachTipDown: Story = {
 	},
 };
 
-// With coach tip - maintain weight
-export const WithCoachTipMaintain: Story = {
-	args: {
-		layout: 'single',
-		primaryAction: {
-			label: 'Continue to Next Exercise',
-			onClick: action('continue'),
-			variant: 'success',
-		},
-		coachTip: {
-			change: 'same weight next session',
-			reason: 'Keep working at this weight until all reps are solid.',
-		},
-	},
-};
-
 // With coach tip - next set adjustment
 export const WithCoachTipNextSet: Story = {
 	args: {
