@@ -10,13 +10,13 @@
  * Uses consistent layout with standard header and bottom navigation.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDomain } from '../contexts';
-import { SetCard } from '../components/SetCard';
 import { ExerciseGroup, type ExerciseSetData } from '../components/ExerciseGroup';
 import { TopNav, type TimerConfig } from '../components/TopNav';
 import { ExerciseInfoModal } from '../components/ExerciseInfoModal';
-import type { ExerciseExecutionView, MediaReference } from '../../../domain/fitness-domain-adapter';
+import { ActionFooter, type CoachTip } from '../components/ActionFooter';
+import type { ExerciseExecutionView, MediaReference, ExerciseRuleProgress } from '../../../domain/fitness-domain-adapter';
 
 type SessionStep = 'workout' | 'reps' | 'rpe' | 'weight';
 
@@ -82,6 +82,14 @@ export interface ExerciseSummaryState {
 	completedSets: Array<{ reps: number; weight: number; rpe: number }>;
 	nextTarget: { sets: number; reps: string; weight: string; rpe: number | null };
 	adjustment: { change: string; reason: string } | null;
+	/** Progress towards triggering progression rules */
+	ruleProgress: ExerciseRuleProgress | null;
+	/** Information about a broken streak, if any */
+	streakBroken: {
+		wasBroken: boolean;
+		previousStreak: number;
+		ruleDescription: string;
+	} | null;
 }
 
 interface SessionScreenProps {
@@ -450,6 +458,8 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 						}],
 						nextTarget: result.nextTarget,
 						adjustment: result.adjustment,
+						ruleProgress: result.ruleProgress,
+						streakBroken: result.streakBroken,
 					});
 				}, 600);
 			} else {
@@ -666,59 +676,74 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 						</div>
 					)}
 
-					{/* Duolingo-style feedback banner */}
-					{isViewingActiveExercise && exerciseSummary && (
-						<div className={`fit-feedback-banner ${
-							exerciseSummary.adjustment
-								? exerciseSummary.adjustment.change.startsWith('-')
-									? 'feedback-down'
-									: 'feedback-up'
-								: 'feedback-neutral'
-						}`}>
-							<div className="fit-feedback-header">
-								<div className="fit-feedback-icon">
-									<svg viewBox="0 0 24 24">
-										<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-									</svg>
-								</div>
-								<div className="fit-feedback-content">
-									{exerciseSummary.adjustment ? (
-										<>
-											<div className="fit-feedback-title">{exerciseSummary.adjustment.change}</div>
-											<div className="fit-feedback-subtitle">{exerciseSummary.adjustment.reason}</div>
-										</>
-									) : (
-										<>
-											<div className="fit-feedback-title">Exercise Complete!</div>
-											<div className="fit-feedback-subtitle">
-												Next: {exerciseSummary.nextTarget.sets}×{exerciseSummary.nextTarget.reps} @ {exerciseSummary.nextTarget.weight}
-											</div>
-										</>
-									)}
-								</div>
-							</div>
-							<button
-								className="fit-feedback-button"
-								onClick={() => {
-									dispatch({ type: 'next_exercise' });
-									setExerciseSummary(null);
+					{/* Exercise completion feedback with coach tip */}
+					{isViewingActiveExercise && exerciseSummary && (() => {
+						// Build coach tip from exercise summary
+						const buildCoachTip = (): CoachTip => {
+							const temporalRule = exerciseSummary.ruleProgress?.rules.find(r => r.progress);
+
+							if (exerciseSummary.streakBroken?.wasBroken) {
+								return {
+									change: 'streak broken',
+									reason: `${exerciseSummary.streakBroken.previousStreak} session streak for "${exerciseSummary.streakBroken.ruleDescription}" lost`,
+									streakBroken: true,
+									ruleProgress: temporalRule?.progress ? {
+										current: 0,
+										required: temporalRule.progress.required,
+										unit: temporalRule.progress.unit,
+									} : undefined,
+								};
+							}
+
+							if (exerciseSummary.adjustment) {
+								return {
+									change: exerciseSummary.adjustment.change,
+									reason: exerciseSummary.adjustment.reason,
+									ruleProgress: temporalRule?.progress ? {
+										current: temporalRule.progress.current,
+										required: temporalRule.progress.required,
+										unit: temporalRule.progress.unit,
+									} : undefined,
+								};
+							}
+
+							return {
+								change: 'exercise complete',
+								reason: `Next: ${exerciseSummary.nextTarget.sets}×${exerciseSummary.nextTarget.reps} @ ${exerciseSummary.nextTarget.weight}`,
+								ruleProgress: temporalRule?.progress ? {
+									current: temporalRule.progress.current,
+									required: temporalRule.progress.required,
+									unit: temporalRule.progress.unit,
+								} : undefined,
+							};
+						};
+
+						return (
+							<ActionFooter
+								layout="single"
+								primaryAction={{
+									label: exerciseSummary.streakBroken?.wasBroken ? 'keep going!' : 'Continue',
+									onClick: () => {
+										dispatch({ type: 'next_exercise' });
+										setExerciseSummary(null);
+									},
+									variant: 'success',
 								}}
-							>
-								Continue
-							</button>
-						</div>
-					)}
+								coachTip={buildCoachTip()}
+							/>
+						);
+					})()}
 
 					{/* Return to active footer when browsing */}
 					{!isViewingActiveExercise && (
-						<div className="fit-action-footer">
-							<button
-								className="fit-button-success fit-button-large"
-								onClick={() => setViewedExerciseIndex(session.currentExerciseIndex)}
-							>
-								Return to Active Exercise
-							</button>
-						</div>
+						<ActionFooter
+							layout="single"
+							primaryAction={{
+								label: 'Return to Active Exercise',
+								onClick: () => setViewedExerciseIndex(session.currentExerciseIndex),
+								variant: 'success',
+							}}
+						/>
 					)}
 				</div>
 			);

@@ -32,6 +32,8 @@ import {
 	type EventResult,
 	type StartWorkoutResult,
 	type CompleteSetResult,
+	type RuleProgress,
+	type ExerciseRuleProgress,
 } from 'fitness-dsl';
 
 // Re-export execution view types for UI consumption
@@ -44,6 +46,9 @@ export type {
 	YouTubeVideoReference,
 	YouTubeShortsReference,
 	YouTubeSearchReference,
+	// Rule progress tracking types
+	RuleProgress,
+	ExerciseRuleProgress,
 } from 'fitness-dsl';
 
 // Re-export types from fitness-dsl for convenience
@@ -206,6 +211,14 @@ export interface ExerciseCompletionResult {
 	adjustment: {
 		change: string;   // e.g., "-5kg"
 		reason: string;   // e.g., "Too heavy man!"
+	} | null;
+	/** Progress towards triggering progression rules */
+	ruleProgress: ExerciseRuleProgress | null;
+	/** Information about a broken streak, if any */
+	streakBroken: {
+		wasBroken: boolean;
+		previousStreak: number;
+		ruleDescription: string;
 	} | null;
 }
 
@@ -1115,6 +1128,8 @@ export class FitnessDomainAdapter {
 					rpe: null,
 				},
 				adjustment: null,
+				ruleProgress: null,
+				streakBroken: null,
 			};
 		}
 
@@ -1152,11 +1167,30 @@ export class FitnessDomainAdapter {
 			rpe: exerciseState.targetRPE,
 		};
 
+		// Get execution view for rule progress (it contains ruleProgress computed by fitness-dsl)
+		const executionView = this.getExecutionView(exerciseIndex);
+		const ruleProgress = executionView?.ruleProgress ?? null;
+
+		// Check for any broken streaks in the rule progress
+		let streakBroken: ExerciseCompletionResult['streakBroken'] = null;
+		if (ruleProgress) {
+			const brokenRule = ruleProgress.rules.find(r => r.streakBroken?.wasBroken);
+			if (brokenRule && brokenRule.streakBroken) {
+				streakBroken = {
+					wasBroken: true,
+					previousStreak: brokenRule.streakBroken.previousStreak,
+					ruleDescription: brokenRule.ruleDescription || brokenRule.ruleSource,
+				};
+			}
+		}
+
 		if (!exerciseTarget) {
 			return {
 				exerciseName: exerciseState.exercise,
 				nextTarget: defaultTarget,
 				adjustment: null,
+				ruleProgress,
+				streakBroken,
 			};
 		}
 
@@ -1168,19 +1202,25 @@ export class FitnessDomainAdapter {
 			[sessionResults] // allSessions - just current for now
 		);
 
-		if (!changeReport || changeReport.timing === 'next_set') {
-			// No rule fired or it was a next_set rule (already applied)
+		if (!changeReport) {
+			// No rule fired
 			return {
 				exerciseName: exerciseState.exercise,
 				nextTarget: defaultTarget,
 				adjustment: null,
+				ruleProgress,
+				streakBroken,
 			};
 		}
 
 		// Rule fired - return the adjustment info
+		// For next_set rules: show what happened during the session
+		// For next_session rules: show what will change next time
+		const isNextSetRule = changeReport.timing === 'next_set';
+
 		return {
 			exerciseName: exerciseState.exercise,
-			nextTarget: {
+			nextTarget: isNextSetRule ? defaultTarget : {
 				sets: changeReport.after.sets,
 				reps: changeReport.after.reps,
 				weight: changeReport.after.weight,
@@ -1190,6 +1230,17 @@ export class FitnessDomainAdapter {
 				change: changeReport.change,
 				reason: changeReport.reason,
 			},
+			ruleProgress,
+			streakBroken,
 		};
+	}
+
+	/**
+	 * Get rule progress for an exercise from the current execution view.
+	 * Convenience method for UI components that need just the rule progress.
+	 */
+	getRuleProgress(exerciseIndex: number): ExerciseRuleProgress | null {
+		const executionView = this.getExecutionView(exerciseIndex);
+		return executionView?.ruleProgress ?? null;
 	}
 }

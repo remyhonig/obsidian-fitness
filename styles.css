@@ -7302,6 +7302,19 @@
 	box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
 }
 
+/* Feedback progress pill container */
+.fit-session-screen .fit-feedback-progress {
+	display: flex;
+	justify-content: center;
+	padding: 4px 0;
+}
+
+/* Emoji icon in feedback header */
+.fit-session-screen .fit-feedback-emoji {
+	font-size: 18px;
+	line-height: 1;
+}
+
 /* Coach speech bubble for adjustments */
 .fit-coach-bubble {
 	display: flex;
@@ -8015,6 +8028,40 @@
 	box-shadow: 0 2px 0 #e65100;
 }
 
+/* Streak broken styling - similar to adjustment-down but with broken heart theme */
+.fit-action-footer-summary.streak-broken {
+	background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+	border-top-color: #ff9600;
+}
+
+.theme-dark .fit-action-footer-summary.streak-broken {
+	background: linear-gradient(135deg, rgba(255, 150, 0, 0.15) 0%, rgba(255, 150, 0, 0.25) 100%);
+	border-top-color: #ff9600;
+}
+
+.fit-action-footer-summary.streak-broken .fit-coach-avatar {
+	border-color: #ff9600;
+	box-shadow: 0 4px 8px rgba(255, 150, 0, 0.3);
+}
+
+.fit-action-footer-summary.streak-broken .fit-coach-change {
+	color: #cd7900;
+}
+
+.fit-action-footer-summary.streak-broken .fit-button-success {
+	background: #ff9600;
+	box-shadow: 0 4px 0 #cd7900;
+}
+
+.fit-action-footer-summary.streak-broken .fit-button-success:active {
+	box-shadow: 0 2px 0 #cd7900;
+}
+
+/* Coach progress pill container */
+.fit-coach-progress {
+	margin-top: 8px;
+}
+
 /* Secondary action buttons (Cancel, Skip) - Outline style */
 .fit-action-secondary {
 	background: none !important;
@@ -8411,4 +8458,152 @@
 .fit-exercise-group-set.done.result-bad .fit-exercise-group-set-reps,
 .fit-exercise-group-set.done.result-bad .fit-exercise-group-set-rpe {
 	color: #3c3c3c;
+}
+
+/* ========== Rule Progress Pill ========== */
+.fit-rule-progress-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	border-radius: 20px;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+/* Variant: active (in progress) */
+.fit-rule-progress-pill.active {
+	background: #fff8e0;
+	color: #8a6d00;
+	border: 1px solid #ffc800;
+}
+
+/* Variant: complete (rule triggered) */
+.fit-rule-progress-pill.complete {
+	background: #e8f5e0;
+	color: #2d6a1e;
+	border: 1px solid #58cc02;
+}
+
+/* Variant: broken (streak lost) */
+.fit-rule-progress-pill.broken {
+	background: #fff0e0;
+	color: #8a4000;
+	border: 1px solid #ff9600;
+}
+
+/* Progress dots container */
+.fit-progress-dots {
+	display: inline-flex;
+	gap: 2px;
+	font-size: 10px;
+}
+
+.fit-progress-dot.filled {
+	opacity: 1;
+}
+
+.fit-progress-dot.empty {
+	opacity: 0.3;
+}
+
+.fit-progress-text {
+	font-size: 13px;
+}
+
+.fit-progress-icon {
+	font-size: 12px;
+}
+
+.fit-progress-effect {
+	font-size: 12px;
+	opacity: 0.8;
+}
+
+/* ========== Streak Broken Toast ========== */
+.fit-streak-toast {
+	position: fixed;
+	top: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 1000;
+	min-width: 280px;
+	max-width: 90%;
+	padding: 16px 20px;
+	background: linear-gradient(135deg, #fff8f0, #ffe8d0);
+	border-top: 3px solid #ff9600;
+	border-radius: 16px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+	animation: streak-toast-slide-in 0.3s ease-out;
+}
+
+@keyframes streak-toast-slide-in {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
+	}
+}
+
+.fit-streak-toast.exiting {
+	animation: streak-toast-fade-out 0.2s ease-in forwards;
+}
+
+@keyframes streak-toast-fade-out {
+	to {
+		opacity: 0;
+		transform: translateX(-50%) translateY(-10px);
+	}
+}
+
+.fit-streak-toast-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.fit-streak-toast-icon {
+	font-size: 20px;
+}
+
+.fit-streak-toast-title {
+	font-size: 16px;
+	font-weight: 700;
+	color: #8a4000;
+	margin: 0;
+}
+
+.fit-streak-toast-message {
+	font-size: 14px;
+	color: #5a3000;
+	margin: 0 0 12px 0;
+	line-height: 1.4;
+}
+
+.fit-streak-toast-action {
+	display: flex;
+	justify-content: center;
+}
+
+.fit-streak-toast-button {
+	padding: 8px 20px;
+	background: #ff9600;
+	color: white;
+	border: none;
+	border-radius: 12px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 3px 0 #cc7800;
+	transition: all 0.1s ease;
+}
+
+.fit-streak-toast-button:active {
+	transform: translateY(2px);
+	box-shadow: 0 1px 0 #cc7800;
 }

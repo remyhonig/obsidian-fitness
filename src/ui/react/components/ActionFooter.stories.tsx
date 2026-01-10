@@ -185,3 +185,67 @@ export const WithCoachTipMaintain: Story = {
 		},
 	},
 };
+
+// With coach tip and rule progress
+export const WithRuleProgress: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'Continue to Next Exercise',
+			onClick: action('continue'),
+			variant: 'success',
+		},
+		coachTip: {
+			change: '+2.5kg',
+			reason: 'Hit all reps with good form.',
+			ruleProgress: {
+				current: 2,
+				required: 3,
+				unit: 'sessions',
+			},
+		},
+	},
+};
+
+// With streak broken
+export const WithStreakBroken: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'keep going!',
+			onClick: action('continue'),
+			variant: 'success',
+		},
+		coachTip: {
+			change: 'streak broken',
+			reason: '3 session streak for "RPE < 8" lost',
+			streakBroken: true,
+			ruleProgress: {
+				current: 0,
+				required: 3,
+				unit: 'sessions',
+			},
+		},
+	},
+};
+
+// With completed rule progress
+export const WithRuleComplete: Story = {
+	args: {
+		layout: 'single',
+		primaryAction: {
+			label: 'Continue to Next Exercise',
+			onClick: action('continue'),
+			variant: 'success',
+		},
+		coachTip: {
+			change: '+5kg next session',
+			reason: 'Completed 3 sessions with RPE < 8!',
+			ruleProgress: {
+				current: 3,
+				required: 3,
+				unit: 'sessions',
+			},
+		},
+	},
+};

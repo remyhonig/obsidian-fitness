@@ -209,6 +209,7 @@ border-radius: 12px;
 
 ## Instructions
 
+- **Before implementing fitness-dsl integration work**, read the fitness-dsl documentation at `../fitness-dsl/docs/` (especially `ENGINE.md`, `ENGINE-OUTPUT.md`, and `DSL-IR-ENGINE-ARCHITECTURE.md`) and `../fitness-dsl/CLAUDE.md` to understand the DSL architecture, event system, and type definitions.
 - Never work around the linter or add linter ignore comments. Fix the root cause in the code.
 - When writing Storybook stories, use the correct fitness-dsl syntax (see above).
 - Prefer React components over legacy vanilla JS for new features.

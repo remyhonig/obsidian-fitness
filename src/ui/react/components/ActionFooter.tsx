@@ -8,7 +8,14 @@
  * - With coach tip: displays a coaching message above the action
  */
 
-import React from 'react';
+import { RuleProgressPill } from './RuleProgressPill';
+
+/** Rule progress info for coach tip */
+export interface CoachTipRuleProgress {
+	current: number;
+	required: number;
+	unit: 'sessions' | 'sets';
+}
 
 /** Coach tip configuration */
 export interface CoachTip {
@@ -16,6 +23,10 @@ export interface CoachTip {
 	change: string;
 	/** Explanation for the change */
 	reason: string;
+	/** Optional rule progress to show */
+	ruleProgress?: CoachTipRuleProgress;
+	/** Whether a streak was broken */
+	streakBroken?: boolean;
 }
 
 /** Action button configuration */
@@ -74,14 +85,24 @@ export function ActionFooter({
 		}
 	};
 
-	// Determine if adjustment is negative (for styling)
+	// Determine styling based on adjustment type
 	const isAdjustmentDown = coachTip?.change.startsWith('-');
+	const isStreakBroken = coachTip?.streakBroken;
+
+	// Determine variant for progress pill
+	const getProgressVariant = (): 'active' | 'complete' | 'broken' => {
+		if (isStreakBroken) return 'broken';
+		if (coachTip?.ruleProgress && coachTip.ruleProgress.current >= coachTip.ruleProgress.required) {
+			return 'complete';
+		}
+		return 'active';
+	};
 
 	const footerClasses = [
 		'fit-action-footer',
 		layout === 'triple' ? 'fit-action-footer-triple' : '',
 		coachTip ? 'fit-action-footer-summary' : '',
-		isAdjustmentDown ? 'adjustment-down' : '',
+		isStreakBroken ? 'streak-broken' : isAdjustmentDown ? 'adjustment-down' : '',
 		className,
 	].filter(Boolean).join(' ');
 
@@ -90,10 +111,20 @@ export function ActionFooter({
 			{/* Coach speech bubble */}
 			{coachTip && (
 				<div className="fit-coach-bubble">
-					<div className="fit-coach-avatar">🏋️</div>
+					<div className="fit-coach-avatar">{isStreakBroken ? '💔' : '🏋️'}</div>
 					<div className="fit-coach-speech">
 						<span className="fit-coach-change">{coachTip.change}</span>
 						<span className="fit-coach-reason">{coachTip.reason}</span>
+						{coachTip.ruleProgress && (
+							<div className="fit-coach-progress">
+								<RuleProgressPill
+									current={coachTip.ruleProgress.current}
+									required={coachTip.ruleProgress.required}
+									unit={coachTip.ruleProgress.unit}
+									variant={getProgressVariant()}
+								/>
+							</div>
+						)}
 					</div>
 				</div>
 			)}
