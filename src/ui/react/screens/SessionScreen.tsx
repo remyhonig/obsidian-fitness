@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDomain } from '../contexts';
 import { SetCard } from '../components/SetCard';
+import { ExerciseGroup, type ExerciseSetData } from '../components/ExerciseGroup';
 import { TopNav, type TimerConfig } from '../components/TopNav';
 import { ExerciseInfoModal } from '../components/ExerciseInfoModal';
 import type { ExerciseExecutionView, MediaReference } from '../../../domain/fitness-domain-adapter';
@@ -511,12 +512,13 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 					/>
 
 					<div className="fit-content">
-						{/* All workout exercises with their sets - outside the gray panel */}
+						{/* All workout exercises with their sets - using ExerciseGroup components */}
 						{detailInputMode === 'none' && (
 							<div className="fit-workout-sets-overview">
 								{session.exercises.map((exercise, exerciseIndex) => {
 									const isActive = exerciseIndex === session.currentExerciseIndex;
 									const exerciseCompletedSets = exercise.sets.length;
+									const isExerciseDone = exerciseCompletedSets >= exercise.targetSets;
 									const repsDisplay = exercise.targetRepsMin === exercise.targetRepsMax
 										? String(exercise.targetRepsMin)
 										: `${exercise.targetRepsMin}-${exercise.targetRepsMax}`;
@@ -526,50 +528,39 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 									// Check if exercise has any info to show
 									const hasExerciseInfo = exerciseImage || exerciseYoutube || exercise.note;
 
-									return (
-										<div key={exerciseIndex} className={`fit-exercise-sets-row ${isActive ? 'active' : ''}`}>
-											<div className="fit-exercise-sets-left">
-												<div className="fit-exercise-sets-header">
-													<span className="fit-exercise-sets-name">
-														{exercise.exercise}
-														{hasExerciseInfo && (
-															<button
-																className="fit-info-button"
-																onClick={() => setInfoModalExerciseIndex(exerciseIndex)}
-																title="Exercise info"
-															>
-																i
-															</button>
-														)}
-													</span>
-													<span className="fit-exercise-sets-progress">
-														{exerciseCompletedSets}/{exercise.targetSets}
-													</span>
-												</div>
-												<div className="fit-set-tabs-vertical">
-													{Array.from({ length: exercise.targetSets }, (_, i) => {
-														const isDone = i < exerciseCompletedSets;
-														const isNext = i === exerciseCompletedSets && isActive;
-														const isJustCompleted = i === justCompletedSet && isActive && isViewingActiveExercise;
-														const isSelected = i === effectiveSelectedIndex && isActive && isViewingActiveExercise;
-														const set = exercise.sets[i];
+									// Determine group variant: done if all sets complete, next if active, pending otherwise
+									const groupVariant: 'pending' | 'next' | 'done' = isExerciseDone
+										? 'done'
+										: isActive
+											? 'next'
+											: 'pending';
 
-														return (
-															<SetCard
-																key={i}
-																weight={isDone && set ? set.weight : exercise.targetWeight ?? 0}
-																reps={isDone && set ? set.reps : repsDisplay}
-																rpe={isDone && set ? set.rpe : exercise.targetRPE ?? 7}
-																variant={isDone ? 'done' : isNext ? 'next' : 'pending'}
-																isSelected={isSelected}
-																isAnimating={isJustCompleted}
-																onClick={isActive && isViewingActiveExercise ? () => handleSetCardTap(i) : undefined}
-															/>
-														);
-													})}
-												</div>
-											</div>
-										</div>
+									// Build sets data for ExerciseGroup
+									const setsData: ExerciseSetData[] = Array.from({ length: exercise.targetSets }, (_, i) => {
+										const isDone = i < exerciseCompletedSets;
+										const isNext = i === exerciseCompletedSets && isActive;
+										const isJustCompleted = i === justCompletedSet && isActive && isViewingActiveExercise;
+										const set = exercise.sets[i];
+
+										return {
+											weight: isDone && set ? set.weight : exercise.targetWeight ?? 0,
+											reps: isDone && set ? set.reps : repsDisplay,
+											rpe: isDone && set ? set.rpe : exercise.targetRPE ?? 7,
+											variant: isDone ? 'done' : isNext ? 'next' : 'pending',
+											result: isDone ? 'good' : undefined, // TODO: Calculate actual result based on performance
+											onClick: isActive && isViewingActiveExercise ? () => handleSetCardTap(i) : undefined,
+										};
+									});
+
+									return (
+										<ExerciseGroup
+											key={exerciseIndex}
+											exerciseName={exercise.exercise}
+											variant={groupVariant}
+											sets={setsData}
+											onInfoClick={hasExerciseInfo ? () => setInfoModalExerciseIndex(exerciseIndex) : undefined}
+											width="100%"
+										/>
 									);
 								})}
 							</div>

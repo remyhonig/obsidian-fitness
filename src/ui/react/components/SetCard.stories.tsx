@@ -131,7 +131,7 @@ export const AllStates: Story = {
 	),
 };
 
-// Cards with exercise name header
+// Cards with exercise name header banner
 export const WithExerciseName: Story = {
 	args: {
 		weight: 80,
@@ -139,7 +139,6 @@ export const WithExerciseName: Story = {
 		rpe: 8,
 		variant: 'done',
 		exerciseName: 'Bench Press',
-		showExerciseName: true,
 		onClick: action('onClick'),
 	},
 };
@@ -151,7 +150,6 @@ export const WithExerciseNameNext: Story = {
 		rpe: 8,
 		variant: 'next',
 		exerciseName: 'Barbell Row',
-		showExerciseName: true,
 		onClick: action('onClick'),
 	},
 };
@@ -163,21 +161,20 @@ export const WithLongExerciseName: Story = {
 		rpe: 9,
 		variant: 'done',
 		exerciseName: 'Romanian Deadlift',
-		showExerciseName: true,
 		onClick: action('onClick'),
 	},
 };
 
-// Superset preview - mixed exercises in a row
+// Superset preview - mixed exercises in a row (each card has exercise name banner)
 export const MixedExerciseRow: Story = {
 	render: () => (
 		<div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-			<SetCard weight={80} reps={10} rpe={8} variant="done" exerciseName="Bench Press" showExerciseName />
-			<SetCard weight={70} reps={10} rpe={7} variant="done" exerciseName="Barbell Row" showExerciseName />
-			<SetCard weight={80} reps={9} rpe={8} variant="done" exerciseName="Bench Press" showExerciseName />
-			<SetCard weight={70} reps={9} rpe={8} variant="done" exerciseName="Barbell Row" showExerciseName />
-			<SetCard weight={80} reps="8-10" rpe={8} variant="next" exerciseName="Bench Press" showExerciseName />
-			<SetCard weight={70} reps="8-10" rpe={8} variant="pending" exerciseName="Barbell Row" showExerciseName />
+			<SetCard weight={80} reps={10} rpe={8} variant="done" exerciseName="Bench Press" />
+			<SetCard weight={70} reps={10} rpe={7} variant="done" exerciseName="Barbell Row" />
+			<SetCard weight={80} reps={9} rpe={8} variant="done" exerciseName="Bench Press" />
+			<SetCard weight={70} reps={9} rpe={8} variant="done" exerciseName="Barbell Row" />
+			<SetCard weight={80} reps="8-10" rpe={8} variant="next" exerciseName="Bench Press" />
+			<SetCard weight={70} reps="8-10" rpe={8} variant="pending" exerciseName="Barbell Row" />
 		</div>
 	),
 };
@@ -188,18 +185,86 @@ export const SupersetRounds: Story = {
 		<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 			<div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Round 1</div>
 			<div style={{ display: 'flex', gap: '8px' }}>
-				<SetCard weight={80} reps={10} rpe={8} variant="done" exerciseName="Bench Press" showExerciseName />
-				<SetCard weight={70} reps={10} rpe={7} variant="done" exerciseName="Barbell Row" showExerciseName />
+				<SetCard weight={80} reps={10} rpe={8} variant="done" exerciseName="Bench Press" />
+				<SetCard weight={70} reps={10} rpe={7} variant="done" exerciseName="Barbell Row" />
 			</div>
 			<div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Round 2</div>
 			<div style={{ display: 'flex', gap: '8px' }}>
-				<SetCard weight={80} reps={9} rpe={8} variant="done" exerciseName="Bench Press" showExerciseName />
-				<SetCard weight={70} reps={9} rpe={8} variant="done" exerciseName="Barbell Row" showExerciseName />
+				<SetCard weight={80} reps={9} rpe={8} variant="done" exerciseName="Bench Press" />
+				<SetCard weight={70} reps={9} rpe={8} variant="done" exerciseName="Barbell Row" />
 			</div>
 			<div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Round 3</div>
 			<div style={{ display: 'flex', gap: '8px' }}>
-				<SetCard weight={80} reps="8-10" rpe={8} variant="next" exerciseName="Bench Press" showExerciseName />
-				<SetCard weight={70} reps="8-10" rpe={8} variant="pending" exerciseName="Barbell Row" showExerciseName />
+				<SetCard weight={80} reps="8-10" rpe={8} variant="next" exerciseName="Bench Press" />
+				<SetCard weight={70} reps="8-10" rpe={8} variant="pending" exerciseName="Barbell Row" />
+			</div>
+		</div>
+	),
+};
+
+// Exercise group - see ExerciseGroup component for the proper single-header layout
+export const ExerciseGroupWithHeader: Story = {
+	render: () => (
+		<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+			<div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+				Note: For single-header layout, use the ExerciseGroup component
+			</div>
+			<SetCard weight={80} reps={10} rpe={7} variant="done" exerciseName="Bench Press" result="good" />
+			<SetCard weight={80} reps={9} rpe={8} variant="done" result="ok" />
+			<SetCard weight={80} reps="8-10" rpe={8} variant="next" />
+		</div>
+	),
+};
+
+// Result indicators - diagonal stripes
+export const ResultGood: Story = {
+	args: {
+		weight: 80,
+		reps: 10,
+		rpe: 7,
+		variant: 'done',
+		exerciseName: 'Bench Press',
+		result: 'good',
+	},
+};
+
+export const ResultOk: Story = {
+	args: {
+		weight: 80,
+		reps: 9,
+		rpe: 8,
+		variant: 'done',
+		exerciseName: 'Bench Press',
+		result: 'ok',
+	},
+};
+
+export const ResultBad: Story = {
+	args: {
+		weight: 80,
+		reps: 6,
+		rpe: 10,
+		variant: 'done',
+		exerciseName: 'Bench Press',
+		result: 'bad',
+	},
+};
+
+// All result types in a group - colors indicate performance
+export const ResultComparison: Story = {
+	render: () => (
+		<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+			<div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Green = good, White/gray = ok, Orange = needs work</div>
+			<div style={{ display: 'flex', gap: '8px' }}>
+				<SetCard weight={80} reps={10} rpe={7} variant="done" exerciseName="Bench Press" result="good" />
+				<SetCard weight={80} reps={9} rpe={8} variant="done" exerciseName="Bench Press" result="ok" />
+				<SetCard weight={80} reps={6} rpe={10} variant="done" exerciseName="Bench Press" result="bad" />
+			</div>
+			<div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Without header banner:</div>
+			<div style={{ display: 'flex', gap: '8px' }}>
+				<SetCard weight={80} reps={10} rpe={7} variant="done" result="good" />
+				<SetCard weight={80} reps={9} rpe={8} variant="done" result="ok" />
+				<SetCard weight={80} reps={6} rpe={10} variant="done" result="bad" />
 			</div>
 		</div>
 	),

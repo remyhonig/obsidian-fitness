@@ -6027,8 +6027,9 @@
 .fit-workout-sets-overview {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 16px;
 	flex: 1;
+	padding: 8px;
 }
 
 .fit-exercise-sets-row {
@@ -6038,6 +6039,7 @@
 	padding: 12px;
 	border-radius: 12px;
 	background: var(--background-secondary);
+	position: relative;
 }
 
 .fit-exercise-sets-row.active {
@@ -6259,6 +6261,15 @@
 	transform: scale(0.95);
 }
 
+/* Floating info button in exercise row (when no header) */
+.fit-info-button-floating {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	margin-left: 0;
+	z-index: 10;
+}
+
 /* Exercise Info Modal */
 .fit-info-modal-backdrop {
 	position: fixed;
@@ -6416,25 +6427,126 @@
 	overflow: hidden;
 }
 
-/* SetCard with exercise name - flexible width */
-.fit-set-card.with-name {
+/* SetCard with header banner (Duolingo style) */
+.fit-set-card.with-header-banner {
 	width: auto;
-	min-width: 100px;
-	max-width: 160px;
-	padding: 6px 10px 10px;
+	min-width: 120px;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-shadow: none;
 }
 
-/* Exercise name header */
-.fit-set-card-name {
-	font-size: 10px;
-	font-weight: 600;
+.fit-set-card-banner {
+	padding: 6px 12px;
+	font-size: 11px;
+	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
-	margin-bottom: 4px;
-	opacity: 0.85;
+	text-align: center;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+/* Banner colors based on card variant */
+.fit-set-card.done .fit-set-card-banner {
+	background: #3c3c3c;
+	color: white;
+}
+
+.fit-set-card.next .fit-set-card-banner {
+	background: #1CB0F6;
+	color: white;
+}
+
+.fit-set-card:not(.done):not(.next) .fit-set-card-banner {
+	background: #e5e5e5;
+	color: #777;
+}
+
+.fit-set-card-body {
+	padding: 8px 12px 12px;
+	background: white;
+	border-radius: 12px;
+	position: relative;
+	margin: 4px;
+	margin-top: 0;
+	box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.fit-set-card.with-header-banner .fit-set-card-body .fit-set-card-header,
+.fit-set-card-body .fit-set-card-header {
+	color: #3c3c3c !important;
+	font-size: 12px;
+}
+
+.fit-set-card.with-header-banner .fit-set-card-body .fit-set-card-main,
+.fit-set-card-body .fit-set-card-main {
+	color: #3c3c3c !important;
+	font-size: 20px;
+}
+
+.fit-set-card.with-header-banner .fit-set-card-body .fit-set-card-details,
+.fit-set-card-body .fit-set-card-details {
+	color: #777 !important;
+	font-size: 11px;
+}
+
+/* Ensure content wrapper inherits properly */
+.fit-set-card.with-header-banner .fit-set-card-body .fit-set-card-content {
+	color: #3c3c3c !important;
+}
+
+/* Result indicator - solid colored backgrounds in card body */
+.fit-set-card.result-good .fit-set-card-body {
+	background: #e8f5e0 !important;
+}
+
+.fit-set-card.result-ok .fit-set-card-body {
+	background: white !important;
+}
+
+.fit-set-card.result-bad .fit-set-card-body {
+	background: #fff0e0 !important;
+}
+
+/* Regular cards (without header) with results - solid colored backgrounds */
+.fit-set-card.done.result-good:not(.with-header-banner) {
+	background: #e8f5e0;
+	box-shadow: 0 4px 0 #9bc77c;
+	color: #3c3c3c;
+}
+
+.fit-set-card.done.result-good:not(.with-header-banner) .fit-set-card-header,
+.fit-set-card.done.result-good:not(.with-header-banner) .fit-set-card-main,
+.fit-set-card.done.result-good:not(.with-header-banner) .fit-set-card-details {
+	color: #3c3c3c;
+}
+
+.fit-set-card.done.result-ok:not(.with-header-banner) {
+	background: #f0f0f0;
+	box-shadow: 0 4px 0 #c4c4c4;
+	color: #3c3c3c;
+}
+
+.fit-set-card.done.result-ok:not(.with-header-banner) .fit-set-card-header,
+.fit-set-card.done.result-ok:not(.with-header-banner) .fit-set-card-main,
+.fit-set-card.done.result-ok:not(.with-header-banner) .fit-set-card-details {
+	color: #3c3c3c;
+}
+
+.fit-set-card.done.result-bad:not(.with-header-banner) {
+	background: #fff0e0;
+	box-shadow: 0 4px 0 #d4a574;
+	color: #3c3c3c;
+}
+
+.fit-set-card.done.result-bad:not(.with-header-banner) .fit-set-card-header,
+.fit-set-card.done.result-bad:not(.with-header-banner) .fit-set-card-main,
+.fit-set-card.done.result-bad:not(.with-header-banner) .fit-set-card-details {
+	color: #3c3c3c;
 }
 
 .theme-dark .fit-set-card {
@@ -6452,22 +6564,22 @@
 }
 
 .fit-set-card.done {
-	background: #58cc02;
-	box-shadow: 0 4px 0 #46a302;
+	background: #4a4a4a;
+	box-shadow: 0 4px 0 #3a3a3a;
 	color: white;
 }
 
 .fit-set-card.done:active {
-	box-shadow: 0 2px 0 #46a302;
+	box-shadow: 0 2px 0 #3a3a3a;
 }
 
 .fit-set-card.next {
-	background: #ffc800;
-	box-shadow: 0 4px 0 #e6b400;
+	background: #1CB0F6;
+	box-shadow: 0 4px 0 #1899d6;
 }
 
 .fit-set-card.next:active {
-	box-shadow: 0 2px 0 #e6b400;
+	box-shadow: 0 2px 0 #1899d6;
 }
 
 .fit-set-card.next {
@@ -6485,7 +6597,32 @@
 }
 
 .fit-set-card.selected.next {
-	box-shadow: 0 6px 0 #e6b400, 0 0 0 3px white;
+	box-shadow: 0 6px 0 #1899d6, 0 0 0 3px white;
+}
+
+/* Checkmark for completed sets */
+.fit-set-card-checkmark {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: #58cc02;
+	color: white;
+	font-size: 12px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 2px 0 #46a302;
+	z-index: 2;
+}
+
+/* Checkmark position in cards with header banner */
+.fit-set-card.with-header-banner .fit-set-card-checkmark {
+	top: 6px;
+	right: 6px;
 }
 
 @keyframes pulse-glow {
@@ -6501,11 +6638,11 @@
 
 @keyframes pulse-glow-duo {
 	0%, 100% {
-		box-shadow: 0 4px 0 #e6b400;
+		box-shadow: 0 4px 0 #1899d6;
 		transform: scale(1);
 	}
 	50% {
-		box-shadow: 0 4px 0 #e6b400, 0 0 12px rgba(255, 200, 0, 0.5);
+		box-shadow: 0 4px 0 #1899d6, 0 0 12px rgba(28, 176, 246, 0.5);
 		transform: scale(1.02);
 	}
 }
@@ -6523,7 +6660,7 @@
 }
 
 .fit-set-card.next .fit-set-card-header {
-	color: rgba(0, 0, 0, 0.7);
+	color: rgba(255, 255, 255, 0.85);
 }
 
 .fit-set-card:not(.done):not(.next) .fit-set-card-header {
@@ -6545,7 +6682,7 @@
 }
 
 .fit-set-card.next .fit-set-card-main {
-	color: rgba(0, 0, 0, 0.85);
+	color: white;
 }
 
 .fit-set-card:not(.done):not(.next) .fit-set-card-main {
@@ -6568,7 +6705,7 @@
 }
 
 .fit-set-card.next .fit-set-card-details {
-	color: rgba(0, 0, 0, 0.6);
+	color: rgba(255, 255, 255, 0.8);
 }
 
 .fit-set-card:not(.done):not(.next) .fit-set-card-details {
@@ -8024,4 +8161,226 @@
 
 .fit-tm-unit-btn:not(.active):hover {
 	background: #E5E7EB;
+}
+
+/* ========== Exercise Group ========== */
+/* Single header banner with stacked set bodies - Duolingo 3D style */
+
+.fit-exercise-group {
+	display: flex;
+	flex-direction: column;
+	border-radius: 20px;
+	overflow: hidden;
+	border: 3px solid #4b4b4b;
+	box-shadow: 0 5px 0 #1a1a1a;
+	background: #4b4b4b;
+}
+
+.fit-exercise-group-header {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	background: #4b4b4b;
+	color: white;
+	font-size: 13px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	padding: 12px 16px;
+	position: relative;
+}
+
+.fit-exercise-group-header-title {
+	flex: 1;
+	text-align: left;
+}
+
+.fit-exercise-group-info-btn {
+	position: absolute;
+	right: 12px;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	border: 2px solid white !important;
+	background: none !important;
+	background-color: transparent !important;
+	color: white !important;
+	font-size: 13px;
+	font-weight: 700;
+	font-style: italic;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	line-height: 1;
+	transition: all 0.15s;
+}
+
+.fit-exercise-group-info-btn:hover {
+	border-color: white;
+	color: white;
+	background: none !important;
+}
+
+.fit-exercise-group-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+	background: #4b4b4b;
+}
+
+/* SetCards inside ExerciseGroup - full width, stacked vertically */
+.fit-exercise-group-body .fit-set-card {
+	width: 100%;
+	max-width: none;
+	min-width: auto;
+}
+
+/* ExerciseGroup variants - pending (light gray) */
+.fit-exercise-group.fit-exercise-group-pending {
+	border: 3px solid #AFAFAF;
+	background: #AFAFAF;
+	box-shadow: 0 5px 0 #8a8a8a;
+}
+
+.fit-exercise-group-pending .fit-exercise-group-header {
+	background: #AFAFAF;
+}
+
+.fit-exercise-group-pending .fit-exercise-group-body {
+	background: #AFAFAF;
+}
+
+/* ExerciseGroup variants - next (dark gray, same as done - SetCard draws attention) */
+.fit-exercise-group.fit-exercise-group-next {
+	border: 3px solid #4b4b4b;
+	background: #4b4b4b;
+	box-shadow: 0 5px 0 #1a1a1a;
+}
+
+.fit-exercise-group-next .fit-exercise-group-header {
+	background: #4b4b4b;
+}
+
+.fit-exercise-group-next .fit-exercise-group-body {
+	background: #4b4b4b;
+}
+
+/* ExerciseGroup variants - done (dark gray, completed) */
+.fit-exercise-group.fit-exercise-group-done {
+	border: 3px solid #4b4b4b;
+	background: #4b4b4b;
+	box-shadow: 0 5px 0 #1a1a1a;
+}
+
+.fit-exercise-group-done .fit-exercise-group-header {
+	background: #4b4b4b;
+}
+
+.fit-exercise-group-done .fit-exercise-group-body {
+	background: #4b4b4b;
+}
+
+.fit-exercise-group-set {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 16px;
+	background: white;
+	border-bottom: 1px solid #e5e5e5;
+	cursor: pointer;
+	transition: background 0.15s;
+}
+
+.fit-exercise-group-set:last-child {
+	border-bottom: none;
+}
+
+.fit-exercise-group-set:active {
+	background: #f5f5f5;
+}
+
+.fit-exercise-group-set-weight {
+	font-size: 14px;
+	font-weight: 700;
+	color: #3c3c3c;
+	min-width: 50px;
+}
+
+.fit-exercise-group-set-reps {
+	font-size: 24px;
+	font-weight: 700;
+	color: #3c3c3c;
+	flex: 1;
+	text-align: center;
+}
+
+.fit-exercise-group-set-rpe {
+	font-size: 12px;
+	color: #888;
+	min-width: 50px;
+	text-align: right;
+}
+
+/* Set variants */
+.fit-exercise-group-set.done {
+	background: #4a4a4a;
+}
+
+.fit-exercise-group-set.done .fit-exercise-group-set-weight,
+.fit-exercise-group-set.done .fit-exercise-group-set-reps,
+.fit-exercise-group-set.done .fit-exercise-group-set-rpe {
+	color: white;
+}
+
+.fit-exercise-group-set.done:active {
+	background: #555;
+}
+
+.fit-exercise-group-set.next {
+	background: #ffc800;
+}
+
+.fit-exercise-group-set.next .fit-exercise-group-set-weight,
+.fit-exercise-group-set.next .fit-exercise-group-set-reps,
+.fit-exercise-group-set.next .fit-exercise-group-set-rpe {
+	color: #3c3c3c;
+}
+
+.fit-exercise-group-set.next:active {
+	background: #e6b400;
+}
+
+/* Result colors for done sets */
+.fit-exercise-group-set.done.result-good {
+	background: #e8f5e0;
+}
+
+.fit-exercise-group-set.done.result-good .fit-exercise-group-set-weight,
+.fit-exercise-group-set.done.result-good .fit-exercise-group-set-reps,
+.fit-exercise-group-set.done.result-good .fit-exercise-group-set-rpe {
+	color: #3c3c3c;
+}
+
+.fit-exercise-group-set.done.result-ok {
+	background: #f0f0f0;
+}
+
+.fit-exercise-group-set.done.result-ok .fit-exercise-group-set-weight,
+.fit-exercise-group-set.done.result-ok .fit-exercise-group-set-reps,
+.fit-exercise-group-set.done.result-ok .fit-exercise-group-set-rpe {
+	color: #3c3c3c;
+}
+
+.fit-exercise-group-set.done.result-bad {
+	background: #fff0e0;
+}
+
+.fit-exercise-group-set.done.result-bad .fit-exercise-group-set-weight,
+.fit-exercise-group-set.done.result-bad .fit-exercise-group-set-reps,
+.fit-exercise-group-set.done.result-bad .fit-exercise-group-set-rpe {
+	color: #3c3c3c;
 }

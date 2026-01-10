@@ -29,11 +29,11 @@ export interface SetCardProps {
 	/** Click handler for selection */
 	onClick?: () => void;
 
-	/** Exercise name (optional, for superset/mixed displays) */
+	/** Exercise name - when provided, shows as a colored header banner (Duolingo style) */
 	exerciseName?: string;
 
-	/** Whether to show the exercise name header (default: false) */
-	showExerciseName?: boolean;
+	/** Result indicator for completed sets - shows colored background */
+	result?: 'good' | 'ok' | 'bad';
 }
 
 /**
@@ -73,7 +73,7 @@ export function SetCard({
 	isAnimating = false,
 	onClick,
 	exerciseName,
-	showExerciseName = false,
+	result,
 }: SetCardProps) {
 	const classNames = [
 		'fit-set-card',
@@ -81,18 +81,37 @@ export function SetCard({
 		variant === 'next' ? 'next' : '',
 		isSelected ? 'selected' : '',
 		isAnimating ? 'just-completed' : '',
-		showExerciseName && exerciseName ? 'with-name' : '',
+		exerciseName ? 'with-header-banner' : '',
+		result ? `result-${result}` : '',
 	]
 		.filter(Boolean)
 		.join(' ');
 
+	const isDone = variant === 'done';
+
+	// When exerciseName is provided, show header banner style (Duolingo-like)
+	if (exerciseName) {
+		return (
+			<div className={classNames} onClick={onClick}>
+				<div className="fit-set-card-banner">{exerciseName}</div>
+				<div className="fit-set-card-body">
+					{isAnimating && <StarBurst />}
+					{isDone && <span className="fit-set-card-checkmark">✓</span>}
+					<div className="fit-set-card-header">{formatWeight(weight)}</div>
+					<div className="fit-set-card-content">
+						<div className="fit-set-card-main">{reps}</div>
+						<div className="fit-set-card-details">RPE {rpe}</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Regular card without exercise name
 	return (
 		<div className={classNames} onClick={onClick}>
 			{isAnimating && <StarBurst />}
-
-			{showExerciseName && exerciseName && (
-				<div className="fit-set-card-name">{exerciseName}</div>
-			)}
+			{isDone && <span className="fit-set-card-checkmark">✓</span>}
 
 			<div className="fit-set-card-header">{formatWeight(weight)}</div>
 

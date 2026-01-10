@@ -417,3 +417,88 @@ Exercise completion feedback displayed as a bottom banner, inspired by Duolingo'
 - `.fit-feedback-title` - Main message (22px, bold)
 - `.fit-feedback-subtitle` - Supporting text (14px)
 - `.fit-feedback-button` - Continue button
+
+---
+
+## ExerciseGroup & SetCard Color System
+
+### Design Principle
+
+**SetCards draw attention, not containers.** The ExerciseGroup container uses neutral colors while the SetCard inside uses color to indicate the current action. This focuses the user's attention on what they need to do next.
+
+### ExerciseGroup Variants
+
+| Variant | Color | Use Case |
+|---------|-------|----------|
+| **pending** | Light gray (`#AFAFAF`) | Future exercises not yet started |
+| **next** | Dark gray (`#4b4b4b`) | Current exercise being worked on |
+| **done** | Dark gray (`#4b4b4b`) | Completed exercises |
+
+**Decision**: `next` and `done` groups share the same dark gray color. The blue SetCard inside the `next` group provides sufficient visual distinction for the current exercise.
+
+### SetCard Variants
+
+| Variant | Background | Shadow | Text | Use Case |
+|---------|------------|--------|------|----------|
+| **pending** | White/Light gray | Gray | Dark gray | Sets not yet attempted |
+| **next** | Blue (`#1CB0F6`) | Dark blue (`#1899d6`) | White | Current set to perform |
+| **done** | Green (`#58CC02`) | Dark green (`#46a302`) | White | Completed sets |
+
+### Color Palette
+
+```css
+/* SetCard - Current Set (Blue) */
+--set-next-bg: #1CB0F6;
+--set-next-shadow: #1899d6;
+--set-next-text: white;
+
+/* SetCard - Completed Set (Green) */
+--set-done-bg: #58CC02;
+--set-done-shadow: #46a302;
+--set-done-text: white;
+
+/* ExerciseGroup - Pending (Light Gray) */
+--group-pending-bg: #AFAFAF;
+--group-pending-shadow: #8a8a8a;
+
+/* ExerciseGroup - Next/Done (Dark Gray) */
+--group-active-bg: #4b4b4b;
+--group-active-shadow: #1a1a1a;
+```
+
+### Visual Hierarchy
+
+```
+┌─ PENDING GROUP (light gray) ─────────────┐
+│ Exercise Name                       [i]  │
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐      │
+│ │ pending │ │ pending │ │ pending │      │
+│ │  (gray) │ │  (gray) │ │  (gray) │      │
+│ └─────────┘ └─────────┘ └─────────┘      │
+└──────────────────────────────────────────┘
+
+┌─ NEXT GROUP (dark gray) ─────────────────┐
+│ Exercise Name                       [i]  │
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐      │
+│ │  done   │ │  NEXT   │ │ pending │      │
+│ │ (green) │ │ (BLUE)  │ │  (gray) │      │
+│ └─────────┘ └─────────┘ └─────────┘      │
+└──────────────────────────────────────────┘
+        ↑ Blue card draws attention
+
+┌─ DONE GROUP (dark gray) ─────────────────┐
+│ Exercise Name                       [i]  │
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐      │
+│ │  done   │ │  done   │ │  done   │      │
+│ │ (green) │ │ (green) │ │ (green) │      │
+│ └─────────┘ └─────────┘ └─────────┘      │
+└──────────────────────────────────────────┘
+```
+
+### Rationale
+
+1. **Blue for current action**: Blue is the Duolingo accent color for active/interactive elements
+2. **Green for completion**: Green universally indicates success/done
+3. **Neutral containers**: Using dark gray for both `next` and `done` groups prevents the container from competing with the SetCard for attention
+4. **Light gray for future**: Pending groups use lighter gray to feel more "distant" or "upcoming"
+5. **Single point of focus**: Only one element (the blue SetCard) should draw the eye at any time
