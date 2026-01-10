@@ -14,6 +14,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useDomain } from '../contexts';
 import { SetCard } from '../components/SetCard';
 import { TopNav, type TimerConfig } from '../components/TopNav';
+import { ExerciseInfoModal } from '../components/ExerciseInfoModal';
 import type { ExerciseExecutionView, MediaReference } from '../../../domain/fitness-domain-adapter';
 
 type SessionStep = 'workout' | 'reps' | 'rpe' | 'weight';
@@ -66,41 +67,6 @@ function getImageUrl(media: MediaReference[]): { url: string; description: strin
 	return null;
 }
 
-/**
- * YouTube button component - badge on thumbnail
- */
-function YouTubeButton({ onClick }: { onClick: () => void }) {
-	return (
-		<button
-			className="fit-youtube-btn"
-			onClick={(e) => {
-				e.stopPropagation();
-				onClick();
-			}}
-			title="Watch exercise video"
-		>
-			<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-				<path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-			</svg>
-		</button>
-	);
-}
-
-
-/**
- * Image modal component - fullscreen overlay with exercise image
- */
-function ImageModal({ url, description, onClose }: { url: string; description: string | null; onClose: () => void }) {
-	return (
-		<div className="fit-image-modal" onClick={onClose}>
-			<div className="fit-image-modal-content" onClick={(e) => e.stopPropagation()}>
-				<button className="fit-image-modal-close" onClick={onClose}>×</button>
-				<img src={url} alt={description || 'Exercise illustration'} />
-				{description && <p className="fit-image-modal-desc">{description}</p>}
-			</div>
-		</div>
-	);
-}
 
 interface PendingSet {
 	reps: number | null;
@@ -153,8 +119,8 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 	// Track if we're editing an existing set (null = new set, number = set index being edited)
 	const [editingSetIndex, setEditingSetIndex] = useState<number | null>(null);
 
-	// Image modal state
-	const [showImageModal, setShowImageModal] = useState(false);
+	// Info modal state - tracks which exercise's info modal is open (null = closed)
+	const [infoModalExerciseIndex, setInfoModalExerciseIndex] = useState<number | null>(null);
 
 	// Exercise completion summary state
 	const [exerciseSummary, setExerciseSummary] = useState<ExerciseSummaryState | null>(
@@ -501,18 +467,6 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 			const isRestComplete = restElapsed >= totalRestTarget;
 			const restRemaining = Math.max(0, totalRestTarget - restElapsed);
 			const setDuration = isRestComplete ? restElapsed - totalRestTarget : 0;
-			const restProgress = Math.min(100, (restElapsed / totalRestTarget) * 100);
-
-			// Get YouTube media and image for viewed exercise
-			const youtubeMedia = getYouTubeMedia(viewedExercise.media);
-			const imageData = getImageUrl(viewedExercise.media);
-
-			// Handle YouTube button click - always open in browser
-			// (YouTube blocks embeds from Obsidian's app:// origin)
-			const handleYouTubeClick = () => {
-				if (!youtubeMedia) return;
-				window.open(youtubeMedia.url, '_blank');
-			};
 
 			// Build timer config for TopNav
 			const timerConfig: TimerConfig | undefined = isViewingActiveExercise
@@ -532,163 +486,100 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 
 			return (
 				<div className="fit-session-screen">
-					{/* Image modal */}
-					{showImageModal && imageData && (
-						<ImageModal
-							url={imageData.url}
-							description={imageData.description}
-							onClose={() => setShowImageModal(false)}
-						/>
-					)}
+					{/* Exercise info modal */}
+					{infoModalExerciseIndex !== null && (() => {
+						const modalExercise = session.exercises[infoModalExerciseIndex];
+						if (!modalExercise) return null;
+						const modalImage = getImageUrl(modalExercise.media);
+						const modalYoutube = getYouTubeMedia(modalExercise.media);
+						return (
+							<ExerciseInfoModal
+								exerciseName={modalExercise.exercise}
+								imageUrl={modalImage?.url}
+								youtubeUrl={modalYoutube?.url}
+								note={modalExercise.note ?? undefined}
+								onClose={() => setInfoModalExerciseIndex(null)}
+							/>
+						);
+					})()}
 
 					<TopNav
 						title={viewedExercise.exercise}
 						subtitle={!isViewingActiveExercise ? 'Tap to return to active' : undefined}
-						variant="arrows"
-						onPrev={() => setViewedExerciseIndex(i => Math.max(0, i - 1))}
-						onNext={() => setViewedExerciseIndex(i => Math.min(session.exercises.length - 1, i + 1))}
-						prevDisabled={viewedExerciseIndex === 0}
-						nextDisabled={viewedExerciseIndex === session.exercises.length - 1}
 						timer={timerConfig}
 						onTitleClick={handleTitleClick}
 					/>
 
 					<div className="fit-content">
-						{/* Exercise media row - image, youtube, and comments */}
-						{(imageData || youtubeMedia || viewedExercise.note) && (
-							<div className="fit-exercise-media-row">
-								{imageData ? (
-									<div
-										className="fit-exercise-preview"
-										onClick={() => setShowImageModal(true)}
-									>
-										<img src={imageData.url} alt={imageData.description || 'Exercise illustration'} />
-										{youtubeMedia && <YouTubeButton onClick={handleYouTubeClick} />}
-									</div>
-								) : youtubeMedia ? (
-									<button
-										className="fit-youtube-standalone"
-										onClick={handleYouTubeClick}
-									>
-										<span className="fit-youtube-icon">▶</span>
-										<span>YouTube</span>
-									</button>
-								) : null}
-								{viewedExercise.note && (
-									<p className="fit-exercise-note">{viewedExercise.note}</p>
-								)}
+						{/* All workout exercises with their sets - outside the gray panel */}
+						{detailInputMode === 'none' && (
+							<div className="fit-workout-sets-overview">
+								{session.exercises.map((exercise, exerciseIndex) => {
+									const isActive = exerciseIndex === session.currentExerciseIndex;
+									const exerciseCompletedSets = exercise.sets.length;
+									const repsDisplay = exercise.targetRepsMin === exercise.targetRepsMax
+										? String(exercise.targetRepsMin)
+										: `${exercise.targetRepsMin}-${exercise.targetRepsMax}`;
+									const exerciseImage = getImageUrl(exercise.media);
+									const exerciseYoutube = getYouTubeMedia(exercise.media);
+
+									// Check if exercise has any info to show
+									const hasExerciseInfo = exerciseImage || exerciseYoutube || exercise.note;
+
+									return (
+										<div key={exerciseIndex} className={`fit-exercise-sets-row ${isActive ? 'active' : ''}`}>
+											<div className="fit-exercise-sets-left">
+												<div className="fit-exercise-sets-header">
+													<span className="fit-exercise-sets-name">
+														{exercise.exercise}
+														{hasExerciseInfo && (
+															<button
+																className="fit-info-button"
+																onClick={() => setInfoModalExerciseIndex(exerciseIndex)}
+																title="Exercise info"
+															>
+																i
+															</button>
+														)}
+													</span>
+													<span className="fit-exercise-sets-progress">
+														{exerciseCompletedSets}/{exercise.targetSets}
+													</span>
+												</div>
+												<div className="fit-set-tabs-vertical">
+													{Array.from({ length: exercise.targetSets }, (_, i) => {
+														const isDone = i < exerciseCompletedSets;
+														const isNext = i === exerciseCompletedSets && isActive;
+														const isJustCompleted = i === justCompletedSet && isActive && isViewingActiveExercise;
+														const isSelected = i === effectiveSelectedIndex && isActive && isViewingActiveExercise;
+														const set = exercise.sets[i];
+
+														return (
+															<SetCard
+																key={i}
+																weight={isDone && set ? set.weight : exercise.targetWeight ?? 0}
+																reps={isDone && set ? set.reps : repsDisplay}
+																rpe={isDone && set ? set.rpe : exercise.targetRPE ?? 7}
+																variant={isDone ? 'done' : isNext ? 'next' : 'pending'}
+																isSelected={isSelected}
+																isAnimating={isJustCompleted}
+																onClick={isActive && isViewingActiveExercise ? () => handleSetCardTap(i) : undefined}
+															/>
+														);
+													})}
+												</div>
+											</div>
+										</div>
+									);
+								})}
 							</div>
 						)}
 
-						{/* Set cards */}
-						<div className="fit-set-tabs">
-							{Array.from({ length: viewedExercise.targetSets }, (_, i) => {
-								const viewedCompletedSets = viewedExercise.sets.length;
-								const isDone = i < viewedCompletedSets;
-								const isNext = i === viewedCompletedSets && isViewingActiveExercise;
-								const isJustCompleted = i === justCompletedSet && isViewingActiveExercise;
-								const isSelected = i === effectiveSelectedIndex && isViewingActiveExercise;
-								const set = viewedExercise.sets[i];
-								// Get target weight from execution view (includes rule adjustments) or fall back to static target
-								const executionSetTarget = executionView?.sets[i]?.target;
-								const targetWeightForSet = executionSetTarget?.weight
-									? parseFloat(executionSetTarget.weight) || viewedExercise.targetWeight
-									: viewedExercise.targetWeight;
 
-								// Format reps for display
-								const repsDisplay = viewedExercise.targetRepsMin === viewedExercise.targetRepsMax
-									? String(viewedExercise.targetRepsMin)
-									: `${viewedExercise.targetRepsMin}-${viewedExercise.targetRepsMax}`;
-
-								return (
-									<SetCard
-										key={i}
-										weight={isDone && set ? set.weight : targetWeightForSet ?? 0}
-										reps={isDone && set ? set.reps : repsDisplay}
-										rpe={isDone && set ? set.rpe : viewedExercise.targetRPE ?? 7}
-										variant={isDone ? 'done' : isNext ? 'next' : 'pending'}
-										isSelected={isSelected}
-										isAnimating={isJustCompleted}
-										onClick={() => handleSetCardTap(i)}
-									/>
-								);
-							})}
-						</div>
-
-						{/* Adjustments panel - show rule or auto-match adjustments for next set (only for active exercise) */}
-						{isViewingActiveExercise && executionView && (() => {
-							// Get the next pending set's adjustment
-							const nextPendingSet = executionView.sets[completedSets];
-							const adjustment = nextPendingSet?.target.adjustment;
-
-							// Only show if there's an adjustment of any type
-							if (!adjustment) return null;
-
-							const isRuleApplied = adjustment.type === 'rule_applied';
-							const isAutoMatched = adjustment.type === 'auto_matched';
-
-							return (
-								<div className={`fit-triggered-rules ${isAutoMatched ? 'auto-matched' : ''}`}>
-									<div className="fit-rule-item">
-										<span className="fit-rule-icon">{isRuleApplied ? '⚡' : '↔'}</span>
-										<div className="fit-rule-content">
-											<span className="fit-rule-reason">{adjustment.reason}</span>
-											{adjustment.ruleSource && (
-												<span className="fit-rule-source">{adjustment.ruleSource}</span>
-											)}
-										</div>
-									</div>
-								</div>
-							);
-						})()}
-
-						{/* Detail panel */}
+						{/* Detail panel - only for input modes */}
+						{detailInputMode !== 'none' && !exerciseSummary && (
 						<div className="fit-detail-panel">
 							<div className="fit-detail-content">
-								{/* Exercise completion summary */}
-								{exerciseSummary && isViewingActiveExercise ? (
-									<div className="fit-exercise-summary">
-										{/* Next session target as set cards */}
-										<div className="fit-summary-section">
-											<h3>Next Session</h3>
-											<div className="fit-set-tabs">
-												{Array.from({ length: exerciseSummary.nextTarget.sets }, (_, i) => {
-													// Strip "Nx" prefix from reps if present (e.g., "3x8-10" -> "8-10")
-													const repsDisplay = exerciseSummary.nextTarget.reps.replace(/^\d+x/i, '');
-													// Parse weight string to number (e.g., "100kg" -> 100, "bodyweight" -> 0)
-													const weightStr = exerciseSummary.nextTarget.weight.toLowerCase();
-													const weightNum = weightStr.includes('body') ? 0 : parseFloat(weightStr) || 0;
-													return (
-														<SetCard
-															key={i}
-															weight={weightNum}
-															reps={repsDisplay}
-															rpe={exerciseSummary.nextTarget.rpe ?? 8}
-															variant="pending"
-														/>
-													);
-												})}
-											</div>
-										</div>
-									</div>
-								) : !isViewingActiveExercise ? (
-									<p className="fit-detail-hint">
-										{viewedExercise.sets.length}/{viewedExercise.targetSets} sets completed
-									</p>
-								) : detailInputMode === 'none' ? (
-									<>
-										{isSelectedSetDone && selectedSet && (
-											<div className="fit-detail-stats">
-												<span>{selectedSet.reps} reps</span>
-												<span>{formatWeight(selectedSet.weight)}</span>
-												<span>RPE {selectedSet.rpe}</span>
-											</div>
-										)}
-										{!isSelectedSetNext && !isSelectedSetDone && (
-											<p className="fit-detail-hint">Complete earlier sets first</p>
-										)}
-									</>
-								) : null}
 
 								{isViewingActiveExercise && detailInputMode === 'reps' && (
 									<div className="fit-inline-input">
@@ -756,6 +647,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 								)}
 							</div>
 						</div>
+						)}
 					</div>
 
 					{/* Action footer - fixed at bottom, outside scrollable content */}
@@ -781,29 +673,45 @@ export function SessionScreen({ onNavigate, initialExerciseSummary }: SessionScr
 						</div>
 					)}
 
-					{/* Exercise summary footer with coaching tips */}
+					{/* Duolingo-style feedback banner */}
 					{isViewingActiveExercise && exerciseSummary && (
-						<div className={`fit-action-footer fit-action-footer-summary${
-							exerciseSummary.adjustment?.change.startsWith('-') ? ' adjustment-down' : ''
+						<div className={`fit-feedback-banner ${
+							exerciseSummary.adjustment
+								? exerciseSummary.adjustment.change.startsWith('-')
+									? 'feedback-down'
+									: 'feedback-up'
+								: 'feedback-neutral'
 						}`}>
-							{/* Coach speech bubble for adjustment */}
-							{exerciseSummary.adjustment && (
-								<div className="fit-coach-bubble">
-									<div className="fit-coach-avatar">🏋️</div>
-									<div className="fit-coach-speech">
-										<span className="fit-coach-change">{exerciseSummary.adjustment.change}</span>
-										<span className="fit-coach-reason">{exerciseSummary.adjustment.reason}</span>
-									</div>
+							<div className="fit-feedback-header">
+								<div className="fit-feedback-icon">
+									<svg viewBox="0 0 24 24">
+										<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+									</svg>
 								</div>
-							)}
+								<div className="fit-feedback-content">
+									{exerciseSummary.adjustment ? (
+										<>
+											<div className="fit-feedback-title">{exerciseSummary.adjustment.change}</div>
+											<div className="fit-feedback-subtitle">{exerciseSummary.adjustment.reason}</div>
+										</>
+									) : (
+										<>
+											<div className="fit-feedback-title">Exercise Complete!</div>
+											<div className="fit-feedback-subtitle">
+												Next: {exerciseSummary.nextTarget.sets}×{exerciseSummary.nextTarget.reps} @ {exerciseSummary.nextTarget.weight}
+											</div>
+										</>
+									)}
+								</div>
+							</div>
 							<button
-								className="fit-button-success fit-button-large"
+								className="fit-feedback-button"
 								onClick={() => {
 									dispatch({ type: 'next_exercise' });
 									setExerciseSummary(null);
 								}}
 							>
-								Continue to Next Exercise
+								Continue
 							</button>
 						</div>
 					)}

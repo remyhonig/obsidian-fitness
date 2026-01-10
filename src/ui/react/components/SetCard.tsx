@@ -28,6 +28,12 @@ export interface SetCardProps {
 
 	/** Click handler for selection */
 	onClick?: () => void;
+
+	/** Exercise name (optional, for superset/mixed displays) */
+	exerciseName?: string;
+
+	/** Whether to show the exercise name header (default: false) */
+	showExerciseName?: boolean;
 }
 
 /**
@@ -66,6 +72,8 @@ export function SetCard({
 	isSelected = false,
 	isAnimating = false,
 	onClick,
+	exerciseName,
+	showExerciseName = false,
 }: SetCardProps) {
 	const classNames = [
 		'fit-set-card',
@@ -73,6 +81,7 @@ export function SetCard({
 		variant === 'next' ? 'next' : '',
 		isSelected ? 'selected' : '',
 		isAnimating ? 'just-completed' : '',
+		showExerciseName && exerciseName ? 'with-name' : '',
 	]
 		.filter(Boolean)
 		.join(' ');
@@ -80,6 +89,10 @@ export function SetCard({
 	return (
 		<div className={classNames} onClick={onClick}>
 			{isAnimating && <StarBurst />}
+
+			{showExerciseName && exerciseName && (
+				<div className="fit-set-card-name">{exerciseName}</div>
+			)}
 
 			<div className="fit-set-card-header">{formatWeight(weight)}</div>
 

@@ -1,0 +1,15 @@
+<svg viewBox="0 0 48 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dumbbell icon - Duolingo style -->
+  <!-- Bar -->
+  <rect x="10" y="10" width="28" height="4" rx="2" fill="#4B4B4B"/>
+
+  <!-- Left outer weight -->
+  <rect x="2" y="5" width="6" height="14" rx="3" fill="#58CC02"/>
+  <!-- Left inner weight -->
+  <rect x="8" y="7" width="4" height="10" rx="2" fill="#46A302"/>
+
+  <!-- Right inner weight -->
+  <rect x="36" y="7" width="4" height="10" rx="2" fill="#46A302"/>
+  <!-- Right outer weight -->
+  <rect x="40" y="5" width="6" height="14" rx="3" fill="#58CC02"/>
+</svg>

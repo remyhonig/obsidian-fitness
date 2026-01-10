@@ -84,7 +84,10 @@ export const MidWorkout: Story = {
 						{ exercise: 'Bench Press', setNumber: 1, reps: 10, weight: 80, rpe: 7, timestamp: new Date().toISOString() },
 						{ exercise: 'Bench Press', setNumber: 2, reps: 9, weight: 80, rpe: 8, timestamp: new Date().toISOString() },
 					],
-					media: [],
+					media: [
+						{ type: 'image', url: 'https://picsum.photos/seed/bench/200/200', description: 'Bench Press' },
+						{ type: 'youtube-video', url: 'https://www.youtube.com/watch?v=rT7DgCr-3pg', videoId: 'rT7DgCr-3pg', description: 'Bench Press Tutorial' }
+					],
 					note: 'Keep shoulders retracted',
 				},
 				{
@@ -96,7 +99,7 @@ export const MidWorkout: Story = {
 					targetRPE: 8,
 					restSeconds: 180,
 					sets: [],
-					media: [],
+					media: [{ type: 'image', url: 'https://picsum.photos/seed/row/200/200', description: 'Barbell Row' }],
 					note: null,
 				},
 				{
@@ -108,7 +111,7 @@ export const MidWorkout: Story = {
 					targetRPE: 8,
 					restSeconds: 120,
 					sets: [],
-					media: [],
+					media: [{ type: 'image', url: 'https://picsum.photos/seed/ohp/200/200', description: 'Overhead Press' }],
 					note: null,
 				},
 			],
@@ -266,7 +269,7 @@ export const ExerciseCompleteWithCoachTip: Story = {
 						{ exercise: 'Bench Press', setNumber: 2, reps: 10, weight: 80, rpe: 6, timestamp: new Date().toISOString() },
 						{ exercise: 'Bench Press', setNumber: 3, reps: 10, weight: 80, rpe: 7, timestamp: new Date().toISOString() },
 					],
-					media: [],
+					media: [{ type: 'image', url: 'https://picsum.photos/seed/bench/200/200', description: 'Bench Press' }],
 					note: 'Keep shoulders retracted',
 				},
 				{
@@ -278,7 +281,7 @@ export const ExerciseCompleteWithCoachTip: Story = {
 					targetRPE: 8,
 					restSeconds: 180,
 					sets: [],
-					media: [],
+					media: [{ type: 'image', url: 'https://picsum.photos/seed/row/200/200', description: 'Barbell Row' }],
 					note: null,
 				},
 			],
@@ -330,7 +333,10 @@ export const ExerciseCompleteWithDownAdjustment: Story = {
 						{ exercise: 'Bench Press', setNumber: 2, reps: 5, weight: 85, rpe: 10, timestamp: new Date().toISOString() },
 						{ exercise: 'Bench Press', setNumber: 3, reps: 4, weight: 85, rpe: 10, timestamp: new Date().toISOString() },
 					],
-					media: [],
+					media: [
+						{ type: 'image', url: 'https://picsum.photos/seed/bench/200/200', description: 'Bench Press' },
+						{ type: 'youtube-video', url: 'https://www.youtube.com/watch?v=rT7DgCr-3pg', videoId: 'rT7DgCr-3pg', description: 'Bench Press Tutorial' }
+					],
 					note: 'Keep shoulders retracted',
 				},
 				{
@@ -342,7 +348,7 @@ export const ExerciseCompleteWithDownAdjustment: Story = {
 					targetRPE: 8,
 					restSeconds: 180,
 					sets: [],
-					media: [],
+					media: [{ type: 'image', url: 'https://picsum.photos/seed/row/200/200', description: 'Barbell Row' }],
 					note: null,
 				},
 			],

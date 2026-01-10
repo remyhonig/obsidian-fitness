@@ -1,0 +1,23 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Muscle/Strength icon - Duolingo style (flexing arm) -->
+
+  <!-- Upper arm -->
+  <rect x="4" y="14" width="14" height="10" rx="5" fill="#58CC02"
+        transform="rotate(-20 11 19)"/>
+
+  <!-- Forearm -->
+  <rect x="14" y="6" width="12" height="9" rx="4.5" fill="#58CC02"
+        transform="rotate(30 20 10)"/>
+
+  <!-- Bicep bulge -->
+  <ellipse cx="14" cy="12" rx="6" ry="5" fill="#58CC02"/>
+
+  <!-- Bicep highlight -->
+  <ellipse cx="12" cy="10" rx="3" ry="2.5" fill="#89E219" opacity="0.5"/>
+
+  <!-- Fist -->
+  <circle cx="24" cy="8" r="5" fill="#46A302"/>
+
+  <!-- Hand detail -->
+  <rect x="22" y="4" width="3" height="5" rx="1.5" fill="#46A302"/>
+</svg>

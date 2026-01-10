@@ -130,3 +130,77 @@ export const AllStates: Story = {
 		</div>
 	),
 };
+
+// Cards with exercise name header
+export const WithExerciseName: Story = {
+	args: {
+		weight: 80,
+		reps: 10,
+		rpe: 8,
+		variant: 'done',
+		exerciseName: 'Bench Press',
+		showExerciseName: true,
+		onClick: action('onClick'),
+	},
+};
+
+export const WithExerciseNameNext: Story = {
+	args: {
+		weight: 70,
+		reps: '8-10',
+		rpe: 8,
+		variant: 'next',
+		exerciseName: 'Barbell Row',
+		showExerciseName: true,
+		onClick: action('onClick'),
+	},
+};
+
+export const WithLongExerciseName: Story = {
+	args: {
+		weight: 100,
+		reps: 5,
+		rpe: 9,
+		variant: 'done',
+		exerciseName: 'Romanian Deadlift',
+		showExerciseName: true,
+		onClick: action('onClick'),
+	},
+};
+
+// Superset preview - mixed exercises in a row
+export const MixedExerciseRow: Story = {
+	render: () => (
+		<div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+			<SetCard weight={80} reps={10} rpe={8} variant="done" exerciseName="Bench Press" showExerciseName />
+			<SetCard weight={70} reps={10} rpe={7} variant="done" exerciseName="Barbell Row" showExerciseName />
+			<SetCard weight={80} reps={9} rpe={8} variant="done" exerciseName="Bench Press" showExerciseName />
+			<SetCard weight={70} reps={9} rpe={8} variant="done" exerciseName="Barbell Row" showExerciseName />
+			<SetCard weight={80} reps="8-10" rpe={8} variant="next" exerciseName="Bench Press" showExerciseName />
+			<SetCard weight={70} reps="8-10" rpe={8} variant="pending" exerciseName="Barbell Row" showExerciseName />
+		</div>
+	),
+};
+
+// Superset round layout preview
+export const SupersetRounds: Story = {
+	render: () => (
+		<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+			<div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Round 1</div>
+			<div style={{ display: 'flex', gap: '8px' }}>
+				<SetCard weight={80} reps={10} rpe={8} variant="done" exerciseName="Bench Press" showExerciseName />
+				<SetCard weight={70} reps={10} rpe={7} variant="done" exerciseName="Barbell Row" showExerciseName />
+			</div>
+			<div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Round 2</div>
+			<div style={{ display: 'flex', gap: '8px' }}>
+				<SetCard weight={80} reps={9} rpe={8} variant="done" exerciseName="Bench Press" showExerciseName />
+				<SetCard weight={70} reps={9} rpe={8} variant="done" exerciseName="Barbell Row" showExerciseName />
+			</div>
+			<div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Round 3</div>
+			<div style={{ display: 'flex', gap: '8px' }}>
+				<SetCard weight={80} reps="8-10" rpe={8} variant="next" exerciseName="Bench Press" showExerciseName />
+				<SetCard weight={70} reps="8-10" rpe={8} variant="pending" exerciseName="Barbell Row" showExerciseName />
+			</div>
+		</div>
+	),
+};

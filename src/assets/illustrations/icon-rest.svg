@@ -1,0 +1,19 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rest/Break icon - Duolingo style (zzz sleep) -->
+
+  <!-- Pillow shape -->
+  <rect x="4" y="16" width="24" height="12" rx="6" fill="#1CB0F6"/>
+
+  <!-- Pillow highlight -->
+  <ellipse cx="10" cy="20" rx="4" ry="3" fill="#7DD3FC" opacity="0.5"/>
+
+  <!-- Z letters (floating) -->
+  <g fill="#4B4B4B" font-family="sans-serif" font-weight="bold">
+    <text x="20" y="14" font-size="8">z</text>
+    <text x="24" y="10" font-size="6">z</text>
+    <text x="27" y="7" font-size="4">z</text>
+  </g>
+
+  <!-- Moon accent -->
+  <path d="M6 8 A6 6 0 1 1 6 2 A4 4 0 1 0 6 8" fill="#FFC800"/>
+</svg>

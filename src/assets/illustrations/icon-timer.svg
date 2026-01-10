@@ -1,0 +1,27 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Timer/Stopwatch icon - Duolingo style -->
+
+  <!-- Main clock body -->
+  <circle cx="16" cy="18" r="12" fill="#FFC800"/>
+
+  <!-- Clock face highlight -->
+  <ellipse cx="12" cy="14" rx="4" ry="5" fill="#FFDE00" opacity="0.5"/>
+
+  <!-- Top button -->
+  <rect x="13" y="2" width="6" height="5" rx="2" fill="#E6B400"/>
+
+  <!-- Side button -->
+  <rect x="26" y="12" width="4" height="6" rx="2" fill="#E6B400"/>
+
+  <!-- Clock center -->
+  <circle cx="16" cy="18" r="2" fill="#4B4B4B"/>
+
+  <!-- Clock hand -->
+  <rect x="15" y="10" width="2" height="8" rx="1" fill="#4B4B4B"/>
+
+  <!-- Clock ticks -->
+  <circle cx="16" cy="8" r="1" fill="#4B4B4B"/>
+  <circle cx="24" cy="18" r="1" fill="#4B4B4B"/>
+  <circle cx="16" cy="28" r="1" fill="#4B4B4B"/>
+  <circle cx="6" cy="18" r="1" fill="#4B4B4B"/>
+</svg>
