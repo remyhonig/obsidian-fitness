@@ -157,10 +157,10 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 			<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 				<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings(availablePrograms)}>
 					<FullscreenProvider>
-						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-							<Story />
-						</div>
-					</FullscreenProvider>
+							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+								<Story />
+							</div>
+						</FullscreenProvider>
 				</DomainProvider>
 			</PluginProvider>
 		</AppProvider>
@@ -198,10 +198,10 @@ export function withProgram(programMarkdown: string): Decorator {
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<FullscreenProvider>
-							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-								<Story />
-							</div>
-						</FullscreenProvider>
+								<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+									<Story />
+								</div>
+							</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -230,10 +230,10 @@ export function withActiveSession(workoutName: string, programMarkdown: string):
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<FullscreenProvider>
-							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-								<Story />
-							</div>
-						</FullscreenProvider>
+								<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+									<Story />
+								</div>
+							</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -265,10 +265,10 @@ export function withLoadedProgram(programMarkdown: string): Decorator {
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<FullscreenProvider>
-							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-								<Story />
-							</div>
-						</FullscreenProvider>
+								<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+									<Story />
+								</div>
+							</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -308,10 +308,10 @@ export function withEngineProgram(programMarkdown: string): Decorator {
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<FullscreenProvider>
-							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-								<Story />
-							</div>
-						</FullscreenProvider>
+								<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+									<Story />
+								</div>
+							</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -409,10 +409,10 @@ export function withEngine(programMarkdown: string, sessionHistory?: SessionHist
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<FullscreenProvider>
-							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-								<Story />
-							</div>
-						</FullscreenProvider>
+								<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+									<Story />
+								</div>
+							</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -497,10 +497,10 @@ export function withEngineSession(
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<FullscreenProvider>
-							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-								<Story />
-							</div>
-						</FullscreenProvider>
+								<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+									<Story />
+								</div>
+							</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -553,10 +553,10 @@ export function withCompletedEngineSession(
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
 						<FullscreenProvider>
-							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-								<Story />
-							</div>
-						</FullscreenProvider>
+								<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+									<Story />
+								</div>
+							</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>

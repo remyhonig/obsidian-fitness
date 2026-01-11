@@ -132,8 +132,9 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	}, [session.isActive, session.restStartTime]);
 
 	// Build timer config for active session
+	// Only show timer after first set is completed (session actually started)
 	const getTimerConfig = (): TimerConfig | undefined => {
-		if (!session.isActive) return undefined;
+		if (!session.isActive || !session.restStartTime) return undefined;
 
 		const isRestComplete = restElapsed >= restTarget;
 		const restRemaining = Math.max(0, restTarget - restElapsed);

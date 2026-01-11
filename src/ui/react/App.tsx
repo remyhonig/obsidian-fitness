@@ -42,6 +42,7 @@ function BottomNavWithProgress({
 	const { session } = useDomain();
 
 	// Calculate workout progress from session state (reactive)
+	// Only show progress when session is active (first set completed)
 	const workoutProgress = (() => {
 		if (!session.isActive) return null;
 
@@ -198,7 +199,7 @@ export function App({ app, plugin }: AppProps) {
 		if (tab === 'workout') {
 			const session = adapter.getSessionState();
 
-			// If there's an active session, go to session screen
+			// If there's an active session (first set completed), go to session screen
 			if (session.isActive) {
 				setCurrentScreen('session');
 				setScreenParams({});

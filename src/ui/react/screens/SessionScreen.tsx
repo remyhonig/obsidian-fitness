@@ -242,13 +242,13 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 	// Auto-save after each set
 	useEffect(() => {
-		if (session.isActive && session.exercises.some(e => e.sets.length > 0)) {
+		if (session.isActive) {
 			void saveSession();
 		}
-	}, [session.exercises]);
+	}, [session.exercises, session.isActive]);
 
-	// Redirect if no active session
-	if (!session.isActive || !session.workout) {
+	// Redirect if no workout loaded
+	if (!session.workout) {
 		onNavigate('home');
 		return null;
 	}

@@ -527,6 +527,12 @@ export class FitnessDomainAdapter {
 	dispatch(event: UIEvent): SessionState {
 		switch (event.type) {
 			case 'start_workout': {
+				// If there's an existing workout that hasn't been started (no sets completed),
+				// abort it first before starting the new workout
+				if (this.sessionState.workout && !this.sessionState.isActive) {
+					this.engine.dispatch({ type: 'abortWorkout' });
+				}
+
 				const result = this.engine.dispatch({ type: 'startWorkout', workoutName: event.workoutName });
 				if (isErrorResult(result)) {
 					console.error('[FitnessDomainAdapter] Engine error:', result.error);
@@ -768,7 +774,7 @@ export class FitnessDomainAdapter {
 		});
 
 		this.sessionState = {
-			isActive: true,
+			isActive: false, // Session only becomes active when first set is completed
 			id: this.generateSessionId(startTime, workoutName),
 			workout: workoutName,
 			programId: programId ?? null,
@@ -833,6 +839,9 @@ export class FitnessDomainAdapter {
 		});
 
 		this.sessionState.currentSetIndex = setNumber;
+
+		// Session becomes active when first set is completed
+		this.sessionState.isActive = true;
 	}
 
 	/**
