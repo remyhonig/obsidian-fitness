@@ -475,6 +475,14 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 		setTimeout(() => setDetailInputMode('weight'), 350);
 	};
 
+	// Handle cancel of the question flow (swipe-up gesture)
+	const handleQuestionCancel = () => {
+		setDetailInputMode('none');
+		setPendingSet({ reps: null, rpe: null, weight: 0 });
+		setSelectedSetIndex(null);
+		setEditingSetIndex(null);
+	};
+
 	// Handle inline weight confirm
 	const handleInlineWeightConfirm = () => {
 		if (pendingSet.reps === null || pendingSet.rpe === null || !currentExercise) return;
@@ -659,6 +667,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 								<ActionFooter
 									layout="single"
 									question={question}
+									onQuestionCancel={handleQuestionCancel}
 									className={actionFooterClassName}
 								/>
 							);
@@ -817,8 +826,8 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 						);
 					})()}
 
-					{/* Return to active footer when browsing */}
-					{!isViewingActiveExercise && (
+					{/* Return to active footer when browsing (only if there IS an active exercise) */}
+					{!isViewingActiveExercise && !hasNoActiveExercise && (
 						<ActionFooter
 							layout="single"
 							primaryAction={{
@@ -856,9 +865,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 					<TopNav
 						title=""
-						subtitle={!isViewingActiveExercise ? 'Tap to return to active' : undefined}
 						timer={timerConfig}
-						onTitleClick={handleTitleClick}
 					/>
 
 					<div className="fit-content">

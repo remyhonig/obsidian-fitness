@@ -9,6 +9,7 @@
  * - With question: displays post-set question input (reps/RPE/weight)
  */
 
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RuleProgressPill } from './RuleProgressPill';
 
@@ -115,6 +116,9 @@ export interface ActionFooterProps {
 	/** Optional post-set question (replaces action buttons) */
 	question?: PostSetQuestion;
 
+	/** Called when user swipes up to cancel the question flow */
+	onQuestionCancel?: () => void;
+
 	/** Additional CSS class for styling variants */
 	className?: string;
 
@@ -130,6 +134,7 @@ export function ActionFooter({
 	coachTip,
 	workoutInfo,
 	question,
+	onQuestionCancel,
 	className = '',
 	coachTipLayoutId,
 }: ActionFooterProps) {
@@ -325,42 +330,83 @@ export function ActionFooter({
 		);
 	};
 
-	// Render interactive content (question OR actions) with coordinated animation
-	// Uses single AnimatePresence with mode="wait" so exit completes before enter
-	// initial={false} prevents animation on first mount (e.g., when navigating between exercises)
-	const renderInteractiveContent = () => (
-		<AnimatePresence mode="wait" initial={false}>
-			{question ? (
+	// Track swipe gesture state for cancel detection
+	const [swipeOffset, setSwipeOffset] = useState(0);
+	const swipeStartY = useRef<number | null>(null);
+	const isSwipingRef = useRef(false);
+
+	// Handle pointer down - start tracking potential swipe
+	const handlePointerDown = useCallback((e: React.PointerEvent) => {
+		swipeStartY.current = e.clientY;
+		isSwipingRef.current = false;
+		setSwipeOffset(0);
+	}, []);
+
+	// Handle pointer move - track vertical swipe
+	const handlePointerMove = useCallback((e: React.PointerEvent) => {
+		if (swipeStartY.current === null) return;
+
+		const deltaY = e.clientY - swipeStartY.current;
+
+		// Only track upward swipes (negative deltaY)
+		if (deltaY < -10) {
+			isSwipingRef.current = true;
+			// Apply elastic resistance
+			const elasticOffset = deltaY * 0.4;
+			setSwipeOffset(elasticOffset);
+		}
+	}, []);
+
+	// Handle pointer up - check if swipe was far enough to cancel
+	const handlePointerUp = useCallback(() => {
+		if (swipeStartY.current !== null && isSwipingRef.current) {
+			// If swiped up more than 60px, cancel
+			if (swipeOffset < -60 && onQuestionCancel) {
+				onQuestionCancel();
+			}
+		}
+		swipeStartY.current = null;
+		isSwipingRef.current = false;
+		setSwipeOffset(0);
+	}, [swipeOffset, onQuestionCancel]);
+
+	// Render question panel as overlay (slides down from top, doesn't affect layout)
+	// Supports swipe-up gesture to cancel the question flow
+	const renderQuestionOverlay = () => (
+		<AnimatePresence>
+			{question && (
 				<motion.div
-					key="question-panel"
-					initial={{ opacity: 0, height: 0 }}
-					animate={{ opacity: 1, height: 'auto' }}
-					exit={{ opacity: 0, height: 0 }}
-					transition={{
-						duration: 0.25,
+					key="question-overlay"
+					className="fit-question-overlay"
+					initial={{ opacity: 0, y: '-100%' }}
+					animate={{ opacity: 1, y: swipeOffset }}
+					exit={{ opacity: 0, y: '-100%' }}
+					transition={swipeOffset === 0 ? {
+						duration: 0.3,
 						ease: [0.4, 0, 0.2, 1], // Material Design easing
+					} : {
+						duration: 0, // No transition while swiping
 					}}
-					style={{ overflow: 'hidden' }}
+					// Track swipe gestures via pointer events (works on buttons too)
+					onPointerDown={handlePointerDown}
+					onPointerMove={handlePointerMove}
+					onPointerUp={handlePointerUp}
+					onPointerCancel={handlePointerUp}
+					style={{ touchAction: 'none' }} // Prevent browser handling of touch
 				>
+					{/* Visual drag handle indicator */}
+					<div className="fit-question-drag-handle" />
 					{getQuestionContent()}
 				</motion.div>
-			) : primaryAction ? (
-				<motion.div
-					key="action-buttons"
-					initial={{ opacity: 0, height: 0 }}
-					animate={{ opacity: 1, height: 'auto' }}
-					exit={{ opacity: 0, height: 0 }}
-					transition={{
-						duration: 0.25,
-						ease: [0.4, 0, 0.2, 1], // Material Design easing
-					}}
-					style={{ overflow: 'hidden' }}
-				>
-					{getActionsContent()}
-				</motion.div>
-			) : null}
+			)}
 		</AnimatePresence>
 	);
+
+	// Render action buttons (always visible, question overlays on top)
+	const renderActions = () => {
+		if (!primaryAction) return null;
+		return getActionsContent();
+	};
 
 	// Render coach bubble content
 	const coachBubbleContent = coachTip ? (
@@ -425,7 +471,8 @@ export function ActionFooter({
 				)
 			)}
 
-			{renderInteractiveContent()}
+			{renderQuestionOverlay()}
+			{renderActions()}
 		</div>
 	);
 }

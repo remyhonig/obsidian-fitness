@@ -8490,6 +8490,36 @@
 	border-top: 1px solid var(--background-modifier-border);
 }
 
+/* Question overlay - slides down from top, covers content */
+.fit-question-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	background: var(--fit-bg-card, #ffffff);
+	border-bottom: 3px solid var(--fit-border, #E5E5E5);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	z-index: 200;
+	padding: 16px;
+	padding-top: 8px; /* Less top padding to make room for drag handle */
+}
+
+/* Drag handle indicator - hints at swipe-to-dismiss */
+.fit-question-drag-handle {
+	width: 36px;
+	height: 4px;
+	background: var(--fit-border, #E5E5E5);
+	border-radius: 2px;
+	margin: 0 auto 12px auto;
+	opacity: 0.6;
+}
+
+/* Green background for question overlay when controls at top */
+.fit-action-footer-top .fit-question-overlay {
+	background: var(--fit-success, #58CC02);
+	border-bottom-color: var(--fit-success-shadow, #46A302);
+}
+
 .fit-footer-question {
 	width: 100%;
 	/* Fixed height to prevent layout jumping between question types */
