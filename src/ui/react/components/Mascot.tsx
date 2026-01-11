@@ -6,9 +6,9 @@
  */
 
 import React from 'react';
-import { usePlugin } from '../contexts';
+import { getMascotImage, type MascotMood } from '../../../assets/mascot-images';
 
-export type MascotMood = 'neutral' | 'celebrating' | 'thinking' | 'taking_notes' | 'posing';
+export type { MascotMood };
 
 export type BubblePosition = 'top' | 'left' | 'right';
 
@@ -27,41 +27,6 @@ interface MascotProps {
 	className?: string;
 }
 
-/**
- * Maps mood and headOnly to the correct image filename
- */
-function getMascotFilename(mood: MascotMood, headOnly: boolean): string {
-	// PNG variants (only full body available)
-	if (mood === 'taking_notes') {
-		return 'gorilla_coach_taking_notes.png';
-	}
-	if (mood === 'posing') {
-		return 'gorillal_coach_posing_with_me.png';
-	}
-
-	if (headOnly) {
-		switch (mood) {
-			case 'celebrating':
-				return 'gorilla_coach_celebrating_head.svg';
-			case 'thinking':
-				return 'gorilla_coach_thinking_head_hand.svg';
-			case 'neutral':
-			default:
-				return 'gorilla_coach_neutral_head.svg';
-		}
-	} else {
-		switch (mood) {
-			case 'celebrating':
-				return 'gorilla_coach_celebrating.svg';
-			case 'thinking':
-				return 'gorilla_coach_thinking.svg';
-			case 'neutral':
-			default:
-				return 'gorilla_coach_neutral.svg';
-		}
-	}
-}
-
 export function Mascot({
 	mood = 'neutral',
 	headOnly = false,
@@ -70,15 +35,8 @@ export function Mascot({
 	size = 'medium',
 	className = ''
 }: MascotProps) {
-	const plugin = usePlugin();
-
-	// Construct the asset path using the plugin's manifest directory
-	const filename = getMascotFilename(mood, headOnly);
-	const assetPath = `${plugin.manifest.dir}/src/assets/illustrations/${filename}`;
-
-	// Get the resource URL that Obsidian can serve
-	// @ts-ignore - getResourcePath exists on FileSystemAdapter
-	const imageUrl = plugin.app.vault.adapter.getResourcePath(assetPath);
+	// Get the bundled image URL (base64 data URL)
+	const imageUrl = getMascotImage(mood, headOnly);
 
 	const containerClass = `fit-mascot-container fit-mascot-${size} fit-mascot-bubble-${bubblePosition} ${className}`;
 
