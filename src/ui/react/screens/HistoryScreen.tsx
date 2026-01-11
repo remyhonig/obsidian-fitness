@@ -87,6 +87,19 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 		return dates;
 	}, [sessions]);
 
+	// Get the most recent (last) session ID for each day
+	const latestSessionPerDay = useMemo(() => {
+		const latestIds = new Set<string>();
+		for (const [, daySessions] of workoutDates) {
+			// Sessions are already sorted by mtime descending, so first one is most recent
+			const firstSession = daySessions[0];
+			if (firstSession) {
+				latestIds.add(firstSession.id);
+			}
+		}
+		return latestIds;
+	}, [workoutDates]);
+
 	// Get sessions for current month, filtered by selected date if any
 	const filteredSessions = useMemo(() => {
 		// If a specific date is selected, only show sessions from that date
@@ -240,15 +253,19 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 								exerciseName={selectedDate ? formatDateForHeader(selectedDate) : monthName.toLowerCase()}
 								variant="pending"
 								width="100%"
-								sets={filteredSessions.map((session): ExerciseSetData => ({
-									weight: 0,
-									reps: session.workout.toLowerCase(),
-									rpe: 0,
-									variant: 'pending',
-									headerText: formatDateForCard(session.date),
-									detailText: formatSessionMeta(session.exerciseCount, session.duration),
-									onClick: () => onNavigate('finish', { sessionPath: session.path }),
-								}))}
+								sets={filteredSessions.map((session): ExerciseSetData => {
+									// Highlight the most recent session of each day with light blue
+									const isLatestOfDay = latestSessionPerDay.has(session.id);
+									return {
+										weight: 0,
+										reps: session.workout.toLowerCase(),
+										rpe: 0,
+										variant: isLatestOfDay ? 'suggested' : 'pending',
+										headerText: formatDateForCard(session.date),
+										detailText: formatSessionMeta(session.exerciseCount, session.duration),
+										onClick: () => onNavigate('finish', { sessionPath: session.path }),
+									};
+								})}
 							/>
 						)}
 					</>
