@@ -4012,6 +4012,10 @@
 	height: 100vh !important;
 	z-index: 9999 !important;
 	background: var(--fit-bg);
+	/* Apply padding from settings for safe areas (notches, status bars) */
+	padding-top: var(--fit-top-padding, 0px);
+	padding-bottom: var(--fit-bottom-padding, 0px);
+	box-sizing: border-box;
 }
 
 /* Fullscreen toggle button */
