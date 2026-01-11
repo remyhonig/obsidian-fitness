@@ -5692,6 +5692,11 @@
 	border-bottom: 1px solid var(--fit-border, #E5E5E5);
 }
 
+/* Compact variant - no title, just timer */
+.fit-top-nav--compact {
+	padding: 8px var(--fit-spacing, 16px);
+}
+
 .fit-top-nav-main {
 	display: flex;
 	align-items: center;

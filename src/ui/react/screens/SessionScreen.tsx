@@ -855,7 +855,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 					{controlsPosition === 'top' && actionFooterSection}
 
 					<TopNav
-						title={viewedExercise?.exercise ?? session.workout ?? 'Workout'}
+						title=""
 						subtitle={!isViewingActiveExercise ? 'Tap to return to active' : undefined}
 						timer={timerConfig}
 						onTitleClick={handleTitleClick}

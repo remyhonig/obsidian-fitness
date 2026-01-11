@@ -95,7 +95,13 @@ export function TopNav({
 	className = ''
 }: TopNavProps) {
 	const baseClass = 'fit-top-nav';
-	const classes = [baseClass, `${baseClass}--${variant}`, className].filter(Boolean).join(' ');
+	const hasTitle = title.trim().length > 0;
+	const classes = [
+		baseClass,
+		`${baseClass}--${variant}`,
+		!hasTitle ? `${baseClass}--compact` : '',
+		className
+	].filter(Boolean).join(' ');
 
 	const renderLeftSlot = () => {
 		switch (variant) {
@@ -173,17 +179,20 @@ export function TopNav({
 
 	return (
 		<header className={classes}>
-			<div className="fit-top-nav-main">
-				{renderLeftSlot()}
-				<div
-					className={`fit-top-nav-center ${onTitleClick ? 'fit-top-nav-center--clickable' : ''}`}
-					onClick={onTitleClick}
-				>
-					<h1 className="fit-top-nav-title">{title}</h1>
-					{subtitle && <span className="fit-top-nav-subtitle">{subtitle}</span>}
+			{/* Only show main row with title when there's a title or subtitle */}
+			{(hasTitle || subtitle) && (
+				<div className="fit-top-nav-main">
+					{renderLeftSlot()}
+					<div
+						className={`fit-top-nav-center ${onTitleClick ? 'fit-top-nav-center--clickable' : ''}`}
+						onClick={onTitleClick}
+					>
+						{hasTitle && <h1 className="fit-top-nav-title">{title}</h1>}
+						{subtitle && <span className="fit-top-nav-subtitle">{subtitle}</span>}
+					</div>
+					{renderRightSlot()}
 				</div>
-				{renderRightSlot()}
-			</div>
+			)}
 			{renderTimer()}
 		</header>
 	);
