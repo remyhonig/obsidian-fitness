@@ -8958,70 +8958,95 @@
 }
 
 /* ========== Rule Progress Pill ========== */
+/* Clean display without background - status shown by crown colors */
 .fit-rule-progress-pill {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	padding: 6px 12px;
-	border-radius: 20px;
-	font-size: 13px;
+	gap: 8px;
+	font-size: 14px;
 	font-weight: 600;
+	line-height: 1.4;
+	color: #4B4B4B;
+}
+
+/* Progress crowns container */
+.fit-progress-crowns {
+	display: inline-flex;
+	gap: 4px;
+	align-items: flex-end;
+}
+
+/* Crown icon wrapper with number overlay */
+.fit-crown-icon {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* Filled crown - subtle shadow */
+.fit-crown-icon.filled {
+	filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+}
+
+/* Empty crown is more subtle */
+.fit-crown-icon.empty {
+	opacity: 0.5;
+}
+
+/* Broken crown - no special filter needed */
+.fit-crown-icon.broken {
+}
+
+/* Small cross inside broken crowns */
+.fit-crown-strikethrough {
+	position: absolute;
+	top: 55%;
+	left: 50%;
+	width: 10px;
+	height: 10px;
+	transform: translate(-50%, -50%);
+}
+
+.fit-crown-strikethrough::before,
+.fit-crown-strikethrough::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 10px;
+	height: 2px;
+	background: #FFB2B2;
+	border-radius: 1px;
+}
+
+.fit-crown-strikethrough::before {
+	transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.fit-crown-strikethrough::after {
+	transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* Number overlay centered on crown */
+.fit-crown-number {
+	position: absolute;
+	top: 55%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: 11px;
+	font-weight: 700;
 	line-height: 1;
 }
 
-/* Variant: active (in progress) */
-.fit-rule-progress-pill.active {
-	background: #fff8e0;
-	color: #8a6d00;
-	border: 1px solid #ffc800;
-}
-
-/* Variant: complete (rule triggered) */
-.fit-rule-progress-pill.complete {
-	background: #e8f5e0;
-	color: #2d6a1e;
-	border: 1px solid #58cc02;
-}
-
-/* Variant: broken (streak lost) */
-.fit-rule-progress-pill.broken {
-	background: #fff0e0;
-	color: #8a4000;
-	border: 1px solid #ff9600;
-}
-
-/* Progress dots container */
-.fit-progress-dots {
-	display: inline-flex;
-	gap: 2px;
-	font-size: 10px;
-}
-
-.fit-progress-dot.success {
-	color: var(--fit-success-green, #58CC02);
-	opacity: 1;
-}
-
-.fit-progress-dot.broken {
-	color: var(--fit-warning-orange, #FF9600);
-	opacity: 1;
-}
-
-.fit-progress-dot.empty {
-	opacity: 0.3;
-}
-
-.fit-progress-text {
-	font-size: 13px;
-}
-
-.fit-progress-icon {
-	font-size: 12px;
+.fit-progress-description {
+	font-size: 14px;
+	font-weight: 500;
 }
 
 .fit-progress-effect {
-	font-size: 12px;
-	opacity: 0.8;
+	font-size: 14px;
+	font-weight: 700;
 }
 
 /* ========== Streak Broken Toast ========== */

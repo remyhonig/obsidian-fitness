@@ -248,6 +248,7 @@ export function FinishScreen({ onNavigate }: FinishScreenProps) {
 												variant={item.variant}
 												effect={item.variant === 'complete' ? item.effect : undefined}
 												previousStreak={item.previousStreak}
+												description={item.ruleDescription}
 											/>
 										))}
 									</div>

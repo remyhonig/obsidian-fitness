@@ -16,12 +16,12 @@ type Story = StoryObj<typeof meta>;
 /** Active progress: 2 of 3 sessions completed */
 export const Active: Story = {
 	args: {
-        current: 2,
-        required: 3,
-        unit: 'sessions',
-        variant: "complete",
-        effect: "hkjh"
-    },
+		current: 2,
+		required: 3,
+		unit: 'sessions',
+		variant: 'active',
+		description: 'reps >= max, rpe <= 7',
+	},
 };
 
 /** Just started: 1 of 3 sessions */
@@ -31,6 +31,7 @@ export const JustStarted: Story = {
 		required: 3,
 		unit: 'sessions',
 		variant: 'active',
+		description: 'reps >= max, rpe <= 7',
 	},
 };
 
@@ -42,6 +43,7 @@ export const Complete: Story = {
 		unit: 'sessions',
 		variant: 'complete',
 		effect: '+2.5kg',
+		description: 'reps >= max, rpe <= 7',
 	},
 };
 
@@ -53,6 +55,7 @@ export const Broken: Story = {
 		unit: 'sessions',
 		variant: 'broken',
 		previousStreak: 2,
+		description: 'reps >= max, rpe <= 7',
 	},
 };
 
@@ -63,6 +66,7 @@ export const SetsProgress: Story = {
 		required: 5,
 		unit: 'sets',
 		variant: 'active',
+		description: 'all sets at rpe <= 8',
 	},
 };
 
@@ -73,6 +77,7 @@ export const LongStreak: Story = {
 		required: 5,
 		unit: 'sessions',
 		variant: 'active',
+		description: 'reps >= max, rpe <= 7',
 	},
 };
 
@@ -85,6 +90,7 @@ export const AllVariants: Story = {
 				required={3}
 				unit="sessions"
 				variant="active"
+				description="reps >= max, rpe <= 7"
 			/>
 			<RuleProgressPill
 				current={3}
@@ -92,6 +98,7 @@ export const AllVariants: Story = {
 				unit="sessions"
 				variant="complete"
 				effect="+2.5kg"
+				description="reps >= max, rpe <= 7"
 			/>
 			<RuleProgressPill
 				current={0}
@@ -99,6 +106,7 @@ export const AllVariants: Story = {
 				unit="sessions"
 				variant="broken"
 				previousStreak={2}
+				description="reps >= max, rpe <= 7"
 			/>
 		</div>
 	),

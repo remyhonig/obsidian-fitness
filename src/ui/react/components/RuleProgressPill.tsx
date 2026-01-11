@@ -1,11 +1,12 @@
 /**
  * RuleProgressPill Component
  *
- * Compact visual indicator for rule progress (e.g., "2/3 sessions").
- * Used to show progress towards triggering progression rules.
+ * Compact visual indicator for rule progress using Phosphor crown icons.
+ * Shows numbered crowns for completed sessions and empty crowns for remaining.
  */
 
 import React from 'react';
+import { CrownSimpleIcon as PhosphorCrown } from '@phosphor-icons/react';
 
 export interface RuleProgressPillProps {
 	/** Current progress count */
@@ -25,9 +26,45 @@ export interface RuleProgressPillProps {
 
 	/** Previous streak count before it was broken (only for broken variant) */
 	previousStreak?: number;
+
+	/** Rule description to display (e.g., "reps >= max, rpe <= 7") */
+	description?: string;
 }
 
-interface ProgressDotsProps {
+interface StreakCrownProps {
+	number?: number;
+	variant: 'filled' | 'empty' | 'broken';
+}
+
+/**
+ * Crown icon with optional number overlay using Phosphor Icons
+ */
+function StreakCrown({ number, variant }: StreakCrownProps) {
+	const isFilled = variant === 'filled';
+	const isBroken = variant === 'broken';
+
+	// Colors based on variant: gold for filled, dark gray for broken, light gray for empty
+	const iconColor = isFilled ? '#FFC800' : isBroken ? '#777777' : '#C4C4C4';
+	const textColor = isFilled ? '#946800' : '#888888';
+
+	return (
+		<span className={`fit-crown-icon ${variant}`}>
+			<PhosphorCrown
+				size={32}
+				weight="fill"
+				color={iconColor}
+			/>
+			{isBroken && <span className="fit-crown-strikethrough" />}
+			{number !== undefined && (
+				<span className="fit-crown-number" style={{ color: textColor }}>
+					{number}
+				</span>
+			)}
+		</span>
+	);
+}
+
+interface ProgressCrownsProps {
 	current: number;
 	required: number;
 	variant: 'active' | 'complete' | 'broken';
@@ -35,95 +72,85 @@ interface ProgressDotsProps {
 }
 
 /**
- * Render progress indicators:
- * - Checkmarks (✓) for sessions that contributed to the streak
- * - Cross (✗) for the session that broke the streak (broken variant only)
- * - Empty dots (○) for remaining sessions
+ * Render progress indicators using Phosphor crown icons:
+ * - Numbered crowns for sessions that contributed to the streak
+ * - Broken crown for the session that broke the streak
+ * - Empty crowns for remaining sessions
  */
-function ProgressDots({ current, required, variant, previousStreak }: ProgressDotsProps) {
+function ProgressCrowns({ current, required, variant, previousStreak }: ProgressCrownsProps) {
 	const indicators: React.ReactNode[] = [];
-	const maxIndicators = Math.min(required, 5); // Cap at 5 for visual clarity
+	const maxIndicators = Math.min(required, 6); // Cap at 6 for visual clarity
 
 	for (let i = 0; i < maxIndicators; i++) {
-		let symbol: string;
-		let className: string;
+		let crownVariant: 'filled' | 'empty' | 'broken';
+		let showNumber: number | undefined;
 
 		if (variant === 'broken') {
 			// For broken streaks:
-			// - Show checkmarks for sessions that contributed (previousStreak)
-			// - Show cross for the broken session (the one after previousStreak)
-			// - Show empty dots for remaining
+			// - Show numbered crowns for sessions that contributed (previousStreak)
+			// - Show broken crown for the session that broke the streak
+			// - Show empty crowns for remaining
 			const successfulSessions = previousStreak ?? 0;
 			if (i < successfulSessions) {
-				symbol = '✓';
-				className = 'fit-progress-dot success';
+				crownVariant = 'filled';
+				showNumber = i + 1;
 			} else if (i === successfulSessions) {
-				symbol = '✗';
-				className = 'fit-progress-dot broken';
+				crownVariant = 'broken';
+				showNumber = undefined;
 			} else {
-				symbol = '○';
-				className = 'fit-progress-dot empty';
+				crownVariant = 'empty';
+				showNumber = undefined;
 			}
 		} else if (variant === 'complete') {
 			// For complete variants (rule triggered):
-			// - Show ALL dots as checkmarks since the rule was satisfied
-			symbol = '✓';
-			className = 'fit-progress-dot success';
+			// - Show ALL crowns as filled with numbers
+			crownVariant = 'filled';
+			showNumber = i + 1;
 		} else {
 			// For active variants:
-			// - Show checkmarks for completed sessions
-			// - Show empty dots for remaining
+			// - Show numbered crowns for completed sessions
+			// - Show empty crowns for remaining
 			if (i < current) {
-				symbol = '✓';
-				className = 'fit-progress-dot success';
+				crownVariant = 'filled';
+				showNumber = i + 1;
 			} else {
-				symbol = '○';
-				className = 'fit-progress-dot empty';
+				crownVariant = 'empty';
+				showNumber = undefined;
 			}
 		}
 
 		indicators.push(
-			<span key={i} className={className}>
-				{symbol}
-			</span>
+			<StreakCrown key={i} number={showNumber} variant={crownVariant} />
 		);
 	}
 
-	return <span className="fit-progress-dots">{indicators}</span>;
+	return <span className="fit-progress-crowns">{indicators}</span>;
 }
 
 export function RuleProgressPill({
 	current,
 	required,
-	unit,
 	variant,
 	effect,
 	previousStreak,
+	description,
 }: RuleProgressPillProps) {
 	const classNames = [
 		'fit-rule-progress-pill',
 		variant,
 	].filter(Boolean).join(' ');
 
-	const unitLabel = unit === 'sessions' ? 'sessions' : 'sets';
-	const progressText = `${current}/${required} ${unitLabel}`;
-
-	// Icon based on variant (removed from here - now shown in dots)
-	let icon = '';
-	if (variant === 'complete') {
-		icon = '✓';
-	}
-
 	return (
 		<div className={classNames}>
-			<ProgressDots
+			<ProgressCrowns
 				current={current}
 				required={required}
 				variant={variant}
 				previousStreak={previousStreak}
 			/>
-			<span className="fit-progress-text">{progressText}</span>
-			{icon && <span className="fit-progress-icon">{icon}</span>}
+			{description && (
+				<span className="fit-progress-description">{description}</span>
+			)}
 			{effect && variant === 'complete' && (
 				<span className="fit-progress-effect">→ {effect}</span>
 			)}
