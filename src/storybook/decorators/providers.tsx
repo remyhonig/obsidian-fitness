@@ -380,9 +380,9 @@ export function withEngine(programMarkdown: string, sessionHistory?: SessionHist
 
 					const sets = args.simulatedSets[exercise.exercise];
 					if (sets) {
-						// Navigate to this exercise if needed
-						while (adapter.getSessionState().currentExerciseIndex < i) {
-							adapter.dispatch({ type: 'next_exercise' });
+						// Select this exercise (handles currentExerciseIndex starting at -1)
+						if (adapter.getSessionState().currentExerciseIndex !== i) {
+							adapter.dispatch({ type: 'set_current_exercise', exerciseIndex: i });
 						}
 
 						// Complete each set
@@ -471,8 +471,9 @@ export function withEngineSession(
 
 				const sets = exerciseSets[exercise.exercise];
 				if (sets) {
-					while (adapter.getSessionState().currentExerciseIndex < i) {
-						adapter.dispatch({ type: 'next_exercise' });
+					// Select this exercise (handles currentExerciseIndex starting at -1)
+					if (adapter.getSessionState().currentExerciseIndex !== i) {
+						adapter.dispatch({ type: 'set_current_exercise', exerciseIndex: i });
 					}
 					for (const set of sets) {
 						adapter.dispatch({

@@ -244,14 +244,14 @@ export function createMockDomainAdapter(config: MockDomainConfig = {}) {
 						workout: event.workoutName,
 						programId: event.programId ?? null,
 						date,
-						currentExerciseIndex: 0,
+						currentExerciseIndex: -1, // No exercise selected yet - user must click to start
 						currentSetIndex: 0,
 						exercises,
 						startTime,
 						endTime: null,
 						status: 'active',
 						extraRestTime: 0,
-						restStartTime: Date.now(),
+						restStartTime: null, // No rest timer until first set
 					};
 					break;
 				}
@@ -289,6 +289,14 @@ export function createMockDomainAdapter(config: MockDomainConfig = {}) {
 					sessionState.currentSetIndex = 0;
 					sessionState.extraRestTime = 0;
 					sessionState.restStartTime = Date.now();
+					break;
+
+				case 'set_current_exercise':
+					if ('exerciseIndex' in event) {
+						sessionState.currentExerciseIndex = event.exerciseIndex;
+						sessionState.currentSetIndex = sessionState.exercises[event.exerciseIndex]?.sets.length ?? 0;
+						sessionState.extraRestTime = 0;
+					}
 					break;
 
 				case 'finish_session':

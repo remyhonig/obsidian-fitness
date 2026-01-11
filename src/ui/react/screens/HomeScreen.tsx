@@ -21,7 +21,7 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
-	const { program, session } = useDomain();
+	const { program, session, dispatch } = useDomain();
 	const { isFullscreen, toggleFullscreen } = useFullscreen();
 	const [restElapsed, setRestElapsed] = useState(0);
 
@@ -30,6 +30,17 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 		? session.exercises[session.currentExerciseIndex]
 		: null;
 	const restTarget = (currentExercise?.restSeconds ?? 120) + session.extraRestTime;
+
+	// Start a workout and go directly to session (skip workout detail screen)
+	// Note: Session starts with no active exercise - user must click to select first exercise
+	const handleStartWorkout = (workoutName: string) => {
+		dispatch({
+			type: 'start_workout',
+			workoutName,
+			programId: program?.program.name
+		});
+		onNavigate('session');
+	};
 
 	// Timer effect - calculates elapsed time from session.restStartTime
 	useEffect(() => {
@@ -178,7 +189,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 									headerText: entry.day,
 									detailText: 'not done yet',
 									layoutId,
-									onClick: () => workoutName && onNavigate('workout-detail', { workoutName, layoutId, cardVariant: variant }),
+									onClick: () => workoutName && handleStartWorkout(workoutName),
 								};
 							});
 						})()}
@@ -201,7 +212,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 								headerText: `Day ${index + 1}`,
 								detailText: 'not done yet',
 								layoutId,
-								onClick: () => onNavigate('workout-detail', { workoutName: entry.workout, layoutId, cardVariant: variant }),
+								onClick: () => handleStartWorkout(entry.workout),
 							};
 						})}
 					/>

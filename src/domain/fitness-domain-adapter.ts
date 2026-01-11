@@ -434,6 +434,15 @@ export class FitnessDomainAdapter {
 	}
 
 	/**
+	 * Load a program from a markdown string (for testing without file access).
+	 */
+	async loadProgramFromString(markdown: string): Promise<ProgramData> {
+		this.programMarkdown = markdown;
+		this.programData = await this.parseProgram(markdown);
+		return this.programData;
+	}
+
+	/**
 	 * Parse program markdown using fitness-dsl
 	 */
 	private async parseProgram(markdown: string): Promise<ProgramData> {
@@ -521,9 +530,9 @@ export class FitnessDomainAdapter {
 				const result = this.engine.dispatch({ type: 'startWorkout', workoutName: event.workoutName });
 				if (isErrorResult(result)) {
 					console.error('[FitnessDomainAdapter] Engine error:', result.error);
-					// Fall back to legacy implementation
-					this.startWorkout(event.workoutName, event.programId);
-				} else if (isStartWorkoutResult(result)) {
+					throw new Error(`Failed to start workout: ${result.error}`);
+				}
+				if (isStartWorkoutResult(result)) {
 					this.syncSessionStateFromEngine(result, event.workoutName, event.programId);
 				}
 				// If a specific exercise index was requested, skip to it
@@ -764,14 +773,14 @@ export class FitnessDomainAdapter {
 			workout: workoutName,
 			programId: programId ?? null,
 			date,
-			currentExerciseIndex: 0,
+			currentExerciseIndex: -1, // No exercise selected yet - user must click to start
 			currentSetIndex: 0,
 			exercises,
 			startTime,
 			endTime: null,
 			status: 'active',
 			extraRestTime: 0,
-			restStartTime: Date.now()
+			restStartTime: null // No rest timer until first set is completed
 		};
 	}
 
@@ -824,117 +833,6 @@ export class FitnessDomainAdapter {
 		});
 
 		this.sessionState.currentSetIndex = setNumber;
-	}
-
-	/**
-	 * Start a new workout session
-	 */
-	private startWorkout(workoutName: string, programId?: string): void {
-		const startTime = new Date().toISOString();
-		const date = startTime.split('T')[0] ?? startTime;
-
-		// Find workout definition from program
-		const workoutDef = this.programData?.workouts.find(w => w.name === workoutName);
-
-		// Get compiled workout data for media (CompiledProgram has richer ExerciseExport with media)
-		const compiledWorkout = this.compiledProgram?.workouts.get(workoutName);
-
-		// Initialize exercise states from workout definition
-		const exercises: SessionExerciseState[] = workoutDef?.exercises.map(e => {
-			const reps = e.reps === 'AMRAP' ? { min: 1, max: 99 } : e.reps;
-			const restMatch = e.rest?.match(/(\d+)/);
-			const restSeconds = restMatch?.[1] ? parseInt(restMatch[1], 10) : 120;
-
-			// Parse weight from string like "80kg" or "bodyweight"
-			let targetWeight: number | null = null;
-			if (e.weight) {
-				const weightMatch = e.weight.match(/(\d+)/);
-				if (weightMatch?.[1]) {
-					targetWeight = parseInt(weightMatch[1], 10);
-				} else if (e.weight.toLowerCase().includes('body')) {
-					targetWeight = 0; // 0 = bodyweight
-				}
-			}
-
-			// Get RPE from intensity if available
-			const targetRPE = e.intensity?.type === 'RPE' ? e.intensity.value : null;
-
-			// Get media and note from compiled program (has richer exercise data)
-			const compiledExercise = compiledWorkout?.exercises.find(ce => ce.name === e.name);
-			const media = compiledExercise?.media ?? [];
-			const note = compiledExercise?.note ?? null;
-
-			return {
-				exercise: e.name,
-				targetSets: e.sets,
-				targetRepsMin: reps.min,
-				targetRepsMax: reps.max,
-				targetWeight,
-				targetRPE,
-				restSeconds,
-				sets: [],
-				media,
-				note
-			};
-		}) ?? [];
-
-		this.sessionState = {
-			isActive: true,
-			id: this.generateSessionId(startTime, workoutName),
-			workout: workoutName,
-			programId: programId ?? null,
-			date,
-			currentExerciseIndex: 0,
-			currentSetIndex: 0,
-			exercises,
-			startTime,
-			endTime: null,
-			status: 'active',
-			extraRestTime: 0,
-			restStartTime: Date.now()
-		};
-	}
-
-	/**
-	 * Complete a set for the current exercise
-	 */
-	private completeSet(exercise: string, reps: number, weight: number, rpe: number, restSeconds?: number): void {
-		// Find or create exercise state
-		let exerciseState = this.sessionState.exercises.find(e => e.exercise === exercise);
-
-		if (!exerciseState) {
-			// Create new exercise state if not found (shouldn't happen normally)
-			exerciseState = {
-				exercise,
-				targetSets: 3,
-				targetRepsMin: 8,
-				targetRepsMax: 12,
-				targetWeight: null,
-				targetRPE: null,
-				restSeconds: 120,
-				sets: [],
-				media: [],
-				note: null
-			};
-			this.sessionState.exercises.push(exerciseState);
-		}
-
-		const setNumber = exerciseState.sets.length + 1;
-		exerciseState.sets.push({
-			exercise,
-			setNumber,
-			reps,
-			weight,
-			rpe,
-			timestamp: new Date().toISOString(),
-			actualRestSeconds: restSeconds
-		});
-
-		this.sessionState.currentSetIndex = setNumber;
-
-		// Note: Auto-advance to next exercise has been removed.
-		// The UI now controls when to advance via dispatch({ type: 'next_exercise' })
-		// after showing the exercise completion summary.
 	}
 
 	/**

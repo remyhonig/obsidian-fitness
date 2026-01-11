@@ -7,7 +7,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { SessionScreen } from './SessionScreen';
-import { withEngineSession, withProviders } from '../../../storybook/decorators/providers';
+import { withEngineSession } from '../../../storybook/decorators/providers';
 import { withBottomNav } from './storyDecorators';
 import { PROGRAM_WITH_RULES, SIMPLE_PROGRAM } from '../../../storybook/programs';
 
@@ -24,9 +24,11 @@ export default meta;
 type Story = StoryObj<typeof SessionScreen>;
 
 /**
- * Fresh workout - just started, no sets completed yet.
+ * Fresh workout - just started, no exercise selected yet.
+ * Shows the "suggested" (light blue) state for the first exercise.
+ * User must tap to start working out.
  */
-export const ActiveWorkout: Story = {
+export const FreshWorkoutNoExerciseSelected: Story = {
 	args: {
 		onNavigate: action('navigate'),
 	},
@@ -66,18 +68,6 @@ export const LastSetOfExercise: Story = {
 			],
 		}),
 	],
-};
-
-/**
- * No active session - shows empty state.
- * Uses withProviders with noProgram to show the empty state.
- */
-export const NoActiveSession: Story = {
-	args: {
-		onNavigate: action('navigate'),
-		noProgram: true,
-	} as Record<string, unknown>,
-	decorators: [withProviders],
 };
 
 /**

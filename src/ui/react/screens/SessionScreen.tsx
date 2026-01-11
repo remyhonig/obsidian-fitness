@@ -152,14 +152,27 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 		layoutId: string;
 	} | null>(null);
 
+	// Check if no exercise is selected yet (session just started)
+	const hasNoActiveExercise = session.currentExerciseIndex === -1;
+
+	// Find first incomplete exercise for "suggested" highlighting
+	const suggestedExerciseIndex = useMemo(() => {
+		if (!hasNoActiveExercise) return -1;
+		return session.exercises.findIndex(e => e.sets.length < e.targetSets);
+	}, [hasNoActiveExercise, session.exercises]);
+
 	// Viewed exercise index - allows browsing other exercises while tracking active one
-	// Defaults to current active exercise, resets when active changes
-	const [viewedExerciseIndex, setViewedExerciseIndex] = useState(session.currentExerciseIndex);
+	// Defaults to first exercise when no active exercise, otherwise current active
+	const [viewedExerciseIndex, setViewedExerciseIndex] = useState(
+		hasNoActiveExercise ? 0 : session.currentExerciseIndex
+	);
 
 	// Reset viewed index when active exercise changes (e.g., after completing all sets)
 	useEffect(() => {
-		setViewedExerciseIndex(session.currentExerciseIndex);
-	}, [session.currentExerciseIndex]);
+		if (!hasNoActiveExercise) {
+			setViewedExerciseIndex(session.currentExerciseIndex);
+		}
+	}, [session.currentExerciseIndex, hasNoActiveExercise]);
 
 	// Ref for the active exercise group element (for scrolling)
 	const activeExerciseRef = useRef<HTMLDivElement>(null);
@@ -279,8 +292,11 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	// Target RPE from program, defaulting to 7
 	const targetRPE = currentExercise?.targetRPE ?? 7;
 
-	// Check if workout is complete
-	if (isSessionComplete() || !currentExercise || !viewedExercise) {
+	// Check if workout is complete (but not if we just haven't selected an exercise yet)
+	const isWorkoutComplete = isSessionComplete() || (
+		!hasNoActiveExercise && (!currentExercise || !viewedExercise)
+	);
+	if (isWorkoutComplete) {
 		const totalSets = session.exercises.reduce((sum, e) => sum + e.sets.length, 0);
 
 		return (
@@ -323,7 +339,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	};
 
 	const handleConfirmWeight = () => {
-		if (pendingSet.reps === null || pendingSet.rpe === null) return;
+		if (pendingSet.reps === null || pendingSet.rpe === null || !currentExercise) return;
 
 		dispatch({
 			type: 'complete_set',
@@ -352,9 +368,9 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 		}
 	};
 
-	// Calculate display values
-	const completedSets = currentExercise.sets.length;
-	const restTarget = currentExercise.restSeconds;
+	// Calculate display values (safe defaults when no active exercise)
+	const completedSets = currentExercise?.sets.length ?? 0;
+	const restTarget = currentExercise?.restSeconds ?? 120;
 
 	// Get the effective selected set index (default to next set)
 	const effectiveSelectedIndex = selectedSetIndex ?? completedSets;
@@ -426,7 +442,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 	// Handle inline weight confirm
 	const handleInlineWeightConfirm = () => {
-		if (pendingSet.reps === null || pendingSet.rpe === null) return;
+		if (pendingSet.reps === null || pendingSet.rpe === null || !currentExercise) return;
 
 		if (editingSetIndex !== null) {
 			// Editing an existing set
@@ -573,7 +589,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 					})()}
 
 					<TopNav
-						title={viewedExercise.exercise}
+						title={viewedExercise?.exercise ?? session.workout ?? 'Workout'}
 						subtitle={!isViewingActiveExercise ? 'Tap to return to active' : undefined}
 						timer={timerConfig}
 						onTitleClick={handleTitleClick}
@@ -584,6 +600,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 						<div className="fit-workout-sets-overview">
 								{session.exercises.map((exercise, exerciseIndex) => {
 									const isActive = exerciseIndex === session.currentExerciseIndex;
+									const isSuggested = exerciseIndex === suggestedExerciseIndex;
 									const exerciseCompletedSets = exercise.sets.length;
 									const isExerciseDone = exerciseCompletedSets >= exercise.targetSets;
 									const repsDisplay = exercise.targetRepsMin === exercise.targetRepsMax
@@ -606,6 +623,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 									const setsData: ExerciseSetData[] = Array.from({ length: exercise.targetSets }, (_, i) => {
 										const isDone = i < exerciseCompletedSets;
 										const isNext = i === exerciseCompletedSets && isActive;
+										const isFirstSuggestedSet = i === exerciseCompletedSets && isSuggested;
 										const set = exercise.sets[i];
 
 										// For pending sets on the active exercise, use execution view for dynamic weights
@@ -629,11 +647,20 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 											ruleBadge.exerciseIndex === exerciseIndex &&
 											ruleBadge.setIndex === i;
 
+										// Determine variant: done > next (active) > suggested > pending
+										const setVariant: 'done' | 'next' | 'pending' | 'suggested' = isDone
+											? 'done'
+											: isNext
+												? 'next'
+												: isFirstSuggestedSet
+													? 'suggested'
+													: 'pending';
+
 										return {
 											weight: isDone && set ? set.weight : pendingWeight,
 											reps: isDone && set ? set.reps : repsDisplay,
 											rpe: isDone && set ? set.rpe : exercise.targetRPE ?? 7,
-											variant: isDone ? 'done' : isNext ? 'next' : 'pending',
+											variant: setVariant,
 											result: isDone ? 'good' : undefined, // TODO: Calculate actual result based on performance
 											onClick: () => handleSetCardTap(exerciseIndex, i),
 											ruleBadge: shouldShowBadge ? {
@@ -679,8 +706,8 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 								case 'reps':
 									return {
 										type: 'reps',
-										min: currentExercise.targetRepsMin,
-										max: currentExercise.targetRepsMax,
+										min: currentExercise?.targetRepsMin ?? 8,
+										max: currentExercise?.targetRepsMax ?? 12,
 										onSelect: handleInlineReps,
 									};
 								case 'rpe':
@@ -893,8 +920,8 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 							<h2>How many reps?</h2>
 							<div className="fit-number-grid fit-number-grid-reps">
 								{Array.from({ length: 20 }, (_, i) => i + 1).map(num => {
-									const inRange = num >= currentExercise.targetRepsMin &&
-										num <= currentExercise.targetRepsMax;
+									const inRange = num >= (currentExercise?.targetRepsMin ?? 8) &&
+										num <= (currentExercise?.targetRepsMax ?? 12);
 									return (
 										<button
 											key={num}

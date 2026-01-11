@@ -474,14 +474,14 @@ export function createEngineAdapter(config: EngineAdapterConfig) {
 							workout: event.workoutName,
 							programId: event.programId ?? null,
 							date,
-							currentExerciseIndex: 0,
+							currentExerciseIndex: -1, // No exercise selected yet - user must click to start
 							currentSetIndex: 0,
 							exercises,
 							startTime,
 							endTime: null,
 							status: 'active',
 							extraRestTime: 0,
-							restStartTime: Date.now(),
+							restStartTime: null, // No rest timer until first set
 						};
 					}
 
@@ -730,9 +730,9 @@ export function simulateWorkout(
 
 		const sets = exerciseSets[exercise.exercise];
 		if (sets) {
-			// Navigate to this exercise if needed
-			while (adapter.getSessionState().currentExerciseIndex < i) {
-				adapter.dispatch({ type: 'next_exercise' });
+			// Select this exercise (handles currentExerciseIndex starting at -1)
+			if (adapter.getSessionState().currentExerciseIndex !== i) {
+				adapter.dispatch({ type: 'set_current_exercise', exerciseIndex: i });
 			}
 
 			// Complete each set
