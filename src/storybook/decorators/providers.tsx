@@ -21,7 +21,7 @@ import {
 	type SetData,
 	type SessionHistoryEntry,
 } from '../mocks/engine-adapter';
-import { AppProvider, PluginProvider, DomainProvider } from '../../ui/react/contexts';
+import { AppProvider, PluginProvider, DomainProvider, FullscreenProvider } from '../../ui/react/contexts';
 import type { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
 import type { UserSettingsRepository } from '../../data/user-settings-repository';
 
@@ -156,9 +156,11 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 		<AppProvider app={app as unknown as import('obsidian').App}>
 			<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 				<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings(availablePrograms)}>
-					<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-						<Story />
-					</div>
+					<FullscreenProvider>
+						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+							<Story />
+						</div>
+					</FullscreenProvider>
 				</DomainProvider>
 			</PluginProvider>
 		</AppProvider>
@@ -195,9 +197,11 @@ export function withProgram(programMarkdown: string): Decorator {
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
-						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-							<Story />
-						</div>
+						<FullscreenProvider>
+							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+								<Story />
+							</div>
+						</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -225,9 +229,11 @@ export function withActiveSession(workoutName: string, programMarkdown: string):
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
-						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-							<Story />
-						</div>
+						<FullscreenProvider>
+							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+								<Story />
+							</div>
+						</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -258,9 +264,11 @@ export function withLoadedProgram(programMarkdown: string): Decorator {
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
-						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-							<Story />
-						</div>
+						<FullscreenProvider>
+							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+								<Story />
+							</div>
+						</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -299,9 +307,11 @@ export function withEngineProgram(programMarkdown: string): Decorator {
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
-						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-							<Story />
-						</div>
+						<FullscreenProvider>
+							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+								<Story />
+							</div>
+						</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -398,9 +408,11 @@ export function withEngine(programMarkdown: string, sessionHistory?: SessionHist
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
-						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-							<Story />
-						</div>
+						<FullscreenProvider>
+							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+								<Story />
+							</div>
+						</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -483,9 +495,11 @@ export function withEngineSession(
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
-						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-							<Story />
-						</div>
+						<FullscreenProvider>
+							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+								<Story />
+							</div>
+						</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>
@@ -537,9 +551,11 @@ export function withCompletedEngineSession(
 			<AppProvider app={app as unknown as import('obsidian').App}>
 				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
 					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
-						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
-							<Story />
-						</div>
+						<FullscreenProvider>
+							<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+								<Story />
+							</div>
+						</FullscreenProvider>
 					</DomainProvider>
 				</PluginProvider>
 			</AppProvider>

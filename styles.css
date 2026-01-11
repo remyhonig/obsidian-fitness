@@ -4001,6 +4001,40 @@
 	color: var(--fit-text-primary);
 }
 
+/* Fullscreen mode - overlays entire viewport */
+.fit-app-fullscreen {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	bottom: 0 !important;
+	width: 100vw !important;
+	height: 100vh !important;
+	z-index: 9999 !important;
+	background: var(--fit-bg);
+}
+
+/* Fullscreen toggle button */
+.fit-fullscreen-toggle {
+	background: transparent;
+	border: none;
+	font-size: 24px;
+	line-height: 1;
+	padding: 4px 8px;
+	cursor: pointer;
+	color: var(--fit-text-primary);
+	opacity: 0.7;
+	transition: opacity 0.15s ease;
+}
+
+.fit-fullscreen-toggle:hover {
+	opacity: 1;
+}
+
+.fit-fullscreen-toggle:active {
+	transform: scale(0.95);
+}
+
 /* App shell layout - used by Storybook decorators */
 .fit-app-shell {
 	display: flex;

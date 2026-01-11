@@ -193,3 +193,40 @@ export function useDomain(): DomainContextValue {
 	}
 	return domain;
 }
+
+// ============================================================================
+// Fullscreen Context
+// ============================================================================
+
+interface FullscreenContextValue {
+	isFullscreen: boolean;
+	toggleFullscreen: () => void;
+}
+
+const FullscreenContext = createContext<FullscreenContextValue | null>(null);
+
+export function FullscreenProvider({
+	children
+}: {
+	children: ReactNode;
+}) {
+	const [isFullscreen, setIsFullscreen] = useState(false);
+
+	const toggleFullscreen = () => {
+		setIsFullscreen(prev => !prev);
+	};
+
+	return (
+		<FullscreenContext.Provider value={{ isFullscreen, toggleFullscreen }}>
+			{children}
+		</FullscreenContext.Provider>
+	);
+}
+
+export function useFullscreen(): FullscreenContextValue {
+	const fullscreen = useContext(FullscreenContext);
+	if (!fullscreen) {
+		throw new Error('useFullscreen must be used within FullscreenProvider');
+	}
+	return fullscreen;
+}

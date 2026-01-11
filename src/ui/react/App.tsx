@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { LayoutGroup } from 'framer-motion';
 import { App as ObsidianApp, Notice } from 'obsidian';
 import { compileProgramFromString, dumpFullStateAsJSON } from 'fitness-dsl';
@@ -16,7 +17,7 @@ import type { SetResult } from 'fitness-dsl';
 import type MainPlugin from '../../main';
 import { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
 import { UserSettingsRepository } from '../../data/user-settings-repository';
-import { AppProvider, PluginProvider, DomainProvider, useDomain } from './contexts';
+import { AppProvider, PluginProvider, DomainProvider, FullscreenProvider, useDomain, useFullscreen } from './contexts';
 import { HomeScreen } from './screens/HomeScreen';
 import { SessionScreen } from './screens/SessionScreen';
 import { WorkoutPickerScreen } from './screens/WorkoutPickerScreen';
@@ -57,6 +58,24 @@ function BottomNavWithProgress({
 			workoutProgress={workoutProgress}
 		/>
 	);
+}
+
+/** App container that applies fullscreen class and uses portal for true fullscreen */
+function AppContainer({ children }: { children: React.ReactNode }) {
+	const { isFullscreen } = useFullscreen();
+
+	const content = (
+		<div className={`fit-app ${isFullscreen ? 'fit-app-fullscreen' : ''}`}>
+			{children}
+		</div>
+	);
+
+	// When fullscreen, render via portal to document.body to escape any containing blocks
+	if (isFullscreen) {
+		return createPortal(content, document.body);
+	}
+
+	return content;
 }
 
 // Tab types for bottom navigation
@@ -290,19 +309,21 @@ export function App({ app, plugin }: AppProps) {
 		<AppProvider app={app}>
 			<PluginProvider plugin={plugin}>
 				<DomainProvider adapter={adapter} userSettings={userSettings}>
-					<LayoutGroup>
-						<div className="fit-app">
-							<div className="fit-main-content">
-								{renderScreen()}
-							</div>
-							{showBottomNav && (
-								<BottomNavWithProgress
-									activeTab={getActiveTab()}
-									onTabChange={navigateToTab}
-								/>
-							)}
-						</div>
-					</LayoutGroup>
+					<FullscreenProvider>
+						<LayoutGroup>
+							<AppContainer>
+								<div className="fit-main-content">
+									{renderScreen()}
+								</div>
+								{showBottomNav && (
+									<BottomNavWithProgress
+										activeTab={getActiveTab()}
+										onTabChange={navigateToTab}
+									/>
+								)}
+							</AppContainer>
+						</LayoutGroup>
+					</FullscreenProvider>
 				</DomainProvider>
 			</PluginProvider>
 		</AppProvider>

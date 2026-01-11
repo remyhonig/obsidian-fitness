@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useDomain } from '../contexts';
+import { useDomain, useFullscreen } from '../contexts';
 import { TopNav, type TimerConfig } from '../components/TopNav';
 import { Mascot } from '../components/Mascot';
 import { ExerciseGroup } from '../components/ExerciseGroup';
@@ -22,6 +22,7 @@ interface HomeScreenProps {
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	const { program, session } = useDomain();
+	const { isFullscreen, toggleFullscreen } = useFullscreen();
 	const [restElapsed, setRestElapsed] = useState(0);
 
 	// Get current exercise for rest target calculation
@@ -113,10 +114,23 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 
 	const suggestedWorkout = getSuggestedWorkout();
 
+	// Fullscreen toggle button
+	const fullscreenButton = (
+		<button
+			className="fit-fullscreen-toggle"
+			onClick={toggleFullscreen}
+			aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+		>
+			{isFullscreen ? '⊖' : '⊕'}
+		</button>
+	);
+
 	return (
 		<div className="fit-home-screen">
 			<TopNav
 				title="Brorilla"
+				variant="actions"
+				rightAction={fullscreenButton}
 				timer={getTimerConfig()}
 				onTitleClick={session.isActive ? () => onNavigate('session') : undefined}
 			/>
