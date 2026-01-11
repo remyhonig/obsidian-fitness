@@ -394,7 +394,8 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 		// Same exercise - determine set state
 		const exercise = session.exercises[exerciseIndex];
-		const exerciseCompletedSets = exercise?.sets.length ?? 0;
+		if (!exercise) return;
+		const exerciseCompletedSets = exercise.sets.length;
 		const isDone = setIndex < exerciseCompletedSets;
 		const isNext = setIndex === exerciseCompletedSets;
 		const isPending = setIndex > exerciseCompletedSets;
@@ -609,6 +610,12 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 				<>
 					{/* Unified ActionFooter - handles all states */}
 					{isViewingActiveExercise && !exerciseSummary && (() => {
+						// Determine if we're editing an existing set
+						const isEditing = editingSetIndex !== null;
+						const editingSet = isEditing && currentExercise
+							? currentExercise.sets[editingSetIndex]
+							: null;
+
 						// Build question prop based on current input mode
 						const buildQuestion = (): PostSetQuestion | undefined => {
 							switch (detailInputMode) {
@@ -618,12 +625,14 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 										min: currentExercise?.targetRepsMin ?? 8,
 										max: currentExercise?.targetRepsMax ?? 12,
 										onSelect: handleInlineReps,
+										currentValue: isEditing ? editingSet?.reps : undefined,
 									};
 								case 'rpe':
 									return {
 										type: 'rpe',
 										target: targetRPE,
 										onSelect: handleInlineRPE,
+										currentValue: isEditing ? editingSet?.rpe : undefined,
 									};
 								case 'weight':
 									return {

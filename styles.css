@@ -7985,6 +7985,28 @@
 	color: white;
 }
 
+/* Current value highlight - dark blue (Humpback) for editing mode */
+.fit-number-button.is-current {
+	background: #2B70C9;
+	border-bottom-color: #1D5AA6;
+	color: white;
+	font-weight: 700;
+	box-shadow: 0 4px 0 #1D5AA6, 0 0 0 3px rgba(43, 112, 201, 0.3);
+}
+
+.fit-number-button.is-current:active {
+	background: #1D5AA6;
+	color: white;
+}
+
+/* Current takes priority when also in-range */
+.fit-number-button.in-range.is-current {
+	background: #2B70C9;
+	border-bottom-color: #1D5AA6;
+	color: white;
+	box-shadow: 0 4px 0 #1D5AA6, 0 0 0 3px rgba(43, 112, 201, 0.3);
+}
+
 /* Weight selector step */
 .fit-weight-step {
 	flex: 1;

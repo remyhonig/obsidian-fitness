@@ -50,6 +50,8 @@ export interface RepsQuestion {
 	max: number;
 	/** Called when user selects a rep count */
 	onSelect: (reps: number) => void;
+	/** Current value when editing (highlighted in dark blue) */
+	currentValue?: number;
 }
 
 /** RPE question configuration */
@@ -59,6 +61,8 @@ export interface RPEQuestion {
 	target: number;
 	/** Called when user selects an RPE */
 	onSelect: (rpe: number) => void;
+	/** Current value when editing (highlighted in dark blue) */
+	currentValue?: number;
 }
 
 /** Weight question configuration */
@@ -175,10 +179,11 @@ export function ActionFooter({
 			<div className="fit-number-grid fit-number-grid-reps">
 				{Array.from({ length: 20 }, (_, i) => i + 1).map(num => {
 					const inRange = num >= q.min && num <= q.max;
+					const isCurrent = q.currentValue === num;
 					return (
 						<button
 							key={num}
-							className={`fit-number-button ${inRange ? 'in-range' : ''}`}
+							className={`fit-number-button ${inRange ? 'in-range' : ''} ${isCurrent ? 'is-current' : ''}`}
 							onClick={() => q.onSelect(num)}
 						>
 							{num}
@@ -196,10 +201,11 @@ export function ActionFooter({
 			<div className="fit-number-grid fit-number-grid-rpe">
 				{Array.from({ length: 6 }, (_, i) => i + 5).map(num => {
 					const isTarget = num === q.target;
+					const isCurrent = q.currentValue === num;
 					return (
 						<button
 							key={num}
-							className={`fit-number-button ${isTarget ? 'in-range' : ''}`}
+							className={`fit-number-button ${isTarget ? 'in-range' : ''} ${isCurrent ? 'is-current' : ''}`}
 							onClick={() => q.onSelect(num)}
 						>
 							{num}
