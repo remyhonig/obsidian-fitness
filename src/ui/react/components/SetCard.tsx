@@ -96,6 +96,7 @@ export function SetCard({
 		'fit-set-card',
 		variant === 'done' ? 'done' : '',
 		variant === 'next' ? 'next' : '',
+		variant === 'pending' ? 'pending' : '',
 		variant === 'suggested' ? 'suggested' : '',
 		isSelected ? 'selected' : '',
 		isAnimating ? 'just-completed' : '',

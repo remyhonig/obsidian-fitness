@@ -303,6 +303,7 @@ export const ExerciseCompleteWithCoachTip: Story = {
 			adjustment: {
 				change: '+2.5kg next session',
 				reason: 'Great performance! RPE was below target across all sets.',
+				timing: 'next_session',
 			},
 		},
 	},
@@ -370,6 +371,7 @@ export const ExerciseCompleteWithDownAdjustment: Story = {
 			adjustment: {
 				change: '-5kg next session',
 				reason: 'RPE was too high. Reducing weight to stay in the target range.',
+				timing: 'next_session',
 			},
 		},
 	},

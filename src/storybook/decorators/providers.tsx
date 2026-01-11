@@ -5,7 +5,7 @@
 import React from 'react';
 import type { Decorator, StoryContext } from '@storybook/react';
 import { App, Plugin, setStorybookFiles } from '../mocks/obsidian-storybook-mock';
-import { createMockDomainAdapter } from '../mocks/domain-mock';
+import { createMockDomainAdapter, type MockExerciseCompletionConfig } from '../mocks/domain-mock';
 import { AppProvider, PluginProvider, DomainProvider } from '../../ui/react/contexts';
 import type { FitnessDomainAdapter } from '../../domain/fitness-domain-adapter';
 import type { UserSettingsRepository } from '../../data/user-settings-repository';
@@ -85,11 +85,17 @@ Full body workout.
 - Barbell Row: 3x8-10 @ 70kg RPE 8, rest 120s
 `;
 
-interface StoryArgs {
+/**
+ * Extended args that can be passed to stories using withProviders decorator.
+ * Use this type when defining story args to get proper type checking.
+ */
+export interface StoryArgs {
 	programMarkdown?: string;
 	sessionState?: Record<string, unknown>;
 	files?: Record<string, string>;
 	exerciseAdjustment?: { change: string; reason: string } | null;
+	/** Per-exercise completion configs (keyed by exercise name or index) */
+	exerciseCompletions?: Record<string | number, MockExerciseCompletionConfig>;
 	/** Set to true to show state with no program loaded */
 	noProgram?: boolean;
 	/** Available programs organized by goal category */
@@ -106,6 +112,7 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 	const sessionState = args.sessionState;
 	const files = args.files;
 	const exerciseAdjustment = args.exerciseAdjustment;
+	const exerciseCompletions = args.exerciseCompletions;
 	const availablePrograms = args.availablePrograms ?? [];
 
 	// Set up mock files if provided
@@ -127,6 +134,7 @@ export const withProviders: Decorator = (Story, context: StoryContext) => {
 		programMarkdown,
 		sessionState,
 		exerciseAdjustment,
+		exerciseCompletions,
 	});
 
 	return (

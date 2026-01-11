@@ -13,7 +13,7 @@ import { TopNav } from '../components/TopNav';
 import { Mascot } from '../components/Mascot';
 import { ActionFooter } from '../components/ActionFooter';
 
-interface FinishScreenProps {
+export interface FinishScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
 }
 

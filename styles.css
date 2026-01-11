@@ -6778,6 +6778,28 @@
 	color: #4BABDB;
 }
 
+/* Pending variant - gray for future workouts (not suggested) */
+.fit-set-card.pending {
+	background: #e5e5e5;
+	box-shadow: 0 4px 0 #c4c4c4;
+}
+
+.fit-set-card.pending:active {
+	box-shadow: 0 2px 0 #c4c4c4;
+}
+
+.fit-set-card.pending .fit-set-card-header {
+	color: #777;
+}
+
+.fit-set-card.pending .fit-set-card-main {
+	color: #4b4b4b;
+}
+
+.fit-set-card.pending .fit-set-card-details {
+	color: #999;
+}
+
 /* Selected card - scale up slightly */
 .fit-set-card.selected {
 	transform: scale(1.08);

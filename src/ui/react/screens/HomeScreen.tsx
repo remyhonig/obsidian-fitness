@@ -61,16 +61,27 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	};
 
 	// Determine suggested workout for highlighting
-	const getSuggestedWorkout = (): { name: string; subtitle?: string } | null => {
+	// Returns exactly ONE workout+day combination to highlight
+	const getSuggestedWorkout = (): { name: string; day?: string; subtitle?: string } | null => {
 		if (!program) return null;
+
+		// Helper to find the first day for a workout from weekly pattern
+		const findDayForWorkout = (workoutName: string): string | undefined => {
+			const weeklyEntry = program.schedule.weeklyPattern.find(
+				entry => entry.workouts.includes(workoutName)
+			);
+			return weeklyEntry?.day;
+		};
 
 		// Use nextSession if available
 		if (program.nextSession) {
+			const workoutName = program.nextSession.workout;
+			// If scheduledFor is null, find the first day from the schedule
+			const day = program.nextSession.scheduledFor ?? findDayForWorkout(workoutName);
 			return {
-				name: program.nextSession.workout,
-				subtitle: program.nextSession.scheduledFor
-					? `scheduled: ${program.nextSession.scheduledFor.toLowerCase()}`
-					: undefined
+				name: workoutName,
+				day,
+				subtitle: day ? `scheduled: ${day.toLowerCase()}` : undefined
 			};
 		}
 
@@ -88,6 +99,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 		if (suggestedWorkout) {
 			return {
 				name: suggestedWorkout.name,
+				day: findDayForWorkout(suggestedWorkout.name),
 			};
 		}
 
@@ -124,23 +136,38 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 						exerciseName={program.program.name}
 						variant="next"
 						width="100%"
-						sets={program.schedule.weeklyPattern.map((entry) => {
-							const isSuggested = suggestedWorkout && entry.workouts.includes(suggestedWorkout.name);
-							const isInProgress = session.isActive && entry.workouts.includes(session.workout ?? '');
-							const variant = isInProgress ? 'next' as const : isSuggested ? 'suggested' as const : 'pending' as const;
-							const workoutName = entry.workouts[0];
-							const layoutId = workoutName ? `workout-card-${workoutName}` : undefined;
-							return {
-								weight: 0,
-								reps: entry.workouts.join(', '),
-								rpe: 0,
-								variant,
-								headerText: entry.day,
-								detailText: 'not done yet',
-								layoutId,
-								onClick: () => workoutName && onNavigate('workout-detail', { workoutName, layoutId, cardVariant: variant }),
-							};
-						})}
+						sets={(() => {
+							// Find the index of the first entry to suggest (only ONE should be suggested)
+							let suggestedIndex = -1;
+							if (suggestedWorkout) {
+								suggestedIndex = program.schedule.weeklyPattern.findIndex((entry) => {
+									// If we have a specific day, match it exactly
+									if (suggestedWorkout.day) {
+										return entry.day === suggestedWorkout.day && entry.workouts.includes(suggestedWorkout.name);
+									}
+									// Otherwise just find the first entry with this workout
+									return entry.workouts.includes(suggestedWorkout.name);
+								});
+							}
+
+							return program.schedule.weeklyPattern.map((entry, index) => {
+								const isSuggested = index === suggestedIndex;
+								const isInProgress = session.isActive && entry.workouts.includes(session.workout ?? '');
+								const variant = isInProgress ? 'next' as const : isSuggested ? 'suggested' as const : 'pending' as const;
+								const workoutName = entry.workouts[0];
+								const layoutId = workoutName ? `workout-card-${workoutName}` : undefined;
+								return {
+									weight: 0,
+									reps: entry.workouts.join(', '),
+									rpe: 0,
+									variant,
+									headerText: entry.day,
+									detailText: 'not done yet',
+									layoutId,
+									onClick: () => workoutName && onNavigate('workout-detail', { workoutName, layoutId, cardVariant: variant }),
+								};
+							});
+						})()}
 					/>
 				) : program.schedule.cyclePattern.length > 0 ? (
 					<ExerciseGroup

@@ -10,6 +10,8 @@ import {
 	parseProgram as parseFitnessDSL,
 	type CompiledProgram,
 	type MediaReference,
+	type ExerciseRuleProgress,
+	type RuleProgress,
 } from 'fitness-dsl';
 import type {
 	ProgramData,
@@ -21,11 +23,65 @@ import type {
 	ExerciseExecutionView,
 } from '../../domain/fitness-domain-adapter';
 
+/** Mock exercise completion result for stories */
+export interface MockExerciseCompletionConfig {
+	adjustment?: { change: string; reason: string; timing?: 'next_set' | 'next_session' } | null;
+	ruleProgress?: ExerciseRuleProgress | null;
+	streakBroken?: {
+		wasBroken: boolean;
+		previousStreak: number;
+		ruleDescription: string;
+	} | null;
+}
+
+/** Helper to create a mock RuleProgress for stories */
+export function createMockRuleProgress(options: {
+	ruleSource: string;
+	ruleDescription?: string | null;
+	currentlyMet?: boolean;
+	progress?: { current: number; required: number; unit: 'sessions' | 'sets' };
+	streakBroken?: { wasBroken: boolean; previousStreak: number };
+	effect?: string;
+	timing?: 'next_set' | 'next_session' | null;
+	layer?: 'autoregulation' | 'inline' | 'global';
+}): RuleProgress {
+	return {
+		ruleSource: options.ruleSource,
+		ruleDescription: options.ruleDescription ?? null,
+		currentlyMet: options.currentlyMet ?? false,
+		progress: options.progress ?? null,
+		streakBroken: options.streakBroken ?? null,
+		termProgress: [],
+		effect: options.effect ?? '+2.5kg',
+		timing: options.timing ?? 'next_session',
+		layer: options.layer ?? 'global',
+	};
+}
+
+/** Helper to create a mock ExerciseRuleProgress for stories */
+export function createMockExerciseRuleProgress(rules: RuleProgress[]): ExerciseRuleProgress {
+	// Find the rule closest to triggering
+	let closestToTrigger: RuleProgress | null = null;
+	let bestProgress = 0;
+	for (const rule of rules) {
+		if (rule.progress && rule.progress.current > 0) {
+			const progressPercent = rule.progress.current / rule.progress.required;
+			if (progressPercent > bestProgress) {
+				bestProgress = progressPercent;
+				closestToTrigger = rule;
+			}
+		}
+	}
+	return { rules, closestToTrigger };
+}
+
 export interface MockDomainConfig {
 	programMarkdown?: string;
 	sessionState?: Partial<SessionState>;
-	/** Mock adjustment to return from evaluateExerciseCompletion */
+	/** Mock adjustment to return from evaluateExerciseCompletion (legacy, use exerciseCompletions instead) */
 	exerciseAdjustment?: { change: string; reason: string } | null;
+	/** Per-exercise completion configs (keyed by exercise name or index) */
+	exerciseCompletions?: Record<string | number, MockExerciseCompletionConfig>;
 }
 
 /**
@@ -104,15 +160,39 @@ export function createMockDomainAdapter(config: MockDomainConfig = {}) {
 
 		evaluateExerciseCompletion: (exerciseIndex: number): ExerciseCompletionResult => {
 			const exercise = sessionState.exercises[exerciseIndex];
+			const exerciseName = exercise?.exercise ?? 'Unknown';
+
+			// Look up exercise-specific config by index or name
+			const exerciseConfig = config.exerciseCompletions?.[exerciseIndex]
+				?? config.exerciseCompletions?.[exerciseName]
+				?? {};
+
+			// Support legacy exerciseAdjustment config
+			let adjustment: { change: string; reason: string; timing: 'next_set' | 'next_session' } | null = null;
+			if (exerciseConfig.adjustment) {
+				adjustment = {
+					change: exerciseConfig.adjustment.change,
+					reason: exerciseConfig.adjustment.reason,
+					timing: exerciseConfig.adjustment.timing ?? 'next_session',
+				};
+			} else if (config.exerciseAdjustment) {
+				adjustment = {
+					...config.exerciseAdjustment,
+					timing: 'next_session',
+				};
+			}
+
 			return {
-				exerciseName: exercise?.exercise ?? 'Unknown',
+				exerciseName,
 				nextTarget: {
 					sets: exercise?.targetSets ?? 3,
 					reps: exercise ? `${exercise.targetRepsMin}-${exercise.targetRepsMax}` : '8-10',
 					weight: exercise?.targetWeight ? `${exercise.targetWeight}kg` : 'bodyweight',
 					rpe: exercise?.targetRPE ?? null,
 				},
-				adjustment: config.exerciseAdjustment ?? null,
+				adjustment,
+				ruleProgress: exerciseConfig.ruleProgress ?? null,
+				streakBroken: exerciseConfig.streakBroken ?? null,
 			};
 		},
 
