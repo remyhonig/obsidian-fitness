@@ -872,6 +872,13 @@ export class FitnessDomainAdapter {
 	}
 
 	/**
+	 * Get all completed sessions from the repository
+	 */
+	async getCompletedSessions(): Promise<Session[]> {
+		return this.sessionRepository.list();
+	}
+
+	/**
 	 * Get rest state directly from the engine.
 	 * Returns the engine's authoritative rest state for platform-agnostic access.
 	 */

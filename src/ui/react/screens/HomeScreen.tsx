@@ -15,6 +15,7 @@ import { useDomain, useFullscreen } from '../contexts';
 import { TopNav, type TimerConfig } from '../components/TopNav';
 import { Mascot } from '../components/Mascot';
 import { ExerciseGroup } from '../components/ExerciseGroup';
+import type { Session } from '../../../types';
 
 /**
  * Calculate the number of days between two dates (ignoring time)
@@ -38,14 +39,58 @@ function formatDaysAgo(days: number): string {
 	return `${weeks} weeks ago`;
 }
 
+/**
+ * Parse recovery time string (e.g., "24h", "36h", "48h") to hours
+ */
+function parseRecoveryHours(recovery: string | null | undefined): number {
+	if (!recovery) return 24; // Default to 24 hours
+	const match = recovery.match(/^(\d+)h$/i);
+	if (match && match[1]) {
+		return parseInt(match[1], 10);
+	}
+	return 24; // Default fallback
+}
+
+/**
+ * Format a future date with time as recovery message
+ */
+function formatFutureDate(date: Date): string {
+	// Round to nearest hour first
+	const roundedDate = new Date(date);
+	if (roundedDate.getMinutes() >= 30) {
+		roundedDate.setHours(roundedDate.getHours() + 1);
+	}
+	roundedDate.setMinutes(0, 0, 0);
+	const hour = roundedDate.getHours();
+
+	// Calculate days difference using rounded date
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const targetDay = new Date(roundedDate.getFullYear(), roundedDate.getMonth(), roundedDate.getDate());
+	const diffDays = Math.ceil((targetDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+	if (diffDays <= 0) return `first recover until today ${hour}h`;
+	if (diffDays === 1) return `first recover until tomorrow ${hour}h`;
+
+	// Return day of week for dates within the next week
+	const dayNames: string[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+	if (diffDays < 7) {
+		const dayName = dayNames[roundedDate.getDay()] ?? `in ${diffDays} days`;
+		return `first recover until ${dayName} ${hour}h`;
+	}
+
+	return `first recover until in ${diffDays} days`;
+}
+
 interface HomeScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
 }
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
-	const { program, session, dispatch } = useDomain();
+	const { program, session, dispatch, getCompletedSessions } = useDomain();
 	const { isFullscreen, toggleFullscreen } = useFullscreen();
 	const [restElapsed, setRestElapsed] = useState(0);
+	const [completedSessions, setCompletedSessions] = useState<Session[]>([]);
 
 	// Get current exercise for rest target calculation
 	const currentExercise = session.isActive
@@ -63,6 +108,11 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 		});
 		onNavigate('session');
 	};
+
+	// Load completed sessions on mount
+	useEffect(() => {
+		getCompletedSessions().then(setCompletedSessions);
+	}, [getCompletedSessions]);
 
 	// Timer effect - calculates elapsed time from session.restStartTime
 	useEffect(() => {
@@ -94,8 +144,91 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 			: { type: 'countdown', seconds: restRemaining, totalSeconds: restTarget, label: 'Rest' };
 	};
 
+	// Build a map of workoutRef -> last completed date
+	// Uses workoutRef (raw wikilink) for exact matching
+	const workoutLastDone = useMemo(() => {
+		const map = new Map<string, Date>();
+
+		// Sessions are sorted newest first, so first occurrence is most recent
+		for (const s of completedSessions) {
+			const key = s.workoutRef ?? s.workout ?? '';
+			if (key && !map.has(key)) {
+				map.set(key, new Date(s.date));
+			}
+		}
+		return map;
+	}, [completedSessions]);
+
+	/**
+	 * Get the last date a workout was done, or null if never
+	 */
+	const getLastDoneDate = (workoutName: string): Date | null => {
+		// Generate the same wikilink format used in session frontmatter
+		// Format: [[Programs/programId#Workout Name]]
+		const key = program?.program.name
+			? `[[Programs/${program.program.name}#${workoutName}]]`
+			: workoutName;
+
+		return workoutLastDone.get(key) ?? null;
+	};
+
+	/**
+	 * Get the "X days ago" text for a workout, or "not done yet"
+	 */
+	const getLastDoneText = (workoutName: string): string => {
+		const lastDate = getLastDoneDate(workoutName);
+		if (!lastDate) return 'not done yet';
+		const days = daysBetween(lastDate, new Date());
+		return formatDaysAgo(days);
+	};
+
+	/**
+	 * Check if a workout was done today
+	 */
+	const wasDoneToday = (workoutName: string): boolean => {
+		const lastDate = getLastDoneDate(workoutName);
+		if (!lastDate) return false;
+		return daysBetween(lastDate, new Date()) === 0;
+	};
+
+	/**
+	 * Get the most recently completed session
+	 */
+	const getMostRecentSession = () => {
+		if (completedSessions.length === 0) return null;
+		// Sessions are sorted newest first
+		return completedSessions[0];
+	};
+
+	/**
+	 * Calculate when the next workout is available based on recovery time
+	 */
+	const getNextAvailableDate = (): { date: Date; formatted: string } | null => {
+		if (!program) return null;
+
+		const lastSession = getMostRecentSession();
+		if (!lastSession) return null;
+
+		// Find the recovery time for the last completed workout
+		const lastWorkoutName = lastSession.workout;
+		const cycleEntry = program.schedule.cyclePattern.find(
+			c => c.workout === lastWorkoutName
+		);
+		const recoveryHours = parseRecoveryHours(cycleEntry?.recovery);
+
+		// Calculate when recovery is complete
+		const lastCompletedTime = new Date(lastSession.endTime ?? lastSession.startTime);
+		const nextAvailableDate = new Date(lastCompletedTime.getTime() + recoveryHours * 60 * 60 * 1000);
+
+		return {
+			date: nextAvailableDate,
+			formatted: formatFutureDate(nextAvailableDate)
+		};
+	};
+
 	// Determine suggested workout for highlighting
 	// Returns exactly ONE workout+day combination to highlight
+	// Skips workouts that were already done today
 	const getSuggestedWorkout = (): { name: string; day?: string; subtitle?: string } | null => {
 		if (!program) return null;
 
@@ -107,63 +240,52 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 			return weeklyEntry?.day;
 		};
 
-		// Use nextSession if available
-		if (program.nextSession) {
+		// Use nextSession if available, but skip if done today
+		if (program.nextSession && !wasDoneToday(program.nextSession.workout)) {
 			const workoutName = program.nextSession.workout;
-			// If scheduledFor is null, find the first day from the schedule
 			const day = program.nextSession.scheduledFor ?? findDayForWorkout(workoutName);
+
+			// Calculate subtitle based on recovery time
+			const nextAvailable = getNextAvailableDate();
+			const subtitle = nextAvailable
+				? nextAvailable.formatted
+				: (day ? day.toLowerCase() : undefined);
+
 			return {
 				name: workoutName,
 				day,
-				subtitle: day ? `scheduled: ${day.toLowerCase()}` : undefined
+				subtitle
 			};
 		}
 
-		// Fallback: find first workout with exercises from cycle pattern or workouts list
+		// Fallback: find first workout NOT done today from cycle pattern or workouts list
 		const cycleWorkoutNames = program.schedule.cyclePattern.map(c => c.workout);
 		const workoutsWithExercises = program.workouts.filter(w => w.exercises.length > 0);
 
-		// Prefer cycle order, but only if workout has exercises
-		const firstCycleWorkout = cycleWorkoutNames
+		// Prefer cycle order, but only if workout has exercises and not done today
+		const firstAvailableCycleWorkout = cycleWorkoutNames
 			.map(name => workoutsWithExercises.find(w => w.name === name))
-			.find(w => w !== undefined);
+			.find(w => w !== undefined && !wasDoneToday(w.name));
 
-		const suggestedWorkout = firstCycleWorkout ?? workoutsWithExercises[0];
+		// If no cycle workout available, find any workout not done today
+		const firstAvailableWorkout = firstAvailableCycleWorkout
+			?? workoutsWithExercises.find(w => !wasDoneToday(w.name));
 
-		if (suggestedWorkout) {
+		if (firstAvailableWorkout) {
+			// Calculate subtitle based on recovery time
+			const nextAvailable = getNextAvailableDate();
+			const subtitle = nextAvailable
+				? nextAvailable.formatted
+				: undefined;
+
 			return {
-				name: suggestedWorkout.name,
-				day: findDayForWorkout(suggestedWorkout.name),
+				name: firstAvailableWorkout.name,
+				day: findDayForWorkout(firstAvailableWorkout.name),
+				subtitle
 			};
 		}
 
 		return null;
-	};
-
-	// Build a map of workout name -> last completed date
-	// This uses the session history from the program data
-	const workoutLastDone = useMemo(() => {
-		const map = new Map<string, Date>();
-		if (!program?.sessionHistory) return map;
-
-		// Session history is sorted newest first, so first occurrence is most recent
-		for (const session of program.sessionHistory) {
-			const workoutName = session.workout.toLowerCase();
-			if (!map.has(workoutName)) {
-				map.set(workoutName, new Date(session.date));
-			}
-		}
-		return map;
-	}, [program?.sessionHistory]);
-
-	/**
-	 * Get the "X days ago" text for a workout, or "not done yet"
-	 */
-	const getLastDoneText = (workoutName: string): string => {
-		const lastDate = workoutLastDone.get(workoutName.toLowerCase());
-		if (!lastDate) return 'not done yet';
-		const days = daysBetween(lastDate, new Date());
-		return formatDaysAgo(days);
 	};
 
 	// No program loaded - should use WelcomeScreen instead
@@ -226,18 +348,27 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 							return program.schedule.weeklyPattern.map((entry, index) => {
 								const isSuggested = index === suggestedIndex;
 								const isInProgress = session.isActive && entry.workouts.includes(session.workout ?? '');
-								const variant = isInProgress ? 'next' as const : isSuggested ? 'suggested' as const : 'pending' as const;
 								const workoutName = entry.workouts[0];
+								const isDoneToday = workoutName ? wasDoneToday(workoutName) : false;
+								const variant = isDoneToday ? 'done' as const
+									: isInProgress ? 'next' as const
+									: isSuggested ? 'suggested' as const
+									: 'pending' as const;
 								const layoutId = workoutName ? `workout-card-${workoutName}` : undefined;
+								// For suggested workout, show scheduled date; otherwise show last done
+								const detailText = isSuggested && suggestedWorkout?.subtitle
+									? suggestedWorkout.subtitle
+									: (workoutName ? getLastDoneText(workoutName) : 'not done yet');
 								return {
 									weight: 0,
 									reps: entry.workouts.join(', '),
 									rpe: 0,
 									variant,
 									headerText: entry.day,
-									detailText: workoutName ? getLastDoneText(workoutName) : 'not done yet',
+									detailText,
 									layoutId,
 									onClick: () => workoutName && handleStartWorkout(workoutName),
+									doneToday: isDoneToday,
 								};
 							});
 						})()}
@@ -250,17 +381,26 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 						sets={program.schedule.cyclePattern.map((entry, index) => {
 							const isSuggested = suggestedWorkout && entry.workout === suggestedWorkout.name;
 							const isInProgress = session.isActive && session.workout === entry.workout;
-							const variant = isInProgress ? 'next' as const : isSuggested ? 'suggested' as const : 'pending' as const;
+							const isDoneToday = wasDoneToday(entry.workout);
+							const variant = isDoneToday ? 'done' as const
+								: isInProgress ? 'next' as const
+								: isSuggested ? 'suggested' as const
+								: 'pending' as const;
 							const layoutId = `workout-card-${entry.workout}`;
+							// For suggested workout, show scheduled date; otherwise show last done
+							const detailText = isSuggested && suggestedWorkout?.subtitle
+								? suggestedWorkout.subtitle
+								: getLastDoneText(entry.workout);
 							return {
 								weight: 0,
 								reps: entry.workout,
 								rpe: 0,
 								variant,
 								headerText: `Day ${index + 1}`,
-								detailText: getLastDoneText(entry.workout),
+								detailText,
 								layoutId,
 								onClick: () => handleStartWorkout(entry.workout),
+								doneToday: isDoneToday,
 							};
 						})}
 					/>

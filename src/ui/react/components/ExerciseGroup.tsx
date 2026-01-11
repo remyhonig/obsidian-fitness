@@ -39,6 +39,9 @@ export interface ExerciseSetData {
 
 	/** Layout ID for shared element transitions */
 	layoutId?: string;
+
+	/** Show celebration effect for workouts done today */
+	doneToday?: boolean;
 }
 
 export interface ExerciseGroupProps {
@@ -97,6 +100,7 @@ export function ExerciseGroup({ exerciseName, sets, onInfoClick, width = 280, va
 						headerText={set.headerText}
 						detailText={set.detailText}
 						layoutId={set.layoutId}
+						doneToday={set.doneToday}
 					/>
 				))}
 			</div>

@@ -485,6 +485,7 @@ export class SessionRepository {
 				startTime: frontmatter.startTime,
 				endTime: frontmatter.endTime,
 				workout: workoutName,
+				workoutRef: frontmatter.workout, // Raw wikilink from frontmatter
 				programId,
 				status: frontmatter.status ?? 'completed',
 				exercises,

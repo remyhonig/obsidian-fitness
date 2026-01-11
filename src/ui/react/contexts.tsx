@@ -78,6 +78,7 @@ interface DomainContextValue {
 	saveSession: () => Promise<string | null>;
 	getSessionProgress: () => number;
 	isSessionComplete: () => boolean;
+	getCompletedSessions: () => Promise<import('../../types').Session[]>;
 }
 
 const DomainContext = createContext<DomainContextValue | null>(null);
@@ -163,6 +164,7 @@ export function DomainProvider({
 
 	const getSessionProgress = () => adapter.getSessionProgress();
 	const isSessionComplete = () => adapter.isSessionComplete();
+	const getCompletedSessions = () => adapter.getCompletedSessions();
 
 	const value: DomainContextValue = {
 		adapter,
@@ -176,7 +178,8 @@ export function DomainProvider({
 		dispatch,
 		saveSession,
 		getSessionProgress,
-		isSessionComplete
+		isSessionComplete,
+		getCompletedSessions
 	};
 
 	return (

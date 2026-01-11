@@ -47,6 +47,9 @@ export interface SetCardProps {
 
 	/** Layout ID for shared element transitions (Framer Motion) */
 	layoutId?: string;
+
+	/** Show celebration effect for workouts done today */
+	doneToday?: boolean;
 }
 
 /**
@@ -77,6 +80,22 @@ function StarBurst() {
 	);
 }
 
+/**
+ * Celebration sparkles for workouts done today
+ */
+function CelebrationSparkles() {
+	return (
+		<div className="fit-celebration-sparkles">
+			<span className="fit-sparkle fit-sparkle-1">✦</span>
+			<span className="fit-sparkle fit-sparkle-2">★</span>
+			<span className="fit-sparkle fit-sparkle-3">✦</span>
+			<span className="fit-sparkle fit-sparkle-4">★</span>
+			<span className="fit-sparkle fit-sparkle-5">✦</span>
+			<span className="fit-sparkle fit-sparkle-6">★</span>
+		</div>
+	);
+}
+
 export function SetCard({
 	weight,
 	reps,
@@ -91,6 +110,7 @@ export function SetCard({
 	headerText,
 	detailText,
 	layoutId,
+	doneToday = false,
 }: SetCardProps) {
 	const classNames = [
 		'fit-set-card',
@@ -102,6 +122,7 @@ export function SetCard({
 		isAnimating ? 'just-completed' : '',
 		exerciseName ? 'with-header-banner' : '',
 		result ? `result-${result}` : '',
+		doneToday ? 'done-today' : '',
 	]
 		.filter(Boolean)
 		.join(' ');
@@ -116,6 +137,7 @@ export function SetCard({
 	if (exerciseName) {
 		return (
 			<div className={classNames} onClick={onClick}>
+				{doneToday && <CelebrationSparkles />}
 				<div className="fit-set-card-banner">{exerciseName}</div>
 				<div className="fit-set-card-body">
 					{isAnimating && <StarBurst />}
@@ -141,11 +163,15 @@ export function SetCard({
 		);
 	}
 
+	const isSuggested = variant === 'suggested';
+
 	// Regular card without exercise name
 	const cardContent = (
 		<div className={classNames} onClick={onClick}>
+			{doneToday && <CelebrationSparkles />}
 			{isAnimating && <StarBurst />}
 			{isDone && <span className="fit-set-card-checkmark">✓</span>}
+			{isSuggested && <span className="fit-set-card-next-badge">next</span>}
 
 			<div className="fit-set-card-header">{displayHeader}</div>
 

@@ -133,6 +133,7 @@ export interface Session {
 	startTime: string; // ISO 8601 datetime
 	endTime?: string; // ISO 8601 datetime
 	workout?: string; // Workout name (display name, not wikilink)
+	workoutRef?: string; // Raw workout reference from frontmatter (wikilink format)
 	programId?: string; // Program ID for generating wikilink to workout
 	status: SessionStatus;
 	exercises: SessionExercise[];
