@@ -9,7 +9,7 @@
  * - With question: displays post-set question input (reps/RPE/weight)
  */
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { RuleProgressPill } from './RuleProgressPill';
 
 /** Rule progress info for coach tip */
@@ -256,8 +256,8 @@ export function ActionFooter({
 		</div>
 	);
 
-	// Render question input if provided
-	const renderQuestion = () => {
+	// Render question content (without animation wrapper)
+	const getQuestionContent = () => {
 		if (!question) return null;
 
 		switch (question.type) {
@@ -270,15 +270,15 @@ export function ActionFooter({
 		}
 	};
 
-	// Render action buttons (only when no question)
-	const renderActions = () => {
-		if (question || !primaryAction) return null;
+	// Render action buttons content (without animation wrapper)
+	const getActionsContent = () => {
+		if (!primaryAction) return null;
 
 		const action = primaryAction; // TypeScript narrowing helper
 
 		if (layout === 'triple') {
 			return (
-				<>
+				<div className="fit-action-buttons-row">
 					{leftAction ? (
 						<button
 							className={getButtonClass(leftAction.variant ?? 'ghost')}
@@ -310,7 +310,7 @@ export function ActionFooter({
 					) : (
 						<div className="fit-button-placeholder" />
 					)}
-				</>
+				</div>
 			);
 		}
 
@@ -324,6 +324,42 @@ export function ActionFooter({
 			</button>
 		);
 	};
+
+	// Render interactive content (question OR actions) with coordinated animation
+	// Uses single AnimatePresence with mode="wait" so exit completes before enter
+	const renderInteractiveContent = () => (
+		<AnimatePresence mode="wait">
+			{question ? (
+				<motion.div
+					key="question-panel"
+					initial={{ opacity: 0, height: 0 }}
+					animate={{ opacity: 1, height: 'auto' }}
+					exit={{ opacity: 0, height: 0 }}
+					transition={{
+						duration: 0.25,
+						ease: [0.4, 0, 0.2, 1], // Material Design easing
+					}}
+					style={{ overflow: 'hidden' }}
+				>
+					{getQuestionContent()}
+				</motion.div>
+			) : primaryAction ? (
+				<motion.div
+					key="action-buttons"
+					initial={{ opacity: 0, height: 0 }}
+					animate={{ opacity: 1, height: 'auto' }}
+					exit={{ opacity: 0, height: 0 }}
+					transition={{
+						duration: 0.25,
+						ease: [0.4, 0, 0.2, 1], // Material Design easing
+					}}
+					style={{ overflow: 'hidden' }}
+				>
+					{getActionsContent()}
+				</motion.div>
+			) : null}
+		</AnimatePresence>
+	);
 
 	// Render coach bubble content
 	const coachBubbleContent = coachTip ? (
@@ -388,8 +424,7 @@ export function ActionFooter({
 				)
 			)}
 
-			{renderQuestion()}
-			{renderActions()}
+			{renderInteractiveContent()}
 		</div>
 	);
 }

@@ -8269,10 +8269,19 @@
 
 /* Triple-button layout: [Cancel] [DONE] [Skip] */
 .fit-action-footer-triple {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+/* Action buttons row wrapper for animation */
+.fit-action-buttons-row {
 	display: grid;
 	grid-template-columns: 1fr 2fr 1fr;
 	gap: 12px;
 	align-items: center;
+	width: 100%;
+	padding-bottom: 4px; /* Space for 3D button shadow */
 }
 
 /* Summary footer with coach bubble and continue button - Duolingo-style */
@@ -8478,6 +8487,11 @@
 
 .fit-footer-question {
 	width: 100%;
+	/* Fixed height to prevent layout jumping between question types */
+	min-height: 220px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
 }
 
 .fit-footer-question-title {
@@ -9924,4 +9938,32 @@ p.fit-program-list-item-description {
 	z-index: 200;
 	border-top: none;
 	border-bottom: 1px solid var(--fit-border, #E5E5E5);
+}
+
+/* Green background when showing questions at top - indicates action required */
+.fit-action-footer-top.fit-action-footer-question {
+	background: var(--fit-success, #58CC02);
+	border-bottom-color: var(--fit-success-shadow, #46A302);
+}
+
+.fit-action-footer-top.fit-action-footer-question .fit-footer-question-title {
+	color: white;
+}
+
+.fit-action-footer-top.fit-action-footer-question .fit-number-button {
+	background: white;
+	color: var(--fit-text-primary, #4B4B4B);
+	border-bottom-color: #E5E5E5;
+}
+
+.fit-action-footer-top.fit-action-footer-question .fit-number-button.in-range {
+	background: #e8f4fc;
+	color: #1899d6;
+	border-bottom-color: #1CB0F6;
+}
+
+.fit-action-footer-top.fit-action-footer-question .fit-number-button.is-current {
+	background: #2B70C9;
+	color: white;
+	border-bottom-color: #1D5AA6;
 }
