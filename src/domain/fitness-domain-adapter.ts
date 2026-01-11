@@ -1226,11 +1226,15 @@ export class FitnessDomainAdapter {
 		}
 
 		// Evaluate session with fitness-dsl
+		// Use "next_session" timing filter to only show rules that affect the next session
+		// (not "next_set" rules which already applied during the workout)
 		const changeReport = evaluateSession(
 			sessionResults,
 			exerciseTarget as ExerciseTarget,
 			this.compiledProgram.globalRules,
-			[sessionResults] // allSessions - just current for now
+			[sessionResults], // allSessions - just current for now
+			[], // previousReports
+			"next_session" // timingFilter - only evaluate next_session rules
 		);
 
 		if (!changeReport) {
