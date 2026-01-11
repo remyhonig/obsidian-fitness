@@ -8,7 +8,7 @@
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { App } from 'obsidian';
 import type MainPlugin from '../../main';
-import { FitnessDomainAdapter, ProgramData, SessionState } from '../../domain/fitness-domain-adapter';
+import { FitnessDomainAdapter, ProgramData, SessionState, ScheduleStatus } from '../../domain/fitness-domain-adapter';
 import { UserSettingsRepository } from '../../data/user-settings-repository';
 
 // ============================================================================
@@ -79,6 +79,7 @@ interface DomainContextValue {
 	getSessionProgress: () => number;
 	isSessionComplete: () => boolean;
 	getCompletedSessions: () => Promise<import('../../types').Session[]>;
+	getScheduleStatus: () => Promise<ScheduleStatus | null>;
 }
 
 const DomainContext = createContext<DomainContextValue | null>(null);
@@ -165,6 +166,7 @@ export function DomainProvider({
 	const getSessionProgress = () => adapter.getSessionProgress();
 	const isSessionComplete = () => adapter.isSessionComplete();
 	const getCompletedSessions = () => adapter.getCompletedSessions();
+	const getScheduleStatus = () => adapter.getScheduleStatus();
 
 	const value: DomainContextValue = {
 		adapter,
@@ -179,7 +181,8 @@ export function DomainProvider({
 		saveSession,
 		getSessionProgress,
 		isSessionComplete,
-		getCompletedSessions
+		getCompletedSessions,
+		getScheduleStatus
 	};
 
 	return (

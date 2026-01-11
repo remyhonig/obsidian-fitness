@@ -18,6 +18,7 @@ import {
 	compileProgramFromString,
 	generateExecutionView,
 	evaluateSession,
+	getScheduleStatus as dslGetScheduleStatus,
 	FitnessDSLEngine,
 	isErrorResult,
 	isStartWorkoutResult,
@@ -35,6 +36,10 @@ import {
 	type RuleProgress,
 	type ExerciseRuleProgress,
 	type SetResult,
+	type ScheduleStatus,
+	type CycleWorkoutStatus,
+	type WorkoutSessionHistory,
+	type TriggeredRuleSummary,
 } from 'fitness-dsl';
 import { SessionRepository } from '../data/session-repository';
 import type { Session } from '../types';
@@ -52,6 +57,11 @@ export type {
 	// Rule progress tracking types
 	RuleProgress,
 	ExerciseRuleProgress,
+	// Schedule status types
+	ScheduleStatus,
+	CycleWorkoutStatus,
+	WorkoutSessionHistory,
+	TriggeredRuleSummary,
 } from 'fitness-dsl';
 
 // Re-export types from fitness-dsl for convenience
@@ -344,9 +354,30 @@ export class FitnessDomainAdapter {
 					if (!set.completed) continue;
 
 					// Format timestamp: use set timestamp if available, otherwise session date
-					const datetime = set.timestamp
-						? set.timestamp.replace('T', ' ').substring(0, 16)
-						: `${date} 00:00`;
+					// Keep ISO 8601 format with 'T' separator for reliable parsing
+					let datetime: string;
+					if (set.timestamp && set.timestamp.includes('T')) {
+						// Full ISO timestamp: "2024-01-15T10:30:00" or "2024-01-15T10:30:00.000Z"
+						datetime = set.timestamp.substring(0, 19);
+					} else if (set.timestamp && set.timestamp.includes(':')) {
+						// Time-only format: "01:29:37" - combine with session date
+						datetime = `${date}T${set.timestamp.substring(0, 8)}`;
+					} else {
+						// No timestamp available - use session date at midnight
+						datetime = `${date}T00:00:00`;
+					}
+
+					// Validate the datetime before adding
+					const testDate = new Date(datetime);
+					if (isNaN(testDate.getTime())) {
+						console.error('[FitnessDomainAdapter] Invalid datetime:', {
+							datetime,
+							setTimestamp: set.timestamp,
+							sessionDate: date,
+							exercise: exercise.exercise,
+							workout,
+						});
+					}
 
 					results.push({
 						datetime,
@@ -885,6 +916,31 @@ export class FitnessDomainAdapter {
 	 */
 	async getCompletedSessions(): Promise<Session[]> {
 		return this.sessionRepository.list();
+	}
+
+	/**
+	 * Get complete schedule status including training cycle, recovery timing, and rule context.
+	 * This provides all the information needed to display the home screen schedule.
+	 *
+	 * @returns ScheduleStatus from the DSL with full cycle information, or null if no program loaded
+	 */
+	async getScheduleStatus(): Promise<ScheduleStatus | null> {
+		if (!this.compiledProgram) {
+			return null;
+		}
+
+		// Load completed sessions and convert to SetResult format
+		const sessions = await this.sessionRepository.list();
+		const setResults = this.convertSessionsToSetResults(sessions);
+		const currentTime = new Date().toISOString();
+
+		// Call the DSL function - let it fail hard if there's an error
+		return dslGetScheduleStatus(
+			this.compiledProgram,
+			setResults,
+			[], // changeReports - could be populated from stored rule evaluations
+			currentTime
+		);
 	}
 
 	/**
