@@ -462,15 +462,17 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	};
 
 	// Handle inline reps selection
+	// Short delay before transitioning to let user confirm their selection
 	const handleInlineReps = (reps: number) => {
 		setPendingSet(prev => ({ ...prev, reps }));
-		setDetailInputMode('rpe');
+		setTimeout(() => setDetailInputMode('rpe'), 350);
 	};
 
 	// Handle inline RPE selection
+	// Short delay before transitioning to let user confirm their selection
 	const handleInlineRPE = (rpe: number) => {
 		setPendingSet(prev => ({ ...prev, rpe }));
-		setDetailInputMode('weight');
+		setTimeout(() => setDetailInputMode('weight'), 350);
 	};
 
 	// Handle inline weight confirm
@@ -625,14 +627,16 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 										min: currentExercise?.targetRepsMin ?? 8,
 										max: currentExercise?.targetRepsMax ?? 12,
 										onSelect: handleInlineReps,
-										currentValue: isEditing ? editingSet?.reps : undefined,
+										// Show pending selection or editing value
+										currentValue: pendingSet.reps ?? (isEditing ? editingSet?.reps : undefined),
 									};
 								case 'rpe':
 									return {
 										type: 'rpe',
 										target: targetRPE,
 										onSelect: handleInlineRPE,
-										currentValue: isEditing ? editingSet?.rpe : undefined,
+										// Show pending selection or editing value
+										currentValue: pendingSet.rpe ?? (isEditing ? editingSet?.rpe : undefined),
 									};
 								case 'weight':
 									return {

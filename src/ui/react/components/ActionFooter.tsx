@@ -327,8 +327,9 @@ export function ActionFooter({
 
 	// Render interactive content (question OR actions) with coordinated animation
 	// Uses single AnimatePresence with mode="wait" so exit completes before enter
+	// initial={false} prevents animation on first mount (e.g., when navigating between exercises)
 	const renderInteractiveContent = () => (
-		<AnimatePresence mode="wait">
+		<AnimatePresence mode="wait" initial={false}>
 			{question ? (
 				<motion.div
 					key="question-panel"
