@@ -1,66 +1,123 @@
+/**
+ * WorkoutPickerScreen stories using the real rule engine.
+ *
+ * These stories load programs via the engine adapter to ensure
+ * the parsed program state matches what the engine produces.
+ */
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { WorkoutPickerScreen } from './WorkoutPickerScreen';
+import { withEngineProgram, withProviders } from '../../../storybook/decorators/providers';
 import { withBottomNav } from './storyDecorators';
+import { PROGRAM_WITH_TMS } from '../../../storybook/programs';
 
-const SAMPLE_PROGRAM = `# Full Program
+// Program with many workouts to test scrolling
+const FULL_PROGRAM = `# Full Program
 
-A comprehensive workout program.
+A comprehensive workout program with many workouts.
 
-## Schedule
+---
 
-### Weekly Schedule
-- **Monday**: Push Day
-- **Tuesday**: Pull Day
-- **Wednesday**: Legs
-- **Thursday**: Rest
-- **Friday**: Upper Body
-- **Saturday**: Lower Body
+# Schedule
 
-## Workouts
+## Weekly Pattern
 
-### Push Day
+- Monday: Push Day
+- Tuesday: Pull Day
+- Wednesday: Legs
+- Thursday: Upper Body
+- Friday: Lower Body
+- Saturday: Full Body
+
+---
+
+# Workouts
+
+## Push Day
+
 Chest, shoulders, triceps.
 
-**Exercises**
-1. Bench Press - 4x6-8 @ 80kg, RPE 8, rest 180s
-2. Overhead Press - 3x8-10 @ 50kg, RPE 8, rest 120s
-3. Incline Dumbbell Press - 3x10-12 @ 30kg, RPE 7, rest 90s
-4. Tricep Dips - 3x12-15 @ bodyweight, rest 60s
+- Bench Press: 4x6-8 @ 80kg RPE 8, rest 180s
+- Overhead Press: 3x8-10 @ 50kg RPE 8, rest 120s
+- Incline Dumbbell Press: 3x10-12 @ 30kg RPE 7, rest 90s
+- Tricep Dips: 3x12-15 @ bodyweight RPE 7, rest 60s
 
-### Pull Day
+---
+
+## Pull Day
+
 Back and biceps.
 
-**Exercises**
-1. Barbell Row - 4x6-8 @ 70kg, RPE 8, rest 180s
-2. Pull-ups - 3x8-10 @ bodyweight, RPE 8, rest 120s
-3. Face Pulls - 3x15-20 @ 20kg, RPE 7, rest 60s
-4. Barbell Curls - 3x10-12 @ 30kg, RPE 7, rest 60s
+- Barbell Row: 4x6-8 @ 70kg RPE 8, rest 180s
+- Pull-ups: 3x8-10 @ bodyweight RPE 8, rest 120s
+- Face Pulls: 3x15-20 @ 20kg RPE 7, rest 60s
+- Barbell Curls: 3x10-12 @ 30kg RPE 7, rest 60s
 
-### Legs
+---
+
+## Legs
+
 Full leg workout.
 
-**Exercises**
-1. Squat - 4x5 @ 100kg, RPE 8, rest 180s
-2. Romanian Deadlift - 3x8-10 @ 80kg, RPE 7, rest 120s
-3. Leg Press - 3x12-15 @ 150kg, RPE 8, rest 90s
-4. Leg Curls - 3x12-15 @ 40kg, RPE 7, rest 60s
+- Squat: 4x5 @ 100kg RPE 8, rest 180s
+- Romanian Deadlift: 3x8-10 @ 80kg RPE 7, rest 120s
+- Leg Press: 3x12-15 @ 150kg RPE 8, rest 90s
+- Leg Curls: 3x12-15 @ 40kg RPE 7, rest 60s
 
-### Upper Body
+---
+
+## Upper Body
+
 Balanced upper body.
 
-**Exercises**
-1. Bench Press - 3x8-10 @ 75kg, RPE 7, rest 150s
-2. Barbell Row - 3x8-10 @ 65kg, RPE 7, rest 150s
-3. Overhead Press - 3x10-12 @ 45kg, RPE 7, rest 90s
+- Bench Press: 3x8-10 @ 75kg RPE 7, rest 150s
+- Barbell Row: 3x8-10 @ 65kg RPE 7, rest 150s
+- Overhead Press: 3x10-12 @ 45kg RPE 7, rest 90s
 
-### Lower Body
+---
+
+## Lower Body
+
 Focused leg work.
 
-**Exercises**
-1. Squat - 3x8-10 @ 90kg, RPE 7, rest 180s
-2. Leg Press - 4x10-12 @ 140kg, RPE 7, rest 90s
-3. Walking Lunges - 3x12 each @ 20kg, rest 60s
+- Squat: 3x8-10 @ 90kg RPE 7, rest 180s
+- Leg Press: 4x10-12 @ 140kg RPE 7, rest 90s
+- Walking Lunges: 3x12 @ 20kg RPE 7, rest 60s
+
+---
+
+## Full Body
+
+Complete workout.
+
+- Squat: 3x5 @ 100kg RPE 8, rest 180s
+- Bench Press: 3x8 @ 80kg RPE 8, rest 150s
+- Deadlift: 1x5 @ 120kg RPE 8, rest 180s
+`;
+
+const SINGLE_WORKOUT = `# Simple Program
+
+One workout only.
+
+---
+
+# Schedule
+
+## Weekly Pattern
+
+- Monday: Full Body
+
+---
+
+# Workouts
+
+## Full Body
+
+Complete workout.
+
+- Squat: 3x5 @ 100kg RPE 8, rest 180s
+- Bench Press: 3x8 @ 80kg RPE 8, rest 150s
+- Deadlift: 1x5 @ 120kg RPE 8, rest 180s
 `;
 
 const meta: Meta<typeof WorkoutPickerScreen> = {
@@ -78,40 +135,40 @@ type Story = StoryObj<typeof WorkoutPickerScreen>;
 export const Default: Story = {
 	args: {
 		onNavigate: action('navigate'),
-		programMarkdown: SAMPLE_PROGRAM,
 	},
+	decorators: [withEngineProgram(FULL_PROGRAM)],
 };
 
 export const AsTab: Story = {
 	args: {
 		onNavigate: action('navigate'),
 		isTab: true,
-		programMarkdown: SAMPLE_PROGRAM,
 	},
+	decorators: [withEngineProgram(FULL_PROGRAM)],
 };
 
 export const NoProgram: Story = {
 	args: {
 		onNavigate: action('navigate'),
-	},
+		noProgram: true,
+	} as Record<string, unknown>,
+	decorators: [withProviders],
 };
 
 export const SingleWorkout: Story = {
 	args: {
 		onNavigate: action('navigate'),
-		programMarkdown: `# Simple Program
-
-One workout only.
-
-## Workouts
-
-### Full Body
-Complete workout.
-
-**Exercises**
-1. Squat - 3x5 @ 100kg, rest 180s
-2. Bench Press - 3x8 @ 80kg, rest 150s
-3. Deadlift - 1x5 @ 120kg, rest 180s
-`,
 	},
+	decorators: [withEngineProgram(SINGLE_WORKOUT)],
+};
+
+/**
+ * Program with training maxes.
+ * Shows computed weights in workout list.
+ */
+export const WithTrainingMaxes: Story = {
+	args: {
+		onNavigate: action('navigate'),
+	},
+	decorators: [withEngineProgram(PROGRAM_WITH_TMS)],
 };

@@ -16,6 +16,7 @@ import {
 	evaluateSession,
 	isErrorResult,
 	isStartWorkoutResult,
+	computeRuleProgress,
 	type CompiledProgram,
 	type ExerciseExecutionView,
 	type CompletedSetInput,
@@ -23,7 +24,16 @@ import {
 	type ExerciseRuleProgress,
 	type ExerciseTarget,
 	type SessionResults,
+	type PreviousStreaks,
 } from 'fitness-dsl';
+
+/** SessionData format required by generateExecutionView for rule progress */
+interface SessionDataForRules {
+	date: string;
+	workout: string;
+	exercise: string;
+	sets: Array<{ reps: number; weight: string; rpe: number }>;
+}
 
 import type {
 	ProgramData,
@@ -58,6 +68,23 @@ export function createEngineAdapter(config: EngineAdapterConfig) {
 	let programData: ProgramData | null = null;
 	let compiledProgram: CompiledProgram | null = null;
 	const engine = new FitnessDSLEngine({ debug: false, autoEvaluate: true });
+
+	// Convert session history to SessionData[] format for rule evaluation
+	// SessionData is per-exercise, so we flatten the structure
+	const sessionHistory: SessionDataForRules[] = (config.sessionHistory ?? []).flatMap(entry =>
+		entry.exercises.map(ex => ({
+			date: entry.date,
+			workout: entry.workout,
+			exercise: ex.name,
+			sets: ex.sets.map(s => ({
+				reps: s.reps,
+				weight: typeof s.weight === 'number'
+					? (s.weight === 0 ? 'bodyweight' : `${s.weight}kg`)
+					: s.weight,
+				rpe: s.rpe,
+			})),
+		}))
+	);
 
 	// Parse and compile the program
 	try {
@@ -143,47 +170,112 @@ export function createEngineAdapter(config: EngineAdapterConfig) {
 		return `${yyyy}-${mm}-${dd}-${hh}-${min}-${ss}-${slug}`;
 	};
 
+	// Define getExecutionView as a standalone function so it can be referenced in evaluateExerciseCompletion
+	const getExecutionView = (exerciseIndex: number): ExerciseExecutionView | null => {
+		// Allow getting execution view for both active and completed sessions
+		// (FinishScreen needs this for completed sessions)
+		if (!compiledProgram || (sessionState.exercises.length === 0)) {
+			return null;
+		}
+
+		const sessionExercise = sessionState.exercises[exerciseIndex];
+		if (!sessionExercise) {
+			return null;
+		}
+
+		// Find the matching exercise target from the compiled program
+		const exerciseTarget = compiledProgram.exercises.find(
+			e => e.name.toLowerCase() === sessionExercise.exercise.toLowerCase() &&
+			     e.workout.toLowerCase() === sessionState.workout?.toLowerCase()
+		);
+
+		if (!exerciseTarget) {
+			return null;
+		}
+
+		// Convert completed sets to CompletedSetInput format
+		const completedSets: CompletedSetInput[] = sessionExercise.sets.map(set => ({
+			reps: set.reps,
+			weight: set.weight === 0 ? 'bodyweight' : `${set.weight}kg`,
+			rpe: set.rpe,
+		}));
+
+		// Build current session data for rule evaluation
+		const currentSessionData: SessionDataForRules = {
+			date: sessionState.date ?? new Date().toISOString().split('T')[0] ?? '',
+			workout: sessionState.workout ?? '',
+			exercise: sessionExercise.exercise,
+			sets: sessionExercise.sets.map(s => ({
+				reps: s.reps,
+				weight: s.weight === 0 ? 'bodyweight' : `${s.weight}kg`,
+				rpe: s.rpe,
+			})),
+		};
+
+		// Filter historical sessions for this exercise
+		const exerciseHistory = sessionHistory.filter(
+			h => h.exercise.toLowerCase() === sessionExercise.exercise.toLowerCase()
+		);
+
+		// Calculate previousStreaks from history BEFORE current session
+		// This allows streak broken detection when current session breaks the streak
+		// We treat the last historical session as "current" to properly count the streak
+		const previousStreaks: PreviousStreaks = [];
+		if (exerciseHistory.length > 0) {
+			// To properly count streaks, we need to evaluate with the last historical
+			// session as the "current" session (streak counting requires currentSessionMatches)
+			const lastHistorySession = exerciseHistory[exerciseHistory.length - 1];
+			const historyWithoutLast = exerciseHistory.slice(0, -1);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const historyProgress = computeRuleProgress(
+				exerciseTarget,
+				compiledProgram.globalRules,
+				historyWithoutLast as any,
+				lastHistorySession as any // Treat last history session as "current"
+			);
+			// Extract streak counts from each rule's progress
+			for (const rule of historyProgress.rules) {
+				if (rule.progress && rule.progress.current > 0) {
+					previousStreaks.push([rule.ruleSource, rule.progress.current]);
+				}
+			}
+		}
+
+		// Combine history with current session
+		const allSessionData = [...exerciseHistory, currentSessionData];
+
+		// Generate the execution view using the DSL engine
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const executionView = generateExecutionView(
+			exerciseTarget,
+			completedSets,
+			compiledProgram.globalRules,
+			[],
+			compiledProgram,
+			allSessionData as any,
+			previousStreaks
+		);
+
+		// Debug: log rule progress and streak broken detection
+		if (executionView.ruleProgress) {
+			console.log('[DEBUG] Final ruleProgress for', sessionExercise.exercise);
+			for (const rule of executionView.ruleProgress.rules) {
+				console.log('[DEBUG] Final rule:', rule.ruleSource,
+					'progress:', rule.progress ? `${rule.progress.current}/${rule.progress.required}` : 'none',
+					'currentlyMet:', rule.currentlyMet,
+					'streakBroken:', rule.streakBroken);
+			}
+		}
+
+		return executionView;
+	};
+
 	return {
 		getProgram: (): ProgramData | null => programData,
 		getProgramMarkdown: (): string | null => config.programMarkdown,
 		getSessionState: (): SessionState => sessionState,
 
-		getExecutionView: (exerciseIndex: number): ExerciseExecutionView | null => {
-			if (!compiledProgram || !sessionState.isActive) {
-				return null;
-			}
-
-			const sessionExercise = sessionState.exercises[exerciseIndex];
-			if (!sessionExercise) {
-				return null;
-			}
-
-			// Find the matching exercise target from the compiled program
-			const exerciseTarget = compiledProgram.exercises.find(
-				e => e.name.toLowerCase() === sessionExercise.exercise.toLowerCase() &&
-				     e.workout.toLowerCase() === sessionState.workout?.toLowerCase()
-			);
-
-			if (!exerciseTarget) {
-				return null;
-			}
-
-			// Convert completed sets to CompletedSetInput format
-			const completedSets: CompletedSetInput[] = sessionExercise.sets.map(set => ({
-				reps: set.reps,
-				weight: set.weight === 0 ? 'bodyweight' : `${set.weight}kg`,
-				rpe: set.rpe,
-			}));
-
-			// Generate the execution view using the DSL engine
-			return generateExecutionView(
-				exerciseTarget,
-				completedSets,
-				compiledProgram.globalRules,
-				[],
-				compiledProgram
-			);
-		},
+		getExecutionView,
 
 		evaluateExerciseCompletion: (exerciseIndex: number): ExerciseCompletionResult => {
 			const exerciseState = sessionState.exercises[exerciseIndex];
@@ -220,7 +312,7 @@ export function createEngineAdapter(config: EngineAdapterConfig) {
 			};
 
 			// Get execution view for rule progress
-			const executionView = this.getExecutionView(exerciseIndex);
+			const executionView = getExecutionView(exerciseIndex);
 			const ruleProgress = executionView?.ruleProgress ?? null;
 
 			// Check for broken streaks
@@ -263,12 +355,32 @@ export function createEngineAdapter(config: EngineAdapterConfig) {
 				})),
 			};
 
+			// Convert historical sessions for this exercise to SessionResults format
+			const historicalSessionResults: SessionResults[] = sessionHistory
+				.filter(h => h.exercise.toLowerCase() === exerciseState.exercise.toLowerCase())
+				.map(h => ({
+					date: h.date,
+					workout: h.workout,
+					exercise: h.exercise,
+					sets: h.sets.map(s => ({
+						datetime: `${h.date} 00:00`,
+						workout: h.workout,
+						exercise: h.exercise,
+						reps: s.reps,
+						weight: s.weight,
+						rpe: s.rpe,
+					})),
+				}));
+
+			// Combine historical sessions with current session
+			const allSessions = [...historicalSessionResults, sessionResults];
+
 			// Evaluate session rules (next_session timing only)
 			const changeReport = evaluateSession(
 				sessionResults,
 				exerciseTarget as ExerciseTarget,
 				compiledProgram.globalRules,
-				[sessionResults],
+				allSessions,
 				[],
 				'next_session'
 			);

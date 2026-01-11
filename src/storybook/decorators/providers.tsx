@@ -276,6 +276,40 @@ export function withLoadedProgram(programMarkdown: string): Decorator {
 // =============================================================================
 
 /**
+ * Creates a decorator with a loaded program using the engine adapter.
+ * No session is started - useful for screens that just display program info.
+ *
+ * @example
+ * export const WorkoutDetail: Story = {
+ *   decorators: [withEngineProgram(PROGRAM_MARKDOWN)],
+ * };
+ */
+export function withEngineProgram(programMarkdown: string): Decorator {
+	return (Story) => {
+		const app = new App();
+		const plugin = new Plugin(app);
+
+		const adapter = createEngineAdapter({ programMarkdown });
+
+		setStorybookFiles({
+			'Fitness/Programs/Custom.md': programMarkdown,
+		});
+
+		return (
+			<AppProvider app={app as unknown as import('obsidian').App}>
+				<PluginProvider plugin={plugin as unknown as import('../../main').default}>
+					<DomainProvider adapter={adapter as unknown as FitnessDomainAdapter} userSettings={createMockUserSettings()}>
+						<div className="fit-app fit-view fit-view-mobile" style={{ height: '100vh' }}>
+							<Story />
+						</div>
+					</DomainProvider>
+				</PluginProvider>
+			</AppProvider>
+		);
+	};
+}
+
+/**
  * Configuration for engine-based stories
  */
 export interface EngineStoryArgs extends StoryArgs {
@@ -376,35 +410,54 @@ export function withEngine(programMarkdown: string, sessionHistory?: SessionHist
 
 /**
  * Creates a decorator for a workout session using the engine.
- * Automatically starts the specified workout.
+ * Automatically starts the specified workout and optionally simulates sets.
  *
  * @example
+ * // Basic session
  * export const ActiveSession: Story = {
  *   decorators: [withEngineSession('Upper Body', PROGRAM_MARKDOWN)],
  * };
+ *
+ * // Session with sets completed
+ * export const MidWorkout: Story = {
+ *   decorators: [withEngineSession('Upper Body', PROGRAM, {
+ *     'Bench Press': [{ reps: 10, weight: 80, rpe: 7 }],
+ *   })],
+ * };
+ *
+ * // Session with history for rule evaluation
+ * export const WithHistory: Story = {
+ *   decorators: [withEngineSession('Upper Body', PROGRAM, {
+ *     'Bench Press': [{ reps: 10, weight: 80, rpe: 6 }],
+ *   }, [{ date: '2024-01-08', workout: 'Upper Body', exercises: [...] }])],
+ * };
  */
-export function withEngineSession(workoutName: string, programMarkdown: string): Decorator {
-	return (Story, context: StoryContext) => {
-		const args = context.args as EngineStoryArgs;
+export function withEngineSession(
+	workoutName: string,
+	programMarkdown: string,
+	exerciseSets?: Record<string, SetData[]>,
+	sessionHistory?: SessionHistoryEntry[]
+): Decorator {
+	return (Story) => {
 		const app = new App();
 		const plugin = new Plugin(app);
 
 		const adapter = createEngineAdapter({
 			programMarkdown,
-			sessionHistory: args.sessionHistory,
+			sessionHistory,
 		});
 
 		// Start the workout
 		adapter.dispatch({ type: 'start_workout', workoutName });
 
-		// Simulate sets if provided in args
-		if (args.simulatedSets) {
+		// Simulate sets if provided
+		if (exerciseSets) {
 			const sessionState = adapter.getSessionState();
 			for (let i = 0; i < sessionState.exercises.length; i++) {
 				const exercise = sessionState.exercises[i];
 				if (!exercise) continue;
 
-				const sets = args.simulatedSets[exercise.exercise];
+				const sets = exerciseSets[exercise.exercise];
 				if (sets) {
 					while (adapter.getSessionState().currentExerciseIndex < i) {
 						adapter.dispatch({ type: 'next_exercise' });

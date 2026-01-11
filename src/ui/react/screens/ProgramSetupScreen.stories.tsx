@@ -1,95 +1,57 @@
+/**
+ * ProgramSetupScreen stories.
+ *
+ * These stories test the program setup UI where users configure
+ * training maxes before starting their program.
+ */
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { ProgramSetupScreen } from './ProgramSetupScreen';
+import { withProviders } from '../../../storybook/decorators/providers';
 import { withBottomNav } from './storyDecorators';
+import { PROGRAM_WITH_TMS, SIMPLE_PROGRAM } from '../../../storybook/programs';
 
-// Program with training maxes
-const PROGRAM_WITH_TMS = `# Strength Program
+const meta: Meta<typeof ProgramSetupScreen> = {
+	title: 'Screens/ProgramSetupScreen',
+	component: ProgramSetupScreen,
+	parameters: {
+		layout: 'fullscreen',
+	},
+	decorators: [withBottomNav('home'), withProviders],
+};
 
-A comprehensive strength training program with training maxes.
+export default meta;
+type Story = StoryObj<typeof ProgramSetupScreen>;
 
----
+/**
+ * Program with training maxes.
+ * Shows the TM input form for exercises that use percentage-based weights.
+ */
+export const WithTrainingMaxes: Story = {
+	args: {
+		programPath: 'Fitness/Programs/531.md',
+		onNavigate: action('navigate'),
+		files: {
+			'Fitness/Programs/531.md': PROGRAM_WITH_TMS,
+		},
+	} as Record<string, unknown>,
+};
 
-# Progression
+/**
+ * Simple program without training maxes.
+ * Should skip the TM setup and go straight to the home screen.
+ */
+export const SimpleProgram: Story = {
+	args: {
+		programPath: 'Fitness/Programs/Simple.md',
+		onNavigate: action('navigate'),
+		files: {
+			'Fitness/Programs/Simple.md': SIMPLE_PROGRAM,
+		},
+	} as Record<string, unknown>,
+};
 
-## Training Maxes
-
-- Squat TM: 100kg
-- Bench Press TM: 80kg
-- Deadlift TM: 120kg
-- Overhead Press TM: 50kg
-
----
-
-# Schedule
-
-## Weekly Pattern
-
-- Monday: Squat Day
-- Wednesday: Bench Day
-- Friday: Deadlift Day
-
----
-
-# Workouts
-
-## Squat Day
-
-Heavy squat day with assistance.
-
-- Squat: 3x5 @ 85% TM RPE 8, rest 180s
-- Romanian Deadlift: 3x10 @ 60kg RPE 7, rest 120s
-- Leg Press: 3x12-15 @ 150kg RPE 8, rest 90s
-
----
-
-## Bench Day
-
-Heavy bench day with assistance.
-
-- Bench Press: 3x5 @ 85% TM RPE 8, rest 180s
-- Overhead Press: 3x8 @ 70% TM RPE 7, rest 120s
-- Tricep Pushdown: 3x12-15 @ 25kg RPE 7, rest 60s
-
----
-
-## Deadlift Day
-
-Heavy deadlift day with assistance.
-
-- Deadlift: 3x5 @ 85% TM RPE 8, rest 180s
-- Barbell Row: 3x8-10 @ 70kg RPE 7, rest 120s
-- Lat Pulldown: 3x10-12 @ 60kg RPE 7, rest 90s
-`;
-
-// Simple program without training maxes
-const SIMPLE_PROGRAM = `# Simple Workout
-
-A simple program without training maxes.
-
----
-
-# Schedule
-
-## Weekly Pattern
-
-- Monday: Full Body
-
----
-
-# Workouts
-
-## Full Body
-
-A complete full body workout.
-
-- Push-ups: 3x15-20 @ BW RPE 7, rest 60s
-- Squats: 3x15-20 @ BW RPE 7, rest 60s
-- Pull-ups: 3x8-12 @ BW RPE 8, rest 90s
-- Lunges: 3x12 @ BW RPE 7, rest 60s
-`;
-
-// 5/3/1 style program
+// 5/3/1 style program with 4 training maxes
 const FIVE_THREE_ONE = `# 5/3/1 Forever
 
 Jim Wendler's 5/3/1 program variation.
@@ -147,7 +109,7 @@ Main deadlift movement with accessories.
 
 - Deadlift: 3x5 @ 85% TM RPE 8, rest 180s
 - Good Morning: 3x10 @ 60kg RPE 7, rest 120s
-- Ab Wheel: 3x10-15 @ BW RPE 8, rest 60s
+- Ab Wheel: 3x10-15 @ bodyweight RPE 8, rest 60s
 
 ---
 
@@ -160,38 +122,9 @@ Main overhead press with accessories.
 - Lateral Raise: 3x12-15 @ 10kg RPE 7, rest 60s
 `;
 
-const meta: Meta<typeof ProgramSetupScreen> = {
-	title: 'Screens/ProgramSetupScreen',
-	component: ProgramSetupScreen,
-	parameters: {
-		layout: 'fullscreen',
-	},
-	decorators: [withBottomNav('home')],
-};
-
-export default meta;
-type Story = StoryObj<typeof ProgramSetupScreen>;
-
-export const WithTrainingMaxes: Story = {
-	args: {
-		programPath: 'Fitness/Programs/Strength.md',
-		onNavigate: action('navigate'),
-		files: {
-			'Fitness/Programs/Strength.md': PROGRAM_WITH_TMS,
-		},
-	},
-};
-
-export const SimpleProgram: Story = {
-	args: {
-		programPath: 'Fitness/Programs/Simple.md',
-		onNavigate: action('navigate'),
-		files: {
-			'Fitness/Programs/Simple.md': SIMPLE_PROGRAM,
-		},
-	},
-};
-
+/**
+ * Full 5/3/1 style program with four training maxes.
+ */
 export const FiveThreeOne: Story = {
 	args: {
 		programPath: 'Fitness/Programs/531.md',
@@ -199,13 +132,16 @@ export const FiveThreeOne: Story = {
 		files: {
 			'Fitness/Programs/531.md': FIVE_THREE_ONE,
 		},
-	},
+	} as Record<string, unknown>,
 };
 
+/**
+ * File not found error state.
+ */
 export const FileNotFound: Story = {
 	args: {
 		programPath: 'Fitness/Programs/NonExistent.md',
 		onNavigate: action('navigate'),
 		files: {},
-	},
+	} as Record<string, unknown>,
 };

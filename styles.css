@@ -5184,12 +5184,19 @@
 
 .fit-finish-exercise {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
+	flex-direction: column;
+	gap: 8px;
 	padding: 12px 16px;
 	background: white;
 	border-radius: 12px;
 	box-shadow: 0 3px 0 #e5e5e5;
+}
+
+.fit-finish-exercise-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	width: 100%;
 }
 
 .fit-finish-exercise-name {
@@ -5202,6 +5209,12 @@
 	font-size: 12px;
 	font-weight: 600;
 	color: var(--fit-text-muted, #AFAFAF);
+}
+
+.fit-finish-exercise-progress {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
 }
 
 /* View log link */
@@ -5319,6 +5332,29 @@
 	grid-row: 2;
 	font-size: 12px;
 	color: var(--fit-text-muted, #AFAFAF);
+}
+
+/* Unified Rule Progress Cards */
+.fit-finish-rule-progress-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.fit-finish-rule-card {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+	background: var(--fit-bg-card, #f8f8f8);
+	border-radius: 12px;
+}
+
+.fit-finish-rule-card-exercise {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--fit-text-primary, #4B4B4B);
+	text-transform: lowercase;
 }
 
 /* Workout Complete State */
@@ -8961,7 +8997,13 @@
 	font-size: 10px;
 }
 
-.fit-progress-dot.filled {
+.fit-progress-dot.success {
+	color: var(--fit-success-green, #58CC02);
+	opacity: 1;
+}
+
+.fit-progress-dot.broken {
+	color: var(--fit-warning-orange, #FF9600);
 	opacity: 1;
 }
 

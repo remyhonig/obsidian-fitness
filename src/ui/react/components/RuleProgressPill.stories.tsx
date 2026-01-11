@@ -45,13 +45,14 @@ export const Complete: Story = {
 	},
 };
 
-/** Broken: Streak was reset */
+/** Broken: Streak was reset after 2 successful sessions */
 export const Broken: Story = {
 	args: {
 		current: 0,
 		required: 3,
 		unit: 'sessions',
 		variant: 'broken',
+		previousStreak: 2,
 	},
 };
 
@@ -97,6 +98,7 @@ export const AllVariants: Story = {
 				required={3}
 				unit="sessions"
 				variant="broken"
+				previousStreak={2}
 			/>
 		</div>
 	),
