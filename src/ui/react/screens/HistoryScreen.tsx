@@ -14,6 +14,7 @@ import { ExerciseGroup, type ExerciseSetData } from '../components/ExerciseGroup
 interface SessionSummary {
 	id: string;
 	date: string;
+	time: string; // HH:MM format
 	workout: string;
 	path: string;
 	exerciseCount?: number;
@@ -60,9 +61,13 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 			const metadata = parseYamlFrontmatter(content);
 			const stats = parseSessionStats(content);
 
+			// Parse time from filename: YYYY-MM-DD-HH-MM-SS-workout-name.md
+			const time = parseTimeFromFilename(file.basename);
+
 			sessionList.push({
 				id: file.basename,
 				date: metadata.date || file.basename.substring(0, 10),
+				time,
 				workout: extractWorkoutName(metadata.workout) || 'Unknown Workout',
 				path: file.path,
 				exerciseCount: stats.exerciseCount,
@@ -261,7 +266,7 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 										reps: session.workout.toLowerCase(),
 										rpe: 0,
 										variant: isLatestOfDay ? 'suggested' : 'pending',
-										headerText: formatDateForCard(session.date),
+										headerText: formatDateForCard(session.date, session.time),
 										detailText: formatSessionMeta(session.exerciseCount, session.duration),
 										onClick: () => onNavigate('finish', { sessionPath: session.path }),
 									};
@@ -334,15 +339,20 @@ function extractWorkoutName(workout: string | undefined): string | null {
 }
 
 /**
- * Format date for card header (e.g., "Mon, Jan 3")
+ * Format date for card header (e.g., "Mon, Jan 3" or "Mon, Jan 3 · 11:04")
  */
-function formatDateForCard(dateStr: string): string {
+function formatDateForCard(dateStr: string, time?: string): string {
 	const date = new Date(dateStr + 'T00:00:00');
-	return date.toLocaleDateString(undefined, {
+	const dateFormatted = date.toLocaleDateString(undefined, {
 		weekday: 'short',
 		month: 'short',
 		day: 'numeric'
 	}).toLowerCase();
+
+	if (time) {
+		return `${dateFormatted} · ${time}`;
+	}
+	return dateFormatted;
 }
 
 /**
@@ -370,4 +380,18 @@ function formatSessionMeta(exerciseCount?: number, duration?: number): string {
 		parts.push(`${mins}m`);
 	}
 	return parts.join(' · ') || 'completed';
+}
+
+/**
+ * Parse time from session filename
+ * Filename format: YYYY-MM-DD-HH-MM-SS-workout-name.md
+ * Returns HH:MM format or empty string if not parseable
+ */
+function parseTimeFromFilename(basename: string): string {
+	// Match pattern: 2026-01-10-11-04-30-workout-name
+	const match = basename.match(/^\d{4}-\d{2}-\d{2}-(\d{2})-(\d{2})-\d{2}/);
+	if (match && match[1] && match[2]) {
+		return `${match[1]}:${match[2]}`;
+	}
+	return '';
 }
