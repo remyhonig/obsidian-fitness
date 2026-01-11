@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useDomain } from '../contexts';
+import { useDomain, usePlugin } from '../contexts';
 import { ExerciseGroup, type ExerciseSetData } from '../components/ExerciseGroup';
 import { TopNav, type TimerConfig } from '../components/TopNav';
 import { ExerciseInfoModal } from '../components/ExerciseInfoModal';
@@ -104,6 +104,8 @@ interface SessionScreenProps {
 
 export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetailInputMode, initialPendingSet }: SessionScreenProps) {
 	const { adapter, session, dispatch, saveSession, getSessionProgress, isSessionComplete } = useDomain();
+	const plugin = usePlugin();
+	const controlsPosition = plugin.settings.controlsPosition;
 
 	// Step flow state
 	const [sessionStep, setSessionStep] = useState<SessionStep>('workout');
@@ -378,27 +380,57 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	const isSelectedSetNext = effectiveSelectedIndex === completedSets;
 	const selectedSet = currentExercise?.sets[effectiveSelectedIndex];
 
-	// Handle set card tap - works for any exercise
+	// Handle set card tap - differentiated behavior based on set state
 	const handleSetCardTap = (exerciseIndex: number, setIndex: number) => {
 		// If clicking on a different exercise, switch to it
 		if (exerciseIndex !== session.currentExerciseIndex) {
 			dispatch({ type: 'set_current_exercise', exerciseIndex });
-			setSelectedSetIndex(null); // Reset selection, will default to first incomplete set
+			setSelectedSetIndex(null);
 			setDetailInputMode('none');
+			setEditingSetIndex(null);
 			setViewedExerciseIndex(exerciseIndex);
 			return;
 		}
 
-		// Same exercise - select the set
-		setSelectedSetIndex(setIndex);
-		setDetailInputMode('none');
-		// Reset pending set when selecting a new card
-		if (setIndex === completedSets) {
+		// Same exercise - determine set state
+		const exercise = session.exercises[exerciseIndex];
+		const exerciseCompletedSets = exercise?.sets.length ?? 0;
+		const isDone = setIndex < exerciseCompletedSets;
+		const isNext = setIndex === exerciseCompletedSets;
+		const isPending = setIndex > exerciseCompletedSets;
+
+		// PENDING sets: do nothing (not interactive yet)
+		if (isPending) {
+			return;
+		}
+
+		// NEXT set: Start DONE flow directly (same as pressing DONE button)
+		if (isNext) {
+			dispatch({ type: 'start_rest_timer' });
+			setSelectedSetIndex(setIndex);
+			setEditingSetIndex(null);
 			setPendingSet({
 				reps: null,
 				rpe: null,
-				weight: getSuggestedWeight() ?? 0
+				weight: getSuggestedWeightForSet(setIndex) ?? 0
 			});
+			setDetailInputMode('reps');
+			return;
+		}
+
+		// DONE set: Start edit flow directly (same as pressing Edit button)
+		if (isDone) {
+			const set = exercise.sets[setIndex];
+			if (!set) return;
+			setSelectedSetIndex(setIndex);
+			setEditingSetIndex(setIndex);
+			setPendingSet({
+				reps: set.reps,
+				rpe: set.rpe,
+				weight: set.weight
+			});
+			setDetailInputMode('reps');
+			return;
 		}
 	};
 
@@ -569,6 +601,224 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 				}
 			};
 
+			// Compute className for ActionFooter based on position setting
+			const actionFooterClassName = controlsPosition === 'top' ? 'fit-action-footer-top' : '';
+
+			// Build the ActionFooter section (will be positioned based on controlsPosition)
+			const actionFooterSection = (
+				<>
+					{/* Unified ActionFooter - handles all states */}
+					{isViewingActiveExercise && !exerciseSummary && (() => {
+						// Build question prop based on current input mode
+						const buildQuestion = (): PostSetQuestion | undefined => {
+							switch (detailInputMode) {
+								case 'reps':
+									return {
+										type: 'reps',
+										min: currentExercise?.targetRepsMin ?? 8,
+										max: currentExercise?.targetRepsMax ?? 12,
+										onSelect: handleInlineReps,
+									};
+								case 'rpe':
+									return {
+										type: 'rpe',
+										target: targetRPE,
+										onSelect: handleInlineRPE,
+									};
+								case 'weight':
+									return {
+										type: 'weight',
+										value: pendingSet.weight,
+										pendingReps: pendingSet.reps ?? 0,
+										onChange: (weight: number) => setPendingSet(p => ({ ...p, weight })),
+										onConfirm: handleInlineWeightConfirm,
+									};
+								default:
+									return undefined;
+							}
+						};
+
+						const question = buildQuestion();
+
+						// When showing a question, don't show action buttons
+						if (question) {
+							return (
+								<ActionFooter
+									layout="single"
+									question={question}
+									className={actionFooterClassName}
+								/>
+							);
+						}
+
+						// Show post-set feedback if there's a recent adjustment
+						if (postSetFeedback) {
+							const feedbackLayoutId = `coach-tip-${session.currentExerciseIndex}-${postSetFeedback.triggerSetIndex}`;
+							const isNegative = postSetFeedback.change.startsWith('-');
+
+							return (
+								<ActionFooter
+									layout="single"
+									primaryAction={{
+										label: 'continue',
+										onClick: () => {
+											// Transition: hide coach tip, show rule badge on set card
+											const changePart = postSetFeedback.change.split(' ')[0] ?? postSetFeedback.change;
+											setRuleBadge({
+												exerciseIndex: session.currentExerciseIndex,
+												setIndex: postSetFeedback.triggerSetIndex,
+												change: changePart, // Just "+2.5kg" part
+												isNegative,
+												isStreakBroken: false,
+												layoutId: feedbackLayoutId,
+											});
+											setPostSetFeedback(null);
+
+											// Clear badge after animation settles
+											setTimeout(() => setRuleBadge(null), 2000);
+										},
+										variant: 'success',
+									}}
+									coachTip={{
+										change: postSetFeedback.change,
+										reason: postSetFeedback.reason,
+									}}
+									coachTipLayoutId={feedbackLayoutId}
+									className={actionFooterClassName}
+								/>
+							);
+						}
+
+						// Default triple layout with Cancel/DONE/Skip
+						return (
+							<ActionFooter
+								layout="triple"
+								leftAction={{
+									label: 'Cancel',
+									onClick: handleCancel,
+									variant: 'ghost',
+								}}
+								primaryAction={
+									isSelectedSetNext
+										? { label: 'DONE', onClick: handleDoneClick, variant: 'primary' }
+										: isSelectedSetDone && selectedSet
+											? { label: 'Edit Set', onClick: handleEditClick, variant: 'secondary' }
+											: { label: '', onClick: () => {}, disabled: true }
+								}
+								rightAction={{
+									label: 'Skip',
+									onClick: handleSkipExercise,
+									variant: 'ghost',
+								}}
+								className={actionFooterClassName}
+							/>
+						);
+					})()}
+
+					{/* Exercise completion feedback with coach tip */}
+					{isViewingActiveExercise && exerciseSummary && (() => {
+						// The last set that was completed
+						const triggerSetIndex = exerciseSummary.completedSets.length - 1;
+						const summaryLayoutId = `coach-tip-${exerciseSummary.exerciseIndex}-${triggerSetIndex}`;
+
+						// Build coach tip from exercise summary
+						const buildCoachTip = (): CoachTip => {
+							const temporalRule = exerciseSummary.ruleProgress?.rules.find(r => r.progress);
+
+							if (exerciseSummary.streakBroken?.wasBroken) {
+								return {
+									change: 'streak broken',
+									reason: `${exerciseSummary.streakBroken.previousStreak} session streak for "${exerciseSummary.streakBroken.ruleDescription}" lost`,
+									streakBroken: true,
+									ruleProgress: temporalRule?.progress ? {
+										current: 0,
+										required: temporalRule.progress.required,
+										unit: temporalRule.progress.unit,
+									} : undefined,
+								};
+							}
+
+							if (exerciseSummary.adjustment) {
+								// Format timing for display
+								const timingLabel = exerciseSummary.adjustment.timing === 'next_set'
+									? 'next set'
+									: 'next session';
+
+								return {
+									change: `${exerciseSummary.adjustment.change} ${timingLabel}`,
+									reason: exerciseSummary.adjustment.reason,
+									ruleProgress: temporalRule?.progress ? {
+										current: temporalRule.progress.current,
+										required: temporalRule.progress.required,
+										unit: temporalRule.progress.unit,
+									} : undefined,
+								};
+							}
+
+							return {
+								change: 'exercise complete',
+								reason: `Next: ${exerciseSummary.nextTarget.sets}×${exerciseSummary.nextTarget.reps} @ ${exerciseSummary.nextTarget.weight}`,
+								ruleProgress: temporalRule?.progress ? {
+									current: temporalRule.progress.current,
+									required: temporalRule.progress.required,
+									unit: temporalRule.progress.unit,
+								} : undefined,
+							};
+						};
+
+						const coachTipData = buildCoachTip();
+						const hasAdjustment = exerciseSummary.adjustment || exerciseSummary.streakBroken?.wasBroken;
+
+						return (
+							<ActionFooter
+								layout="single"
+								primaryAction={{
+									label: exerciseSummary.streakBroken?.wasBroken ? 'keep going!' : 'Continue',
+									onClick: () => {
+										// Show rule badge on set card if there was an adjustment
+										if (hasAdjustment) {
+											const isNegative = exerciseSummary.adjustment?.change.startsWith('-') ?? false;
+											setRuleBadge({
+												exerciseIndex: exerciseSummary.exerciseIndex,
+												setIndex: triggerSetIndex,
+												change: exerciseSummary.streakBroken?.wasBroken
+													? 'streak broken'
+													: exerciseSummary.adjustment?.change ?? '',
+												isNegative,
+												isStreakBroken: exerciseSummary.streakBroken?.wasBroken ?? false,
+												layoutId: summaryLayoutId,
+											});
+
+											// Clear badge after animation settles
+											setTimeout(() => setRuleBadge(null), 2000);
+										}
+										dispatch({ type: 'next_exercise' });
+										setExerciseSummary(null);
+									},
+									variant: 'success',
+								}}
+								coachTip={coachTipData}
+								coachTipLayoutId={hasAdjustment ? summaryLayoutId : undefined}
+								className={actionFooterClassName}
+							/>
+						);
+					})()}
+
+					{/* Return to active footer when browsing */}
+					{!isViewingActiveExercise && (
+						<ActionFooter
+							layout="single"
+							primaryAction={{
+								label: 'Return to Active Exercise',
+								onClick: () => setViewedExerciseIndex(session.currentExerciseIndex),
+								variant: 'success',
+							}}
+							className={actionFooterClassName}
+						/>
+					)}
+				</>
+			);
+
 			return (
 				<div className="fit-session-screen">
 					{/* Exercise info modal */}
@@ -587,6 +837,9 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 							/>
 						);
 					})()}
+
+					{/* ActionFooter at top when controlsPosition is 'top' */}
+					{controlsPosition === 'top' && actionFooterSection}
 
 					<TopNav
 						title={viewedExercise?.exercise ?? session.workout ?? 'Workout'}
@@ -698,210 +951,8 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 					</div>
 
-					{/* Unified ActionFooter - handles all states */}
-					{isViewingActiveExercise && !exerciseSummary && (() => {
-						// Build question prop based on current input mode
-						const buildQuestion = (): PostSetQuestion | undefined => {
-							switch (detailInputMode) {
-								case 'reps':
-									return {
-										type: 'reps',
-										min: currentExercise?.targetRepsMin ?? 8,
-										max: currentExercise?.targetRepsMax ?? 12,
-										onSelect: handleInlineReps,
-									};
-								case 'rpe':
-									return {
-										type: 'rpe',
-										target: targetRPE,
-										onSelect: handleInlineRPE,
-									};
-								case 'weight':
-									return {
-										type: 'weight',
-										value: pendingSet.weight,
-										pendingReps: pendingSet.reps ?? 0,
-										onChange: (weight: number) => setPendingSet(p => ({ ...p, weight })),
-										onConfirm: handleInlineWeightConfirm,
-									};
-								default:
-									return undefined;
-							}
-						};
-
-						const question = buildQuestion();
-
-						// When showing a question, don't show action buttons
-						if (question) {
-							return (
-								<ActionFooter
-									layout="single"
-									question={question}
-								/>
-							);
-						}
-
-						// Show post-set feedback if there's a recent adjustment
-						if (postSetFeedback) {
-							const feedbackLayoutId = `coach-tip-${session.currentExerciseIndex}-${postSetFeedback.triggerSetIndex}`;
-							const isNegative = postSetFeedback.change.startsWith('-');
-
-							return (
-								<ActionFooter
-									layout="single"
-									primaryAction={{
-										label: 'continue',
-										onClick: () => {
-											// Transition: hide coach tip, show rule badge on set card
-											const changePart = postSetFeedback.change.split(' ')[0] ?? postSetFeedback.change;
-											setRuleBadge({
-												exerciseIndex: session.currentExerciseIndex,
-												setIndex: postSetFeedback.triggerSetIndex,
-												change: changePart, // Just "+2.5kg" part
-												isNegative,
-												isStreakBroken: false,
-												layoutId: feedbackLayoutId,
-											});
-											setPostSetFeedback(null);
-
-											// Clear badge after animation settles
-											setTimeout(() => setRuleBadge(null), 2000);
-										},
-										variant: 'success',
-									}}
-									coachTip={{
-										change: postSetFeedback.change,
-										reason: postSetFeedback.reason,
-									}}
-									coachTipLayoutId={feedbackLayoutId}
-								/>
-							);
-						}
-
-						// Default triple layout with Cancel/DONE/Skip
-						return (
-							<ActionFooter
-								layout="triple"
-								leftAction={{
-									label: 'Cancel',
-									onClick: handleCancel,
-									variant: 'ghost',
-								}}
-								primaryAction={
-									isSelectedSetNext
-										? { label: 'DONE', onClick: handleDoneClick, variant: 'primary' }
-										: isSelectedSetDone && selectedSet
-											? { label: 'Edit Set', onClick: handleEditClick, variant: 'secondary' }
-											: { label: '', onClick: () => {}, disabled: true }
-								}
-								rightAction={{
-									label: 'Skip',
-									onClick: handleSkipExercise,
-									variant: 'ghost',
-								}}
-							/>
-						);
-					})()}
-
-					{/* Exercise completion feedback with coach tip */}
-					{isViewingActiveExercise && exerciseSummary && (() => {
-						// The last set that was completed
-						const triggerSetIndex = exerciseSummary.completedSets.length - 1;
-						const summaryLayoutId = `coach-tip-${exerciseSummary.exerciseIndex}-${triggerSetIndex}`;
-
-						// Build coach tip from exercise summary
-						const buildCoachTip = (): CoachTip => {
-							const temporalRule = exerciseSummary.ruleProgress?.rules.find(r => r.progress);
-
-							if (exerciseSummary.streakBroken?.wasBroken) {
-								return {
-									change: 'streak broken',
-									reason: `${exerciseSummary.streakBroken.previousStreak} session streak for "${exerciseSummary.streakBroken.ruleDescription}" lost`,
-									streakBroken: true,
-									ruleProgress: temporalRule?.progress ? {
-										current: 0,
-										required: temporalRule.progress.required,
-										unit: temporalRule.progress.unit,
-									} : undefined,
-								};
-							}
-
-							if (exerciseSummary.adjustment) {
-								// Format timing for display
-								const timingLabel = exerciseSummary.adjustment.timing === 'next_set'
-									? 'next set'
-									: 'next session';
-
-								return {
-									change: `${exerciseSummary.adjustment.change} ${timingLabel}`,
-									reason: exerciseSummary.adjustment.reason,
-									ruleProgress: temporalRule?.progress ? {
-										current: temporalRule.progress.current,
-										required: temporalRule.progress.required,
-										unit: temporalRule.progress.unit,
-									} : undefined,
-								};
-							}
-
-							return {
-								change: 'exercise complete',
-								reason: `Next: ${exerciseSummary.nextTarget.sets}×${exerciseSummary.nextTarget.reps} @ ${exerciseSummary.nextTarget.weight}`,
-								ruleProgress: temporalRule?.progress ? {
-									current: temporalRule.progress.current,
-									required: temporalRule.progress.required,
-									unit: temporalRule.progress.unit,
-								} : undefined,
-							};
-						};
-
-						const coachTipData = buildCoachTip();
-						const hasAdjustment = exerciseSummary.adjustment || exerciseSummary.streakBroken?.wasBroken;
-
-						return (
-							<ActionFooter
-								layout="single"
-								primaryAction={{
-									label: exerciseSummary.streakBroken?.wasBroken ? 'keep going!' : 'Continue',
-									onClick: () => {
-										// Show rule badge on set card if there was an adjustment
-										if (hasAdjustment) {
-											const isNegative = exerciseSummary.adjustment?.change.startsWith('-') ?? false;
-											setRuleBadge({
-												exerciseIndex: exerciseSummary.exerciseIndex,
-												setIndex: triggerSetIndex,
-												change: exerciseSummary.streakBroken?.wasBroken
-													? 'streak broken'
-													: exerciseSummary.adjustment?.change ?? '',
-												isNegative,
-												isStreakBroken: exerciseSummary.streakBroken?.wasBroken ?? false,
-												layoutId: summaryLayoutId,
-											});
-
-											// Clear badge after animation settles
-											setTimeout(() => setRuleBadge(null), 2000);
-										}
-										dispatch({ type: 'next_exercise' });
-										setExerciseSummary(null);
-									},
-									variant: 'success',
-								}}
-								coachTip={coachTipData}
-								coachTipLayoutId={hasAdjustment ? summaryLayoutId : undefined}
-							/>
-						);
-					})()}
-
-					{/* Return to active footer when browsing */}
-					{!isViewingActiveExercise && (
-						<ActionFooter
-							layout="single"
-							primaryAction={{
-								label: 'Return to Active Exercise',
-								onClick: () => setViewedExerciseIndex(session.currentExerciseIndex),
-								variant: 'success',
-							}}
-						/>
-					)}
+					{/* ActionFooter at bottom when controlsPosition is 'bottom' */}
+					{controlsPosition === 'bottom' && actionFooterSection}
 				</div>
 			);
 

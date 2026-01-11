@@ -12,6 +12,8 @@ import {
 	createSettingHeading
 } from './ui/settings-helpers';
 
+export type ControlsPosition = 'top' | 'bottom';
+
 export interface PluginSettings {
 	basePath: string;
 	weightUnit: WeightUnit;
@@ -24,6 +26,8 @@ export interface PluginSettings {
 	programWorkoutIndex: number;
 	topPadding: number;
 	bottomPadding: number;
+	/** Position of action controls during workout session */
+	controlsPosition: ControlsPosition;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -35,7 +39,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	weightIncrementsLbs: [45, 10, 5, 2.5],
 	programWorkoutIndex: 0,
 	topPadding: 20,
-	bottomPadding: 100
+	bottomPadding: 100,
+	controlsPosition: 'bottom'
 };
 
 export class PluginSettingTab extends ObsidianPluginSettingTab {

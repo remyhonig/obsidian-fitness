@@ -28,6 +28,7 @@ import { WorkoutDetailScreen } from './screens/WorkoutDetailScreen';
 import { ProgramSetupScreen } from './screens/ProgramSetupScreen';
 import { ProgramPickerScreen } from './screens/ProgramPickerScreen';
 import { SessionDetailScreen } from './screens/SessionDetailScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 import { BottomNav, type DefaultTabType } from './components/BottomNav';
 
 /** BottomNav wrapper that uses context for reactive progress updates */
@@ -82,7 +83,7 @@ function AppContainer({ children }: { children: React.ReactNode }) {
 type TabType = DefaultTabType;
 
 // Screen types (tabs + full-screen modes)
-type ScreenType = TabType | 'session' | 'finish' | 'session-detail' | 'exercise-library' | 'workout-detail' | 'program-setup' | 'program-picker';
+type ScreenType = TabType | 'session' | 'finish' | 'session-detail' | 'exercise-library' | 'workout-detail' | 'program-setup' | 'program-picker' | 'settings';
 
 interface ScreenParams {
 	[key: string]: unknown;
@@ -300,6 +301,8 @@ export function App({ app, plugin }: AppProps) {
 				return <FinishScreen onNavigate={navigateTo} sessionPath={screenParams.sessionPath as string | undefined} />;
 			case 'session-detail':
 				return <SessionDetailScreen onNavigate={navigateTo} sessionPath={screenParams.sessionPath as string} />;
+			case 'settings':
+				return <SettingsScreen onNavigate={navigateTo} onBack={goBack} />;
 			default:
 				return <HomeScreen onNavigate={navigateTo} />;
 		}

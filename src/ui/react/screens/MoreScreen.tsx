@@ -4,7 +4,7 @@
  * Settings and additional features menu accessed via bottom navigation.
  * Provides access to:
  * - Exercise Library
- * - Settings (future)
+ * - Settings
  * - About (future)
  */
 
@@ -44,7 +44,10 @@ export function MoreScreen({ onNavigate }: MoreScreenProps) {
 				</div>
 
 				<div className="fit-menu-list">
-					<button className="fit-menu-item" disabled>
+					<button
+						className="fit-menu-item"
+						onClick={() => onNavigate('settings')}
+					>
 						<span className="fit-menu-icon">⚙️</span>
 						<span>Settings</span>
 						<span className="fit-menu-chevron">›</span>
