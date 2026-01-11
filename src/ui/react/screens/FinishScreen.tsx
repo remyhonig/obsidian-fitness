@@ -4,19 +4,42 @@
  * Displays workout completion summary after a session is finished.
  * Features the mascot celebrating with the user, workout stats,
  * and unified rule progress showing active/complete/broken streaks.
+ *
+ * Can also display historical sessions when sessionPath is provided.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { TFile } from 'obsidian';
-import { useApp, useDomain } from '../contexts';
+import { useApp, useDomain, usePlugin } from '../contexts';
 import { TopNav } from '../components/TopNav';
 import { Mascot } from '../components/Mascot';
 import { ActionFooter } from '../components/ActionFooter';
 import { RuleProgressPill } from '../components/RuleProgressPill';
 import { StreakBrokenToast } from '../components/StreakBrokenToast';
+import { SessionRepository } from '../../../data/session-repository';
+import type { Session } from '../../../types';
+
+/** Session data structure for both live and historical sessions */
+interface SessionExercise {
+	exercise: string;
+	sets: Array<{ reps: number; weight: number; rpe?: number }>;
+	targetSets: number;
+}
+
+interface SessionData {
+	id?: string | null;
+	date?: string | null;
+	workout?: string | null;
+	startTime?: string | null;
+	endTime?: string | null;
+	exercises: SessionExercise[];
+	isActive: boolean;
+}
 
 export interface FinishScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
+	/** Optional path to load historical session from file */
+	sessionPath?: string;
 }
 
 /** Unified rule progress item for display */
@@ -38,9 +61,47 @@ interface BrokenStreakInfo {
 	ruleDescription: string;
 }
 
-export function FinishScreen({ onNavigate }: FinishScreenProps) {
+export function FinishScreen({ onNavigate, sessionPath }: FinishScreenProps) {
 	const app = useApp();
-	const { session, adapter } = useDomain();
+	const plugin = usePlugin();
+	const { session: domainSession, adapter } = useDomain();
+
+	// State for historical session loading
+	const [historicalSession, setHistoricalSession] = useState<SessionData | null>(null);
+	const [loading, setLoading] = useState(!!sessionPath);
+
+	// Determine if viewing historical session
+	const isHistoricalView = !!sessionPath;
+
+	// Load historical session using SessionRepository
+	useEffect(() => {
+		if (!sessionPath) return;
+
+		const loadSession = async () => {
+			setLoading(true);
+
+			// Extract session ID from path (e.g., "Fitness/Sessions/2026-01-03-13-36-43-hypertrophy-b.md" -> "2026-01-03-13-36-43-hypertrophy-b")
+			const sessionId = sessionPath.split('/').pop()?.replace('.md', '');
+			if (!sessionId) {
+				setLoading(false);
+				return;
+			}
+
+			const sessionRepo = new SessionRepository(app, plugin.settings.basePath);
+			const loadedSession = await sessionRepo.get(sessionId);
+
+			if (loadedSession) {
+				// Convert Session to SessionData format
+				setHistoricalSession(convertSessionToSessionData(loadedSession));
+			}
+			setLoading(false);
+		};
+
+		void loadSession();
+	}, [sessionPath, app, plugin.settings.basePath]);
+
+	// Use historical session if loaded, otherwise use domain session
+	const session: SessionData = historicalSession ?? domainSession;
 
 	// Calculate stats
 	const totalSets = session.exercises.reduce((sum, e) => sum + e.sets.length, 0);
@@ -69,9 +130,15 @@ export function FinishScreen({ onNavigate }: FinishScreenProps) {
 	};
 
 	// Collect unified rule progress items and broken streaks from each exercise
+	// (Only for live sessions - historical sessions don't have adapter context)
 	const { ruleProgressItems, brokenStreaks } = useMemo(() => {
 		const items: RuleProgressItem[] = [];
 		const broken: BrokenStreakInfo[] = [];
+
+		// Skip rule progress for historical sessions
+		if (isHistoricalView) {
+			return { ruleProgressItems: items, brokenStreaks: broken };
+		}
 
 		session.exercises.forEach((exercise, index) => {
 			if (exercise.sets.length === 0) return;
@@ -147,7 +214,7 @@ export function FinishScreen({ onNavigate }: FinishScreenProps) {
 		});
 
 		return { ruleProgressItems: items, brokenStreaks: broken };
-	}, [session.exercises, adapter]);
+	}, [session.exercises, adapter, isHistoricalView]);
 
 	// State for managing broken streak toasts (show one at a time)
 	const [currentToastIndex, setCurrentToastIndex] = useState(0);
@@ -171,9 +238,35 @@ export function FinishScreen({ onNavigate }: FinishScreenProps) {
 		}
 	};
 
+	// Format date for historical view title
+	const formatDate = (dateStr?: string | null): string => {
+		if (!dateStr) return 'session';
+		const date = new Date(dateStr + 'T00:00:00');
+		return date.toLocaleDateString(undefined, {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric'
+		});
+	};
+
+	// Show loading state for historical sessions
+	if (loading) {
+		return (
+			<div className="fit-finish-screen">
+				<TopNav title="loading..." onBack={() => onNavigate('history')} />
+				<div className="fit-content">
+					<div className="fit-loading">Loading session...</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="fit-finish-screen">
-			<TopNav title="complete" />
+			<TopNav
+				title={isHistoricalView ? formatDate(session.date) : 'complete'}
+				onBack={isHistoricalView ? () => onNavigate('history') : undefined}
+			/>
 
 			<div className="fit-content">
 				{/* Mascot celebrating with the user - no speech bubble */}
@@ -263,14 +356,14 @@ export function FinishScreen({ onNavigate }: FinishScreenProps) {
 			<ActionFooter
 				layout="single"
 				primaryAction={{
-					label: 'done',
-					onClick: () => onNavigate('home'),
-					variant: 'success',
+					label: isHistoricalView ? 'back' : 'done',
+					onClick: () => onNavigate(isHistoricalView ? 'history' : 'home'),
+					variant: isHistoricalView ? 'secondary' : 'success',
 				}}
 			/>
 
-			{/* View session log link */}
-			{session.id && (
+			{/* View session log link (only for current sessions) */}
+			{!isHistoricalView && session.id && (
 				<button
 					className="fit-finish-view-log"
 					onClick={handleViewSession}
@@ -279,8 +372,8 @@ export function FinishScreen({ onNavigate }: FinishScreenProps) {
 				</button>
 			)}
 
-			{/* Broken streak toast overlay */}
-			{currentBrokenStreak && (
+			{/* Broken streak toast overlay (only for current sessions) */}
+			{!isHistoricalView && currentBrokenStreak && (
 				<StreakBrokenToast
 					previousStreak={currentBrokenStreak.previousStreak}
 					ruleDescription={currentBrokenStreak.ruleDescription}
@@ -289,4 +382,27 @@ export function FinishScreen({ onNavigate }: FinishScreenProps) {
 			)}
 		</div>
 	);
+}
+
+/**
+ * Convert Session from repository to SessionData format for display
+ */
+function convertSessionToSessionData(session: Session): SessionData {
+	return {
+		id: session.id,
+		date: session.date,
+		workout: session.workout,
+		startTime: session.startTime,
+		endTime: session.endTime,
+		exercises: session.exercises.map(e => ({
+			exercise: e.exercise,
+			sets: e.sets.filter(s => s.completed).map(s => ({
+				reps: s.reps,
+				weight: s.weight,
+				rpe: s.rpe
+			})),
+			targetSets: e.targetSets
+		})),
+		isActive: session.status === 'active' || session.status === 'paused'
+	};
 }

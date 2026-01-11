@@ -34,7 +34,10 @@ import {
 	type CompleteSetResult,
 	type RuleProgress,
 	type ExerciseRuleProgress,
+	type SetResult,
 } from 'fitness-dsl';
+import { SessionRepository } from '../data/session-repository';
+import type { Session } from '../types';
 
 // Re-export execution view types for UI consumption
 export type {
@@ -236,12 +239,14 @@ export class FitnessDomainAdapter {
 	private programMarkdown: string | null = null;
 	private sessionState: SessionState;
 	private engine: FitnessDSLEngine;
+	private sessionRepository: SessionRepository;
 
 	constructor(app: App, basePath: string = 'Fitness') {
 		this.app = app;
 		this.basePath = basePath;
 		this.sessionState = this.createEmptySessionState();
 		this.engine = new FitnessDSLEngine({ debug: true, autoEvaluate: true });
+		this.sessionRepository = new SessionRepository(app, basePath);
 	}
 
 	/**
@@ -297,6 +302,68 @@ export class FitnessDomainAdapter {
 	 */
 	setBasePath(basePath: string): void {
 		this.basePath = basePath;
+		this.sessionRepository = new SessionRepository(this.app, basePath);
+	}
+
+	/**
+	 * Load all completed sessions into the engine for rule evaluation.
+	 * This enables multi-session streak tracking and progression rules.
+	 */
+	private async loadSessionHistoryIntoEngine(): Promise<void> {
+		try {
+			const sessions = await this.sessionRepository.list();
+			const setResults = this.convertSessionsToSetResults(sessions);
+
+			console.log('[FitnessDomainAdapter] Loading session history:', {
+				sessionCount: sessions.length,
+				setResultCount: setResults.length,
+			});
+
+			if (setResults.length > 0) {
+				this.engine.loadSessionHistory(setResults);
+			}
+		} catch (e) {
+			console.warn('[FitnessDomainAdapter] Failed to load session history:', e);
+		}
+	}
+
+	/**
+	 * Convert Session objects from the repository to SetResult format for the DSL engine.
+	 * Each completed set becomes a separate SetResult entry.
+	 */
+	private convertSessionsToSetResults(sessions: Session[]): SetResult[] {
+		const results: SetResult[] = [];
+
+		for (const session of sessions) {
+			const date = session.date;
+			const workout = session.workout || '';
+
+			for (const exercise of session.exercises) {
+				for (const set of exercise.sets) {
+					// Only include completed sets
+					if (!set.completed) continue;
+
+					// Format timestamp: use set timestamp if available, otherwise session date
+					const datetime = set.timestamp
+						? set.timestamp.replace('T', ' ').substring(0, 16)
+						: `${date} 00:00`;
+
+					results.push({
+						datetime,
+						workout,
+						exercise: exercise.exercise,
+						reps: set.reps,
+						weight: set.weight === 0 ? 'bodyweight' : `${set.weight}kg`,
+						rpe: set.rpe ?? 0,
+					});
+				}
+			}
+		}
+
+		// Sort by datetime to ensure chronological order
+		results.sort((a, b) => a.datetime.localeCompare(b.datetime));
+
+		return results;
 	}
 
 	/**
@@ -395,6 +462,9 @@ export class FitnessDomainAdapter {
 			});
 			// Load program into the event-driven engine
 			this.engine.loadProgram(this.compiledProgram);
+
+			// Load session history for rule evaluation (streaks, multi-session rules)
+			await this.loadSessionHistoryIntoEngine();
 		} catch (e) {
 			console.warn('[FitnessDomainAdapter] Failed to compile program:', e);
 		}

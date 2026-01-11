@@ -194,7 +194,7 @@ export function ActionFooter({
 		<div className="fit-footer-question">
 			<h3 className="fit-footer-question-title">RPE?</h3>
 			<div className="fit-number-grid fit-number-grid-rpe">
-				{Array.from({ length: 10 }, (_, i) => i + 1).map(num => {
+				{Array.from({ length: 6 }, (_, i) => i + 5).map(num => {
 					const isTarget = num === q.target;
 					return (
 						<button

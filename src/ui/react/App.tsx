@@ -26,6 +26,7 @@ import { MoreScreen } from './screens/MoreScreen';
 import { WorkoutDetailScreen } from './screens/WorkoutDetailScreen';
 import { ProgramSetupScreen } from './screens/ProgramSetupScreen';
 import { ProgramPickerScreen } from './screens/ProgramPickerScreen';
+import { SessionDetailScreen } from './screens/SessionDetailScreen';
 import { BottomNav, type DefaultTabType } from './components/BottomNav';
 
 /** BottomNav wrapper that uses context for reactive progress updates */
@@ -62,7 +63,7 @@ function BottomNavWithProgress({
 type TabType = DefaultTabType;
 
 // Screen types (tabs + full-screen modes)
-type ScreenType = TabType | 'session' | 'finish' | 'exercise-library' | 'workout-detail' | 'program-setup' | 'program-picker';
+type ScreenType = TabType | 'session' | 'finish' | 'session-detail' | 'exercise-library' | 'workout-detail' | 'program-setup' | 'program-picker';
 
 interface ScreenParams {
 	[key: string]: unknown;
@@ -277,7 +278,9 @@ export function App({ app, plugin }: AppProps) {
 					/>
 				);
 			case 'finish':
-				return <FinishScreen onNavigate={navigateTo} />;
+				return <FinishScreen onNavigate={navigateTo} sessionPath={screenParams.sessionPath as string | undefined} />;
+			case 'session-detail':
+				return <SessionDetailScreen onNavigate={navigateTo} sessionPath={screenParams.sessionPath as string} />;
 			default:
 				return <HomeScreen onNavigate={navigateTo} />;
 		}

@@ -118,9 +118,6 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	// Extra rest time comes from session state (global)
 	const extraRestTime = session.extraRestTime;
 
-	// Animation state - tracks which set index just completed
-	const [justCompletedSet, setJustCompletedSet] = useState<number | null>(null);
-
 	// Selected set for detail panel (defaults to next set to complete)
 	const [selectedSetIndex, setSelectedSetIndex] = useState<number | null>(null);
 
@@ -315,15 +312,6 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	}
 
 	// Step handlers
-	const handleStartLogSet = () => {
-		setPendingSet({
-			reps: null,
-			rpe: null,
-			weight: getSuggestedWeight() ?? 0
-		});
-		setSessionStep('reps');
-	};
-
 	const handleSelectReps = (reps: number) => {
 		setPendingSet(prev => ({ ...prev, reps }));
 		setSessionStep('rpe');
@@ -337,10 +325,6 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	const handleConfirmWeight = () => {
 		if (pendingSet.reps === null || pendingSet.rpe === null) return;
 
-		// Track which set is being completed for animation
-		const completingSetIndex = currentExercise.sets.length;
-		setJustCompletedSet(completingSetIndex);
-
 		dispatch({
 			type: 'complete_set',
 			exercise: currentExercise.exercise,
@@ -349,9 +333,6 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 			rpe: pendingSet.rpe,
 			restSeconds: restElapsed
 		});
-
-		// Clear animation state after animation completes
-		setTimeout(() => setJustCompletedSet(null), 600);
 
 		setSessionStep('workout');
 	};
@@ -373,20 +354,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 	// Calculate display values
 	const completedSets = currentExercise.sets.length;
-	const currentSetNumber = completedSets + 1;
-	const totalSets = currentExercise.targetSets;
-	const repsTarget = currentExercise.targetRepsMin === currentExercise.targetRepsMax
-		? String(currentExercise.targetRepsMin)
-		: `${currentExercise.targetRepsMin}-${currentExercise.targetRepsMax}`;
-
 	const restTarget = currentExercise.restSeconds;
-
-	// Format weight for display
-	const formatWeight = (weight: number | null): string => {
-		if (weight === null) return '?';
-		if (weight === 0) return 'BW';
-		return `${weight}kg`;
-	};
 
 	// Get the effective selected set index (default to next set)
 	const effectiveSelectedIndex = selectedSetIndex ?? completedSets;
@@ -494,13 +462,13 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 				restSeconds: restElapsed
 			});
 
-			// Always show animation for completed set
-			setJustCompletedSet(completingSetIndex);
-
 			if (isLastSet) {
+				// Clear input mode immediately for last set
+				setDetailInputMode('none');
+				setSelectedSetIndex(null);
+
 				// Show summary after animation completes
 				setTimeout(() => {
-					setJustCompletedSet(null);
 					const result = adapter.evaluateExerciseCompletion(exerciseIndexForSummary);
 					setExerciseSummary({
 						exerciseName: exerciseNameForSummary,
@@ -517,11 +485,12 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 						streakBroken: result.streakBroken,
 					});
 				}, 600);
+
+				// Return early - state already cleared above
+				return;
 			} else {
 				// Non-last set: check for rule-triggered weight changes
 				setTimeout(() => {
-					setJustCompletedSet(null);
-
 					// Get fresh execution view after state update
 					const newExecutionView = adapter.getExecutionView(exerciseIndexForSummary);
 					const nextSetIndex = completingSetIndex + 1;
@@ -637,7 +606,6 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 									const setsData: ExerciseSetData[] = Array.from({ length: exercise.targetSets }, (_, i) => {
 										const isDone = i < exerciseCompletedSets;
 										const isNext = i === exerciseCompletedSets && isActive;
-										const isJustCompleted = i === justCompletedSet && isActive && isViewingActiveExercise;
 										const set = exercise.sets[i];
 
 										// For pending sets on the active exercise, use execution view for dynamic weights

@@ -3,13 +3,13 @@
  *
  * Displays past workout sessions with a calendar view.
  * Shows monthly stats, calendar with workout indicators,
- * and scrollable session cards below.
+ * and session cards using the app's consistent card style.
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { TFile } from 'obsidian';
 import { useApp } from '../contexts';
 import { TopNav } from '../components/TopNav';
+import { ExerciseGroup, type ExerciseSetData } from '../components/ExerciseGroup';
 
 interface SessionSummary {
 	id: string;
@@ -167,18 +167,6 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 		setSelectedDate(prev => prev === dateStr ? null : dateStr);
 	};
 
-	// Format duration
-	const formatDuration = (seconds: number): string => {
-		const hours = Math.floor(seconds / 3600);
-		const mins = Math.floor((seconds % 3600) / 60);
-		const secs = seconds % 60;
-
-		if (hours > 0) {
-			return `${hours}h ${mins}m`;
-		}
-		return `${mins}m ${secs}s`;
-	};
-
 	// Get month name
 	const monthName = new Date(currentMonth.year, currentMonth.month).toLocaleDateString(undefined, {
 		month: 'long',
@@ -248,33 +236,20 @@ export function HistoryScreen({ onNavigate, isTab = false }: HistoryScreenProps)
 								<p>{selectedDate ? 'No workouts on this day.' : 'No workouts this month.'}</p>
 							</div>
 						) : (
-							<div className="fit-session-list">
-								{filteredSessions.map((session) => (
-									<div
-										key={session.id}
-										className="fit-session-card fit-session-card-detailed"
-										onClick={() => {
-											const file = app.vault.getAbstractFileByPath(session.path);
-											if (file instanceof TFile) {
-												void app.workspace.getLeaf().openFile(file);
-											}
-										}}
-									>
-										<div className="fit-session-card-header">
-											<span className="fit-session-card-workout">{session.workout}</span>
-											<span className="fit-session-card-date">{formatDateShort(session.date)}</span>
-										</div>
-										<div className="fit-session-card-meta">
-											{session.exerciseCount !== undefined && (
-												<span>{session.exerciseCount} exercises</span>
-											)}
-											{session.duration !== undefined && session.duration > 0 && (
-												<span>{formatDuration(session.duration)}</span>
-											)}
-										</div>
-									</div>
-								))}
-							</div>
+							<ExerciseGroup
+								exerciseName={selectedDate ? formatDateForHeader(selectedDate) : monthName.toLowerCase()}
+								variant="pending"
+								width="100%"
+								sets={filteredSessions.map((session): ExerciseSetData => ({
+									weight: 0,
+									reps: session.workout.toLowerCase(),
+									rpe: 0,
+									variant: 'pending',
+									headerText: formatDateForCard(session.date),
+									detailText: formatSessionMeta(session.exerciseCount, session.duration),
+									onClick: () => onNavigate('finish', { sessionPath: session.path }),
+								}))}
+							/>
 						)}
 					</>
 				)}
@@ -342,13 +317,40 @@ function extractWorkoutName(workout: string | undefined): string | null {
 }
 
 /**
- * Format date for short display (M/D/YYYY)
+ * Format date for card header (e.g., "Mon, Jan 3")
  */
-function formatDateShort(dateStr: string): string {
+function formatDateForCard(dateStr: string): string {
 	const date = new Date(dateStr + 'T00:00:00');
 	return date.toLocaleDateString(undefined, {
-		month: 'numeric',
-		day: 'numeric',
-		year: 'numeric'
-	});
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric'
+	}).toLowerCase();
+}
+
+/**
+ * Format date for section header when a specific date is selected
+ */
+function formatDateForHeader(dateStr: string): string {
+	const date = new Date(dateStr + 'T00:00:00');
+	return date.toLocaleDateString(undefined, {
+		weekday: 'long',
+		month: 'long',
+		day: 'numeric'
+	}).toLowerCase();
+}
+
+/**
+ * Format session metadata (exercise count + duration)
+ */
+function formatSessionMeta(exerciseCount?: number, duration?: number): string {
+	const parts: string[] = [];
+	if (exerciseCount !== undefined && exerciseCount > 0) {
+		parts.push(`${exerciseCount} exercises`);
+	}
+	if (duration !== undefined && duration > 0) {
+		const mins = Math.floor(duration / 60);
+		parts.push(`${mins}m`);
+	}
+	return parts.join(' · ') || 'completed';
 }

@@ -233,6 +233,17 @@ export class Plugin {
 		version: '1.0.0',
 		dir: '.obsidian/plugins/obsidian-fit'
 	};
+	settings = {
+		basePath: 'Fitness',
+		weightUnit: 'kg' as const,
+		defaultRestSeconds: 120,
+		autoStartRestTimer: true,
+		weightIncrementsKg: [10, 2.5, 0.5, 0.25],
+		weightIncrementsLbs: [45, 10, 5, 2.5],
+		programWorkoutIndex: 0,
+		topPadding: 20,
+		bottomPadding: 100
+	};
 
 	constructor(app: App) {
 		this.app = app;
