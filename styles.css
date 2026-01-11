@@ -9409,6 +9409,9 @@
 	height: auto;
 	object-fit: contain;
 	mix-blend-mode: multiply;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
 }
 
 /* Mascot Sizes */
