@@ -10,11 +10,33 @@
  * Use WelcomeScreen for the initial no-program state.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDomain, useFullscreen } from '../contexts';
 import { TopNav, type TimerConfig } from '../components/TopNav';
 import { Mascot } from '../components/Mascot';
 import { ExerciseGroup } from '../components/ExerciseGroup';
+
+/**
+ * Calculate the number of days between two dates (ignoring time)
+ */
+function daysBetween(date1: Date, date2: Date): number {
+	const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+	const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+	const diffTime = Math.abs(d2.getTime() - d1.getTime());
+	return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Format days ago as human-readable text
+ */
+function formatDaysAgo(days: number): string {
+	if (days === 0) return 'today';
+	if (days === 1) return 'yesterday';
+	if (days < 7) return `${days} days ago`;
+	if (days < 14) return '1 week ago';
+	const weeks = Math.floor(days / 7);
+	return `${weeks} weeks ago`;
+}
 
 interface HomeScreenProps {
 	onNavigate: (screen: string, params?: Record<string, unknown>) => void;
@@ -118,6 +140,32 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 		return null;
 	};
 
+	// Build a map of workout name -> last completed date
+	// This uses the session history from the program data
+	const workoutLastDone = useMemo(() => {
+		const map = new Map<string, Date>();
+		if (!program?.sessionHistory) return map;
+
+		// Session history is sorted newest first, so first occurrence is most recent
+		for (const session of program.sessionHistory) {
+			const workoutName = session.workout.toLowerCase();
+			if (!map.has(workoutName)) {
+				map.set(workoutName, new Date(session.date));
+			}
+		}
+		return map;
+	}, [program?.sessionHistory]);
+
+	/**
+	 * Get the "X days ago" text for a workout, or "not done yet"
+	 */
+	const getLastDoneText = (workoutName: string): string => {
+		const lastDate = workoutLastDone.get(workoutName.toLowerCase());
+		if (!lastDate) return 'not done yet';
+		const days = daysBetween(lastDate, new Date());
+		return formatDaysAgo(days);
+	};
+
 	// No program loaded - should use WelcomeScreen instead
 	if (!program) {
 		return null;
@@ -187,7 +235,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 									rpe: 0,
 									variant,
 									headerText: entry.day,
-									detailText: 'not done yet',
+									detailText: workoutName ? getLastDoneText(workoutName) : 'not done yet',
 									layoutId,
 									onClick: () => workoutName && handleStartWorkout(workoutName),
 								};
@@ -210,7 +258,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 								rpe: 0,
 								variant,
 								headerText: `Day ${index + 1}`,
-								detailText: 'not done yet',
+								detailText: getLastDoneText(entry.workout),
 								layoutId,
 								onClick: () => handleStartWorkout(entry.workout),
 							};
