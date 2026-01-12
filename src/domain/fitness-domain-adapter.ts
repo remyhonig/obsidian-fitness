@@ -727,19 +727,20 @@ export class FitnessDomainAdapter {
 			}
 
 			case 'start_rest_timer': {
-				// Dispatch to engine with timestamp from event (not generated internally)
+				// Always set restStartTime for UI timer, regardless of engine state
+				// This ensures the timer starts immediately when user taps a set card
+				this.sessionState.restStartTime = Date.now();
+				this.sessionState.extraRestTime = 0;
+
+				// Also try to sync with engine (may fail if no set completed yet, that's OK)
 				const startRestResult = this.engine.dispatch({
 					type: 'startRest',
 					timestamp: new Date().toISOString()
 				});
 				if (!isErrorResult(startRestResult)) {
-					// Sync local state from engine
+					// Sync extra rest time from engine if available
 					const engineState = this.engine.getState();
 					this.sessionState.extraRestTime = engineState.extraRestSeconds;
-					// Convert ISO string to ms timestamp for UI compatibility
-					this.sessionState.restStartTime = engineState.restStartedAt
-						? new Date(engineState.restStartedAt).getTime()
-						: null;
 				}
 				break;
 			}

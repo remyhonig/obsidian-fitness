@@ -24,7 +24,6 @@ import { WorkoutPickerScreen } from './screens/WorkoutPickerScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { FinishScreen } from './screens/FinishScreen';
 import { MoreScreen } from './screens/MoreScreen';
-import { WorkoutDetailScreen } from './screens/WorkoutDetailScreen';
 import { ProgramSetupScreen } from './screens/ProgramSetupScreen';
 import { ProgramPickerScreen } from './screens/ProgramPickerScreen';
 import { SessionDetailScreen } from './screens/SessionDetailScreen';
@@ -39,7 +38,7 @@ function BottomNavWithProgress({
 	activeTab: DefaultTabType;
 	onTabChange: (tab: DefaultTabType) => void;
 }) {
-	const { session } = useDomain();
+	const { session, program, dispatch } = useDomain();
 
 	// Calculate workout progress from session state (reactive)
 	// Only show progress when session is active (first set completed)
@@ -53,10 +52,29 @@ function BottomNavWithProgress({
 		return completedSets / totalSets;
 	})();
 
+	// Handle tab change with special logic for workout tab
+	const handleTabChange = (tab: DefaultTabType) => {
+		// When clicking workout tab, start the suggested workout if no session is active
+		if (tab === 'workout' && !session.workout && program) {
+			// Find suggested workout: use nextSession or first workout with exercises
+			const suggestedWorkout = program.nextSession?.workout
+				?? program.workouts.find(w => w.exercises.length > 0)?.name;
+
+			if (suggestedWorkout) {
+				dispatch({
+					type: 'start_workout',
+					workoutName: suggestedWorkout,
+					programId: program.program.name
+				});
+			}
+		}
+		onTabChange(tab);
+	};
+
 	return (
 		<BottomNav
 			activeTab={activeTab}
-			onTabChange={onTabChange}
+			onTabChange={handleTabChange}
 			workoutProgress={workoutProgress}
 		/>
 	);
@@ -84,7 +102,7 @@ function AppContainer({ children }: { children: React.ReactNode }) {
 type TabType = DefaultTabType;
 
 // Screen types (tabs + full-screen modes)
-type ScreenType = TabType | 'session' | 'finish' | 'session-detail' | 'exercise-library' | 'workout-detail' | 'program-setup' | 'program-picker' | 'settings';
+type ScreenType = TabType | 'session' | 'finish' | 'session-detail' | 'exercise-library' | 'program-setup' | 'program-picker' | 'settings';
 
 interface ScreenParams {
 	[key: string]: unknown;
@@ -195,44 +213,12 @@ export function App({ app, plugin }: AppProps) {
 		// Clear navigation stack when switching tabs
 		setNavigationStack([]);
 
-		// If navigating to workout tab
+		// If navigating to workout tab, always go to session screen
+		// The workout will be started by BottomNavWithProgress before this is called
 		if (tab === 'workout') {
-			const session = adapter.getSessionState();
-
-			// If there's an active session (first set completed), go to session screen
-			if (session.isActive) {
-				setCurrentScreen('session');
-				setScreenParams({});
-				return;
-			}
-
-			// Otherwise, go to workout detail for the suggested workout
-			const program = adapter.getProgram();
-			if (program) {
-				// Use nextSession if available
-				let suggestedWorkout: string | null = null;
-
-				if (program.nextSession) {
-					suggestedWorkout = program.nextSession.workout;
-				} else {
-					// Fallback: find first workout with exercises from cycle pattern or workouts list
-					const cycleWorkoutNames = program.schedule.cyclePattern.map(c => c.workout);
-					const workoutsWithExercises = program.workouts.filter(w => w.exercises.length > 0);
-
-					// Prefer cycle order, but only if workout has exercises
-					const firstCycleWorkout = cycleWorkoutNames
-						.map(name => workoutsWithExercises.find(w => w.name === name))
-						.find(w => w !== undefined);
-
-					suggestedWorkout = firstCycleWorkout?.name ?? workoutsWithExercises[0]?.name ?? null;
-				}
-
-				if (suggestedWorkout) {
-					setCurrentScreen('workout-detail');
-					setScreenParams({ workoutName: suggestedWorkout });
-					return;
-				}
-			}
+			setCurrentScreen('session');
+			setScreenParams({});
+			return;
 		}
 
 		setCurrentScreen(tab);
@@ -272,16 +258,6 @@ export function App({ app, plugin }: AppProps) {
 						<p>Coming soon...</p>
 						<button className="fit-button-secondary" onClick={goBack}>Go Back</button>
 					</div>
-				);
-			case 'workout-detail':
-				return (
-					<WorkoutDetailScreen
-						onNavigate={navigateTo}
-						workoutName={screenParams.workoutName as string}
-						layoutId={screenParams.layoutId as string | undefined}
-						cardVariant={screenParams.cardVariant as 'done' | 'next' | 'pending' | 'suggested' | undefined}
-						onBack={goBack}
-					/>
 				);
 			case 'program-setup':
 				return (

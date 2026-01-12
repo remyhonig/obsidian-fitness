@@ -113,7 +113,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 		initialPendingSet ?? { reps: null, rpe: null, weight: 0 }
 	);
 
-	// Timer state - calculated from session.restStartTime
+	// Rest timer state - tracks elapsed seconds since rest started
 	const [restElapsed, setRestElapsed] = useState(0);
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -227,8 +227,12 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 	}, [adapter, session.currentExerciseIndex, setsKey]);
 
 	// Timer effect - calculates elapsed time from session.restStartTime
+	// Mirrors HomeScreen's working implementation
 	useEffect(() => {
-		if (sessionStep !== 'workout' || !session.restStartTime) return;
+		if (!session.restStartTime) {
+			setRestElapsed(0);
+			return;
+		}
 
 		const updateElapsed = () => {
 			const elapsed = Math.floor((Date.now() - session.restStartTime!) / 1000);
@@ -238,7 +242,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 		updateElapsed();
 		const interval = setInterval(updateElapsed, 1000);
 		return () => clearInterval(interval);
-	}, [sessionStep, session.restStartTime]);
+	}, [session.restStartTime]);
 
 	// Auto-save after each set
 	useEffect(() => {
@@ -382,19 +386,10 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 	// Handle set card tap - differentiated behavior based on set state
 	const handleSetCardTap = (exerciseIndex: number, setIndex: number) => {
-		// If clicking on a different exercise, switch to it
-		if (exerciseIndex !== session.currentExerciseIndex) {
-			dispatch({ type: 'set_current_exercise', exerciseIndex });
-			setSelectedSetIndex(null);
-			setDetailInputMode('none');
-			setEditingSetIndex(null);
-			setViewedExerciseIndex(exerciseIndex);
-			return;
-		}
-
-		// Same exercise - determine set state
+		// Get exercise data for the clicked exercise
 		const exercise = session.exercises[exerciseIndex];
 		if (!exercise) return;
+
 		const exerciseCompletedSets = exercise.sets.length;
 		const isDone = setIndex < exerciseCompletedSets;
 		const isNext = setIndex === exerciseCompletedSets;
@@ -405,15 +400,26 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 			return;
 		}
 
+		// If clicking on a different exercise, switch to it first
+		if (exerciseIndex !== session.currentExerciseIndex) {
+			dispatch({ type: 'set_current_exercise', exerciseIndex });
+			setViewedExerciseIndex(exerciseIndex);
+		}
+
 		// NEXT set: Start DONE flow directly (same as pressing DONE button)
+		// This now works even on first click when switching exercises
 		if (isNext) {
 			dispatch({ type: 'start_rest_timer' });
 			setSelectedSetIndex(setIndex);
 			setEditingSetIndex(null);
+			// Get suggested weight for this exercise's set
+			// Note: After dispatch, executionView might not be updated yet,
+			// so we calculate weight directly from the exercise data
+			const suggestedWeight = exercise.targetWeight ?? 0;
 			setPendingSet({
 				reps: null,
 				rpe: null,
-				weight: getSuggestedWeightForSet(setIndex) ?? 0
+				weight: suggestedWeight
 			});
 			setDetailInputMode('reps');
 			return;
@@ -587,21 +593,30 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 		setSelectedSetIndex(null); // Will default to next set
 	};
 
+	// Calculate rest progress and timing (used by all session steps)
+	const totalRestTarget = restTarget + extraRestTime;
+	const isRestComplete = restElapsed >= totalRestTarget;
+	const restRemaining = Math.max(0, totalRestTarget - restElapsed);
+
+	// Build timer config for TopNav - hide when rest is complete (will slide away)
+	// For workout step: show when viewing active exercise OR in question flow (user clicked set)
+	// For reps/rpe/weight steps: always show (we're entering data for current set)
+	const getTimerConfig = (forWorkoutStep: boolean): TimerConfig | undefined => {
+		// No timer until rest starts
+		if (!session.restStartTime) return undefined;
+		// Hide when rest is complete
+		if (isRestComplete) return undefined;
+		// For workout step: show timer if viewing active exercise OR in question flow
+		// The question flow check (detailInputMode !== 'none') handles the case where
+		// the user just clicked a set but React state hasn't updated yet
+		if (forWorkoutStep && !isViewingActiveExercise && detailInputMode === 'none') return undefined;
+		return { type: 'countdown', seconds: restRemaining, totalSeconds: totalRestTarget, label: 'Rest' };
+	};
+
 	// Render based on current step
 	switch (sessionStep) {
 		case 'workout':
-			// Calculate rest progress and timing
-			const totalRestTarget = restTarget + extraRestTime;
-			const isRestComplete = restElapsed >= totalRestTarget;
-			const restRemaining = Math.max(0, totalRestTarget - restElapsed);
-			const setDuration = isRestComplete ? restElapsed - totalRestTarget : 0;
-
-			// Build timer config for TopNav
-			const timerConfig: TimerConfig | undefined = isViewingActiveExercise
-				? isRestComplete
-					? { type: 'countup', seconds: setDuration, label: 'Ready' }
-					: { type: 'countdown', seconds: restRemaining, totalSeconds: totalRestTarget, label: 'Rest' }
-				: undefined;
+			const timerConfig = getTimerConfig(true);
 
 			// Handle title click - add extra rest when resting, return to active when browsing
 			const handleTitleClick = () => {
@@ -984,6 +999,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 						variant="actions"
 						leftAction={<button className="fit-button-text" onClick={handleBack}>← Back</button>}
 						rightAction={<button className="fit-button-text" onClick={handleCancel}>Cancel</button>}
+						timer={getTimerConfig(false)}
 					/>
 
 					<div className="fit-content">
@@ -1017,6 +1033,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 						variant="actions"
 						leftAction={<button className="fit-button-text" onClick={handleBack}>← Back</button>}
 						rightAction={<button className="fit-button-text" onClick={handleCancel}>Cancel</button>}
+						timer={getTimerConfig(false)}
 					/>
 
 					<div className="fit-content">
@@ -1049,6 +1066,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 						variant="actions"
 						leftAction={<button className="fit-button-text" onClick={handleBack}>← Back</button>}
 						rightAction={<button className="fit-button-text" onClick={handleCancel}>Cancel</button>}
+						timer={getTimerConfig(false)}
 					/>
 
 					<div className="fit-content">

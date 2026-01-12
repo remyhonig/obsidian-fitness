@@ -110,16 +110,15 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 
 	// Build timer config for active session
 	// Only show timer after first set is completed (session actually started)
+	// Hide when rest is complete (timer will slide away)
 	const getTimerConfig = (): TimerConfig | undefined => {
 		if (!session.isActive || !session.restStartTime) return undefined;
 
 		const isRestComplete = restElapsed >= restTarget;
-		const restRemaining = Math.max(0, restTarget - restElapsed);
-		const overageTime = restElapsed - restTarget;
+		if (isRestComplete) return undefined;
 
-		return isRestComplete
-			? { type: 'countup', seconds: overageTime, label: 'Ready' }
-			: { type: 'countdown', seconds: restRemaining, totalSeconds: restTarget, label: 'Rest' };
+		const restRemaining = Math.max(0, restTarget - restElapsed);
+		return { type: 'countdown', seconds: restRemaining, totalSeconds: restTarget, label: 'Rest' };
 	};
 
 	/**

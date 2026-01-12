@@ -154,22 +154,17 @@ export function TopNav({
 	const renderTimer = () => {
 		if (!timer) return null;
 
-		const { type, seconds, totalSeconds, label } = timer;
-		const progress = type === 'countdown' && totalSeconds
-			? Math.max(0, Math.min(1, seconds / totalSeconds))
-			: null;
-
 		return (
-			<div className={`fit-top-nav-timer fit-top-nav-timer--${type}`}>
+			<div className={`fit-top-nav-timer fit-top-nav-timer--${timer.type}`}>
 				<div className="fit-top-nav-timer-content">
-					{label && <span className="fit-top-nav-timer-label">{label}</span>}
-					<span className="fit-top-nav-timer-time">{formatTime(seconds)}</span>
+					{timer.label && <span className="fit-top-nav-timer-label">{timer.label}</span>}
+					<span className="fit-top-nav-timer-time">{formatTime(timer.seconds)}</span>
 				</div>
-				{progress !== null && (
+				{timer.type === 'countdown' && timer.totalSeconds && (
 					<div className="fit-top-nav-timer-track">
 						<div
 							className="fit-top-nav-timer-progress"
-							style={{ width: `${progress * 100}%` }}
+							style={{ width: `${Math.max(0, Math.min(1, timer.seconds / timer.totalSeconds)) * 100}%` }}
 						/>
 					</div>
 				)}
