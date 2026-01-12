@@ -269,3 +269,103 @@ export const ResultComparison: Story = {
 		</div>
 	),
 };
+
+// Decorator for wide cards (like in session screen)
+// Uses the same CSS override as ExerciseGroup to make cards full width
+const wideCardDecorator = (Story: React.ComponentType) => (
+	<div className="fit-exercise-group-body" style={{ width: '300px' }}>
+		<Story />
+	</div>
+);
+
+// Timer inside SetCard - shows countdown with progress bar
+export const WithTimer: Story = {
+	args: {
+		weight: 80,
+		reps: '8-10',
+		rpe: 8,
+		variant: 'next',
+		timer: { seconds: 90, totalSeconds: 120 },
+		onClick: action('onClick'),
+	},
+	decorators: [wideCardDecorator],
+};
+
+export const WithTimerLow: Story = {
+	args: {
+		weight: 80,
+		reps: '8-10',
+		rpe: 8,
+		variant: 'next',
+		timer: { seconds: 15, totalSeconds: 120 },
+		onClick: action('onClick'),
+	},
+	decorators: [wideCardDecorator],
+};
+
+// Instruction text inside SetCard
+export const WithInstruction: Story = {
+	args: {
+		weight: 80,
+		reps: '8-10',
+		rpe: 8,
+		variant: 'next',
+		instruction: 'tap to complete',
+		onClick: action('onClick'),
+	},
+	decorators: [wideCardDecorator],
+};
+
+export const WithInstructionSuggested: Story = {
+	args: {
+		weight: 80,
+		reps: '8-10',
+		rpe: 8,
+		variant: 'suggested',
+		instruction: 'tap to start',
+		onClick: action('onClick'),
+	},
+	decorators: [wideCardDecorator],
+};
+
+// Timer + Instruction combined
+export const WithTimerAndInstruction: Story = {
+	args: {
+		weight: 80,
+		reps: '8-10',
+		rpe: 8,
+		variant: 'next',
+		timer: { seconds: 45, totalSeconds: 120 },
+		instruction: 'rest',
+		onClick: action('onClick'),
+	},
+	decorators: [wideCardDecorator],
+};
+
+// Timer in different variants
+export const TimerVariants: Story = {
+	render: () => (
+		<div className="fit-exercise-group-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '300px' }}>
+			<div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Timer in different card variants:</div>
+			<SetCard weight={80} reps="8-10" rpe={8} variant="next" timer={{ seconds: 90, totalSeconds: 120 }} instruction="rest" />
+			<SetCard weight={80} reps="8-10" rpe={8} variant="suggested" timer={{ seconds: 60, totalSeconds: 120 }} instruction="rest" />
+			<SetCard weight={80} reps="8-10" rpe={8} variant="pending" timer={{ seconds: 30, totalSeconds: 120 }} />
+			<SetCard weight={80} reps={10} rpe={8} variant="done" instruction="completed" />
+		</div>
+	),
+};
+
+// With exercise name header and timer
+export const WithExerciseNameAndTimer: Story = {
+	args: {
+		weight: 80,
+		reps: '8-10',
+		rpe: 8,
+		variant: 'next',
+		exerciseName: 'Bench Press',
+		timer: { seconds: 75, totalSeconds: 120 },
+		instruction: 'rest',
+		onClick: action('onClick'),
+	},
+	decorators: [wideCardDecorator],
+};

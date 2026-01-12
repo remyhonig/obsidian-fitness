@@ -170,3 +170,100 @@ export const VariantComparison: Story = {
 		</div>
 	),
 };
+
+// With coaching note shown as quote under header
+export const WithNote: Story = {
+	args: {
+		exerciseName: 'Side Lateral Raise',
+		width: 300,
+		variant: 'next',
+		note: 'Slight forward lean, lead with elbows, pause at top',
+		onInfoClick: action('info-click'),
+		sets: [
+			{ weight: 10, reps: 12, rpe: 7, variant: 'done', result: 'good' },
+			{ weight: 10, reps: '12-15', rpe: 8, variant: 'next' },
+			{ weight: 10, reps: '12-15', rpe: 8, variant: 'pending' },
+		],
+	},
+};
+
+// With YouTube link in header
+export const WithYouTube: Story = {
+	args: {
+		exerciseName: 'Face Pull',
+		width: 300,
+		variant: 'next',
+		youtubeUrl: 'https://www.youtube.com/results?search_query=face+pull+form',
+		onInfoClick: action('info-click'),
+		sets: [
+			{ weight: 15, reps: 15, rpe: 7, variant: 'done', result: 'good' },
+			{ weight: 15, reps: '15-20', rpe: 8, variant: 'next' },
+			{ weight: 15, reps: '15-20', rpe: 8, variant: 'pending' },
+		],
+	},
+};
+
+// With both note and YouTube
+export const WithNoteAndYouTube: Story = {
+	args: {
+		exerciseName: 'Cable Fly',
+		width: 300,
+		variant: 'next',
+		note: 'High-to-low or mid, squeeze inner chest, slow negative',
+		youtubeUrl: 'https://www.youtube.com/results?search_query=cable+fly+form',
+		onInfoClick: action('info-click'),
+		sets: [
+			{ weight: 15, reps: 12, rpe: 7, variant: 'done', result: 'good' },
+			{ weight: 15, reps: '12-15', rpe: 8, variant: 'next' },
+			{ weight: 15, reps: '12-15', rpe: 8, variant: 'pending' },
+		],
+	},
+};
+
+// With all header elements: YouTube, info button, and note
+export const FullHeader: Story = {
+	args: {
+		exerciseName: 'Incline Dumbbell Press',
+		width: 320,
+		variant: 'next',
+		note: '30-degree angle, touch outer chest, press to center',
+		youtubeUrl: 'https://www.youtube.com/results?search_query=incline+dumbbell+press',
+		onInfoClick: action('info-click'),
+		sets: [
+			{ weight: 24, reps: 10, rpe: 7, variant: 'done', result: 'good' },
+			{ weight: 24, reps: 10, rpe: 8, variant: 'done', result: 'ok' },
+			{ weight: 24, reps: '10', rpe: 8, variant: 'next' },
+			{ weight: 24, reps: '10', rpe: 8, variant: 'pending' },
+		],
+	},
+};
+
+// YouTube only (no info button)
+export const YouTubeOnly: Story = {
+	args: {
+		exerciseName: 'Straight Arm Pulldown',
+		width: 300,
+		variant: 'next',
+		youtubeUrl: 'https://www.youtube.com/results?search_query=straight+arm+pulldown',
+		sets: [
+			{ weight: 25, reps: '12-15', rpe: 8, variant: 'next' },
+			{ weight: 25, reps: '12-15', rpe: 8, variant: 'pending' },
+			{ weight: 25, reps: '12-15', rpe: 8, variant: 'pending' },
+		],
+	},
+};
+
+// Note only (no buttons)
+export const NoteOnly: Story = {
+	args: {
+		exerciseName: 'Plank',
+		width: 300,
+		variant: 'pending',
+		note: 'Core stability, breathe and hold',
+		sets: [
+			{ weight: 0, reps: '45', rpe: 7, variant: 'pending', headerText: 'BW', detailText: '45s' },
+			{ weight: 0, reps: '45', rpe: 7, variant: 'pending', headerText: 'BW', detailText: '45s' },
+			{ weight: 0, reps: '45', rpe: 7, variant: 'pending', headerText: 'BW', detailText: '45s' },
+		],
+	},
+};

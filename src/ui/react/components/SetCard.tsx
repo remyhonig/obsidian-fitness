@@ -3,10 +3,30 @@
  *
  * A single set card showing weight, reps, and RPE with multiple visual states.
  * Used in session views to display both completed and pending sets.
+ *
+ * Can optionally include:
+ * - Timer display (countdown with progress bar)
+ * - Instruction text (e.g., "tap to complete", "rest")
  */
 
 import { motion } from 'framer-motion';
 import { RuleBadge, type RuleBadgeProps } from './RuleBadge';
+
+/** Timer configuration for countdown display in set card */
+export interface SetCardTimerConfig {
+	/** Current seconds remaining */
+	seconds: number;
+	/** Total seconds for progress calculation */
+	totalSeconds: number;
+}
+
+/** Format seconds as MM:SS */
+function formatTime(seconds: number): string {
+	const absSeconds = Math.abs(Math.floor(seconds));
+	const mins = Math.floor(absSeconds / 60);
+	const secs = absSeconds % 60;
+	return `${mins}:${String(secs).padStart(2, '0')}`;
+}
 
 export interface SetCardProps {
 	/** Weight in kg (0 = bodyweight) */
@@ -50,6 +70,12 @@ export interface SetCardProps {
 
 	/** Show celebration effect for workouts done today */
 	doneToday?: boolean;
+
+	/** Timer configuration for countdown display */
+	timer?: SetCardTimerConfig;
+
+	/** Instruction text shown on the right side (e.g., "tap to complete", "rest") */
+	instruction?: string;
 }
 
 /**
@@ -111,7 +137,10 @@ export function SetCard({
 	detailText,
 	layoutId,
 	doneToday = false,
+	timer,
+	instruction,
 }: SetCardProps) {
+	const hasRightContent = timer || instruction;
 	const classNames = [
 		'fit-set-card',
 		variant === 'done' ? 'done' : '',
@@ -123,6 +152,7 @@ export function SetCard({
 		exerciseName ? 'with-header-banner' : '',
 		result ? `result-${result}` : '',
 		doneToday ? 'done-today' : '',
+		hasRightContent ? 'with-instruction' : '',
 	]
 		.filter(Boolean)
 		.join(' ');
@@ -133,6 +163,33 @@ export function SetCard({
 	const displayHeader = headerText ?? formatWeight(weight);
 	const displayDetails = detailText ?? `RPE ${rpe}`;
 
+	const isSuggested = variant === 'suggested';
+
+	// Render the right side content (timer and/or instruction)
+	const renderRightContent = () => {
+		if (!hasRightContent) return null;
+
+		return (
+			<div className="fit-set-card-right">
+				{isSuggested && <span className="fit-set-card-next-badge">next</span>}
+				{timer && (
+					<div className="fit-set-card-timer">
+						<span className="fit-set-card-timer-time">{formatTime(timer.seconds)}</span>
+						<div className="fit-set-card-timer-track">
+							<div
+								className="fit-set-card-timer-progress"
+								style={{ width: `${Math.max(0, Math.min(1, timer.seconds / timer.totalSeconds)) * 100}%` }}
+							/>
+						</div>
+					</div>
+				)}
+				{instruction && (
+					<span className="fit-set-card-instruction">{instruction}</span>
+				)}
+			</div>
+		);
+	};
+
 	// When exerciseName is provided, show header banner style (Duolingo-like)
 	if (exerciseName) {
 		return (
@@ -142,10 +199,15 @@ export function SetCard({
 				<div className="fit-set-card-body">
 					{isAnimating && <StarBurst />}
 					{isDone && <span className="fit-set-card-checkmark">✓</span>}
-					<div className="fit-set-card-header">{displayHeader}</div>
-					<div className="fit-set-card-content">
-						<div className="fit-set-card-main">{reps}</div>
-						{displayDetails && <div className="fit-set-card-details">{displayDetails}</div>}
+					<div className="fit-set-card-body-row">
+						<div className="fit-set-card-left">
+							<div className="fit-set-card-header">{displayHeader}</div>
+							<div className="fit-set-card-content">
+								<div className="fit-set-card-main">{reps}</div>
+								{displayDetails && <div className="fit-set-card-details">{displayDetails}</div>}
+							</div>
+						</div>
+						{renderRightContent()}
 					</div>
 					{/* Rule badge - shows when a rule was triggered by this set */}
 					{ruleBadge && (
@@ -163,21 +225,23 @@ export function SetCard({
 		);
 	}
 
-	const isSuggested = variant === 'suggested';
-
 	// Regular card without exercise name
 	const cardContent = (
 		<div className={classNames} onClick={onClick}>
 			{doneToday && <CelebrationSparkles />}
 			{isAnimating && <StarBurst />}
 			{isDone && <span className="fit-set-card-checkmark">✓</span>}
-			{isSuggested && <span className="fit-set-card-next-badge">next</span>}
+			{isSuggested && !hasRightContent && <span className="fit-set-card-next-badge">next</span>}
 
-			<div className="fit-set-card-header">{displayHeader}</div>
-
-			<div className="fit-set-card-content">
-				<div className="fit-set-card-main">{reps}</div>
-				{displayDetails && <div className="fit-set-card-details">{displayDetails}</div>}
+			<div className="fit-set-card-body-row">
+				<div className="fit-set-card-left">
+					<div className="fit-set-card-header">{displayHeader}</div>
+					<div className="fit-set-card-content">
+						<div className="fit-set-card-main">{reps}</div>
+						{displayDetails && <div className="fit-set-card-details">{displayDetails}</div>}
+					</div>
+				</div>
+				{renderRightContent()}
 			</div>
 
 			{/* Rule badge - shows when a rule was triggered by this set */}

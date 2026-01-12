@@ -572,8 +572,9 @@ export class FitnessDomainAdapter {
 				if (isStartWorkoutResult(result)) {
 					this.syncSessionStateFromEngine(result, event.workoutName, event.programId);
 				}
-				// If a specific exercise index was requested, skip to it
-				if (event.startExerciseIndex !== undefined && event.startExerciseIndex > 0) {
+				// If a specific exercise index was requested, set it as current exercise
+				// This enables auto-selecting the first exercise (index 0) when starting from schedule
+				if (event.startExerciseIndex !== undefined && event.startExerciseIndex >= 0) {
 					this.sessionState.currentExerciseIndex = Math.min(
 						event.startExerciseIndex,
 						this.sessionState.exercises.length - 1

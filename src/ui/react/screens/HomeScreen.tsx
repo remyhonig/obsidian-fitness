@@ -71,12 +71,13 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 	const restTarget = (currentExercise?.restSeconds ?? 120) + session.extraRestTime;
 
 	// Start a workout and go directly to session (skip workout detail screen)
-	// Note: Session starts with no active exercise - user must click to select first exercise
+	// Auto-selects the first exercise so user is ready to start immediately
 	const handleStartWorkout = (workoutName: string) => {
 		dispatch({
 			type: 'start_workout',
 			workoutName,
-			programId: program?.program.name
+			programId: program?.program.name,
+			startExerciseIndex: 0
 		});
 		onNavigate('session');
 	};

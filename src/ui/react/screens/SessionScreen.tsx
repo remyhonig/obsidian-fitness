@@ -401,13 +401,14 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 		}
 
 		// If clicking on a different exercise, switch to it first
+		// Return early so user must click again to start completion flow
 		if (exerciseIndex !== session.currentExerciseIndex) {
 			dispatch({ type: 'set_current_exercise', exerciseIndex });
 			setViewedExerciseIndex(exerciseIndex);
+			return;
 		}
 
 		// NEXT set: Start DONE flow directly (same as pressing DONE button)
-		// This now works even on first click when switching exercises
 		if (isNext) {
 			dispatch({ type: 'start_rest_timer' });
 			setSelectedSetIndex(setIndex);
@@ -858,18 +859,15 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 
 			return (
 				<div className="fit-session-screen">
-					{/* Exercise info modal */}
+					{/* Exercise info modal - only shows image */}
 					{infoModalExerciseIndex !== null && (() => {
 						const modalExercise = session.exercises[infoModalExerciseIndex];
 						if (!modalExercise) return null;
 						const modalImage = getImageUrl(modalExercise.media);
-						const modalYoutube = getYouTubeMedia(modalExercise.media);
 						return (
 							<ExerciseInfoModal
 								exerciseName={modalExercise.exercise}
 								imageUrl={modalImage?.url}
-								youtubeUrl={modalYoutube?.url}
-								note={modalExercise.note ?? undefined}
 								onClose={() => setInfoModalExerciseIndex(null)}
 							/>
 						);
@@ -897,8 +895,8 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 									const exerciseImage = getImageUrl(exercise.media);
 									const exerciseYoutube = getYouTubeMedia(exercise.media);
 
-									// Check if exercise has any info to show
-									const hasExerciseInfo = exerciseImage || exerciseYoutube || exercise.note;
+									// Only show info button if there's an image (YouTube and note shown directly in header)
+									const hasImageForModal = !!exerciseImage;
 
 									// Determine group variant: done if all sets complete, next if active, pending otherwise
 									const groupVariant: 'pending' | 'next' | 'done' = isExerciseDone
@@ -957,6 +955,7 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 												isStreakBroken: ruleBadge.isStreakBroken,
 												layoutId: ruleBadge.layoutId,
 											} : undefined,
+										instruction: (isNext || isFirstSuggestedSet) ? 'tap to complete' : undefined,
 										};
 									});
 
@@ -966,7 +965,9 @@ export function SessionScreen({ onNavigate, initialExerciseSummary, initialDetai
 											exerciseName={exercise.exercise}
 											variant={groupVariant}
 											sets={setsData}
-											onInfoClick={hasExerciseInfo ? () => setInfoModalExerciseIndex(exerciseIndex) : undefined}
+											onInfoClick={hasImageForModal ? () => setInfoModalExerciseIndex(exerciseIndex) : undefined}
+											youtubeUrl={exerciseYoutube?.url}
+											note={exercise.note ?? undefined}
 											width="100%"
 										/>
 									);

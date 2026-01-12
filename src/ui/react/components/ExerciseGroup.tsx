@@ -6,7 +6,8 @@
  * Uses SetCard components for each set, maintaining the card-based look.
  */
 
-import { SetCard } from './SetCard';
+import { YoutubeLogoIcon, ImageIcon } from '@phosphor-icons/react';
+import { SetCard, type SetCardTimerConfig } from './SetCard';
 import type { RuleBadgeProps } from './RuleBadge';
 
 export interface ExerciseSetData {
@@ -42,6 +43,12 @@ export interface ExerciseSetData {
 
 	/** Show celebration effect for workouts done today */
 	doneToday?: boolean;
+
+	/** Timer configuration for countdown display */
+	timer?: SetCardTimerConfig;
+
+	/** Instruction text shown on the right side (e.g., "tap to complete", "rest") */
+	instruction?: string;
 }
 
 export interface ExerciseGroupProps {
@@ -51,8 +58,14 @@ export interface ExerciseGroupProps {
 	/** Array of sets to display */
 	sets: ExerciseSetData[];
 
-	/** Callback when info button is clicked */
+	/** Callback when info button is clicked (shows image modal) */
 	onInfoClick?: () => void;
+
+	/** YouTube URL - shows YouTube icon in header that opens video */
+	youtubeUrl?: string;
+
+	/** Note/coaching cue shown as quote under the header */
+	note?: string;
 
 	/** Width of the card (default: 280px) */
 	width?: number | string;
@@ -61,7 +74,7 @@ export interface ExerciseGroupProps {
 	variant?: 'pending' | 'next' | 'done';
 }
 
-export function ExerciseGroup({ exerciseName, sets, onInfoClick, width = 280, variant = 'pending' }: ExerciseGroupProps) {
+export function ExerciseGroup({ exerciseName, sets, onInfoClick, youtubeUrl, note, width = 280, variant = 'pending' }: ExerciseGroupProps) {
 	const style = {
 		width: typeof width === 'number' ? `${width}px` : width,
 		maxWidth: typeof width === 'number' ? `${width}px` : width,
@@ -72,20 +85,42 @@ export function ExerciseGroup({ exerciseName, sets, onInfoClick, width = 280, va
 		`fit-exercise-group-${variant}`,
 	].join(' ');
 
+	const handleYouTubeClick = () => {
+		if (youtubeUrl) {
+			window.open(youtubeUrl, '_blank');
+		}
+	};
+
 	return (
 		<div className={classNames} style={style}>
 			<div className="fit-exercise-group-header">
 				<span className="fit-exercise-group-header-title">{exerciseName}</span>
-				{onInfoClick && (
-					<button
-						className="fit-exercise-group-info-btn"
-						onClick={onInfoClick}
-						aria-label="Exercise info"
-					>
-						i
-					</button>
-				)}
+				<div className="fit-exercise-group-header-actions">
+					{youtubeUrl && (
+						<button
+							className="fit-exercise-group-youtube-btn"
+							onClick={handleYouTubeClick}
+							aria-label="Watch on YouTube"
+						>
+							<YoutubeLogoIcon size={18} weight="fill" />
+						</button>
+					)}
+					{onInfoClick && (
+						<button
+							className="fit-exercise-group-info-btn"
+							onClick={onInfoClick}
+							aria-label="View exercise image"
+						>
+							<ImageIcon size={18} weight="regular" />
+						</button>
+					)}
+				</div>
 			</div>
+			{note && (
+				<div className="fit-exercise-group-note">
+					{note}
+				</div>
+			)}
 			<div className="fit-exercise-group-body">
 				{sets.map((set, index) => (
 					<SetCard
@@ -101,6 +136,8 @@ export function ExerciseGroup({ exerciseName, sets, onInfoClick, width = 280, va
 						detailText={set.detailText}
 						layoutId={set.layoutId}
 						doneToday={set.doneToday}
+						timer={set.timer}
+						instruction={set.instruction}
 					/>
 				))}
 			</div>

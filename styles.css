@@ -6953,6 +6953,12 @@
 	right: 6px;
 }
 
+/* Next badge inside right content area - remove absolute positioning */
+.fit-set-card-right .fit-set-card-next-badge {
+	position: static;
+	box-shadow: 0 2px 0 #0f8bc4;
+}
+
 @keyframes pulse-glow {
 	0%, 100% {
 		box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
@@ -7042,6 +7048,124 @@
 
 .theme-dark .fit-set-card:not(.done):not(.next) .fit-set-card-details {
 	color: var(--text-muted);
+}
+
+/* SetCard with instruction/timer - row layout */
+.fit-set-card-body-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.fit-set-card-left {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.fit-set-card-right {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+
+/* Timer inside SetCard */
+.fit-set-card-timer {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 2px;
+}
+
+.fit-set-card-timer-time {
+	font-size: 16px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.fit-set-card.done .fit-set-card-timer-time {
+	color: rgba(255, 255, 255, 0.95);
+}
+
+.fit-set-card.next .fit-set-card-timer-time {
+	color: white;
+}
+
+.fit-set-card.suggested .fit-set-card-timer-time {
+	color: #1899d6;
+}
+
+.fit-set-card.pending .fit-set-card-timer-time {
+	color: #4b4b4b;
+}
+
+.fit-set-card-timer-track {
+	width: 48px;
+	height: 4px;
+	background: rgba(0, 0, 0, 0.15);
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.fit-set-card.done .fit-set-card-timer-track,
+.fit-set-card.next .fit-set-card-timer-track {
+	background: rgba(255, 255, 255, 0.25);
+}
+
+.fit-set-card-timer-progress {
+	height: 100%;
+	background: currentColor;
+	border-radius: 2px;
+	transition: width 0.3s linear;
+}
+
+.fit-set-card.done .fit-set-card-timer-progress {
+	background: rgba(255, 255, 255, 0.9);
+}
+
+.fit-set-card.next .fit-set-card-timer-progress {
+	background: white;
+}
+
+.fit-set-card.suggested .fit-set-card-timer-progress {
+	background: #1899d6;
+}
+
+.fit-set-card.pending .fit-set-card-timer-progress {
+	background: #777;
+}
+
+/* Instruction text inside SetCard */
+.fit-set-card-instruction {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: lowercase;
+	opacity: 0.8;
+}
+
+.fit-set-card.done .fit-set-card-instruction {
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.fit-set-card.next .fit-set-card-instruction {
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.fit-set-card.suggested .fit-set-card-instruction {
+	color: #1899d6;
+}
+
+.fit-set-card.pending .fit-set-card-instruction {
+	color: #777;
+}
+
+/* Cards with header banner and instruction - adjust body padding */
+.fit-set-card.with-header-banner.with-instruction .fit-set-card-body {
+	padding: 8px 12px 12px;
 }
 
 /* Set completion animation */
@@ -8911,32 +9035,60 @@
 	text-align: left;
 }
 
-.fit-exercise-group-info-btn {
-	position: absolute;
-	right: 12px;
-	width: 22px;
-	height: 22px;
-	border-radius: 50%;
-	border: 2px solid white !important;
+.fit-exercise-group-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.fit-exercise-group-youtube-btn {
+	width: 24px;
+	height: 24px;
+	border: none !important;
+	border-radius: 0 !important;
 	background: none !important;
 	background-color: transparent !important;
-	color: white !important;
-	font-size: 13px;
-	font-weight: 700;
-	font-style: italic;
+	box-shadow: none !important;
+	color: rgba(255, 255, 255, 0.7) !important;
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	padding: 0;
-	line-height: 1;
+	transition: all 0.15s;
+}
+
+.fit-exercise-group-youtube-btn:hover {
+	color: white !important;
+}
+
+.fit-exercise-group-info-btn {
+	width: 24px;
+	height: 24px;
+	border: none !important;
+	border-radius: 0 !important;
+	background: none !important;
+	background-color: transparent !important;
+	box-shadow: none !important;
+	color: rgba(255, 255, 255, 0.7) !important;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
 	transition: all 0.15s;
 }
 
 .fit-exercise-group-info-btn:hover {
-	border-color: white;
-	color: white;
-	background: none !important;
+	color: white !important;
+}
+
+/* Note/coaching cue shown as quote under header */
+.fit-exercise-group-note {
+	padding: 4px 16px 8px 16px;
+	font-size: 13px;
+	font-style: italic;
+	color: rgba(255, 255, 255, 0.6);
 }
 
 .fit-exercise-group-body {
