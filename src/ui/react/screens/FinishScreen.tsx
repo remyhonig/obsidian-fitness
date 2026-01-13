@@ -48,7 +48,7 @@ interface RuleProgressItem {
 	ruleDescription: string;
 	current: number;
 	required: number;
-	unit: 'sessions' | 'sets';
+	unit: 'sessions' | 'sets' | 'cycles';
 	variant: 'active' | 'complete' | 'broken';
 	effect: string;
 	previousStreak?: number;

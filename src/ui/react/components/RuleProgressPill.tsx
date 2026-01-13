@@ -16,7 +16,7 @@ export interface RuleProgressPillProps {
 	required: number;
 
 	/** Unit of measurement */
-	unit: 'sessions' | 'sets';
+	unit: 'sessions' | 'sets' | 'cycles';
 
 	/** Visual variant */
 	variant: 'active' | 'complete' | 'broken';

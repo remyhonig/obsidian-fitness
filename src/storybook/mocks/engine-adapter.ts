@@ -688,6 +688,38 @@ export function createEngineAdapter(config: EngineAdapterConfig) {
 
 		/** Access to the underlying engine for advanced usage */
 		getEngine: () => engine,
+
+		getScheduleStatus: async () => {
+			// Return a mock schedule status for Storybook
+			if (!programData) return null;
+			return {
+				programName: programData.program.name,
+				cycle: programData.schedule.cyclePattern.map((entry, index) => ({
+					workout: entry.workout,
+					cyclePosition: index + 1,
+					isAvailableNow: true,
+					recoveryRemaining: null,
+					history: {
+						lastSessionDate: null,
+						totalSessions: 0,
+						recentSessions: [],
+					},
+				})),
+				suggestedNextIndex: 0,
+				mostRecentSession: null,
+				allTriggeredRules: [],
+			};
+		},
+
+		getCompletedSessions: async () => {
+			// Return empty array for Storybook mock
+			return [];
+		},
+
+		getWorkoutViews: async (_workoutName: string) => {
+			// Return null for Storybook - could use getWorkoutExecutionViews from fitness-dsl
+			return null;
+		},
 	};
 }
 

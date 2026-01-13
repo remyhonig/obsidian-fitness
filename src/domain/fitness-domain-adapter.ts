@@ -17,6 +17,7 @@ import {
 	parseProgram as parseFitnessDSL,
 	compileProgramFromString,
 	generateExecutionView,
+	getWorkoutExecutionViews,
 	evaluateSession,
 	getScheduleStatus as dslGetScheduleStatus,
 	FitnessDSLEngine,
@@ -575,10 +576,21 @@ export class FitnessDomainAdapter {
 				// If a specific exercise index was requested, set it as current exercise
 				// This enables auto-selecting the first exercise (index 0) when starting from schedule
 				if (event.startExerciseIndex !== undefined && event.startExerciseIndex >= 0) {
-					this.sessionState.currentExerciseIndex = Math.min(
+					const targetIndex = Math.min(
 						event.startExerciseIndex,
 						this.sessionState.exercises.length - 1
 					);
+					this.sessionState.currentExerciseIndex = targetIndex;
+
+					// Also start the exercise in the engine so completeSet works
+					const targetExercise = this.sessionState.exercises[targetIndex];
+					if (targetExercise) {
+						this.engine.dispatch({
+							type: 'startExercise',
+							exerciseName: targetExercise.exercise,
+							exerciseIndex: targetIndex
+						});
+					}
 				}
 				break;
 			}
@@ -1115,8 +1127,10 @@ export class FitnessDomainAdapter {
 	 * @returns ExerciseExecutionView with targets for each set, or null if not available
 	 */
 	getExecutionView(exerciseIndex: number): ExerciseExecutionView | null {
-		if (!this.compiledProgram || !this.sessionState.isActive) {
-			console.log('[FitnessDomainAdapter] getExecutionView: No compiled program or inactive session');
+		// Check if we have a compiled program and a workout has been started
+		// Note: isActive is only true after first set is completed, but we need
+		// execution view as soon as workout starts (exercises loaded)
+		if (!this.compiledProgram || !this.sessionState.workout) {
 			return null;
 		}
 
@@ -1183,6 +1197,29 @@ export class FitnessDomainAdapter {
 		});
 
 		return executionView;
+	}
+
+	/**
+	 * Get execution views for all exercises in a workout (pure query - no state mutation).
+	 *
+	 * This is the preferred method for rendering a workout's exercises before or during
+	 * a session. It doesn't require "starting" the workout in the engine - it just
+	 * queries the compiled program and session history to compute targets.
+	 *
+	 * @param workoutName - Name of the workout to get views for
+	 * @returns Map of exercise name to ExerciseExecutionView, or null if workout not found
+	 */
+	async getWorkoutViews(workoutName: string): Promise<Map<string, ExerciseExecutionView> | null> {
+		if (!this.compiledProgram) {
+			return null;
+		}
+
+		// Load session history for rule progress computation
+		const sessions = await this.sessionRepository.list();
+		const setResults = this.convertSessionsToSetResults(sessions);
+
+		// Use the DSL's pure query function
+		return getWorkoutExecutionViews(this.compiledProgram, workoutName, setResults);
 	}
 
 	/**

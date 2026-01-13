@@ -17,7 +17,7 @@ import { RuleProgressPill } from './RuleProgressPill';
 export interface CoachTipRuleProgress {
 	current: number;
 	required: number;
-	unit: 'sessions' | 'sets';
+	unit: 'sessions' | 'sets' | 'cycles';
 }
 
 /** Coach tip configuration */
